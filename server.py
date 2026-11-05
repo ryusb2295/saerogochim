@@ -19,6 +19,9 @@ ATTEMPTS = 0
 MAX_ATTEMPTS = 20  # Per server process; includes failed upstream requests.
 API_KEY = ''
 MODEL = os.environ.get('OPENAI_IMAGE_MODEL', 'gpt-image-2.5-flare')
+# 앱 설치(PWA)에 필요한 파일. 목록에 있는 것만 내보낸다.
+STATIC = {'/manifest.json': 'application/manifest+json', '/sw.js': 'text/javascript; charset=utf-8',
+          '/icons/icon-192.png': 'image/png', '/icons/icon-512.png': 'image/png'}
 
 
 def validate(data):
@@ -88,6 +91,8 @@ class Handler(BaseHTTPRequestHandler):
                                     'remaining': max(0, MAX_ATTEMPTS - ATTEMPTS)})
         if self.path in ('/', '/index.html'):
             return self.reply(200, (ROOT / 'index.html').read_bytes(), 'text/html; charset=utf-8')
+        if self.path in STATIC:
+            return self.reply(200, (ROOT / self.path[1:]).read_bytes(), STATIC[self.path])
         return self.reply(404, {'error': '찾을 수 없어요.'})
 
     def do_POST(self):
