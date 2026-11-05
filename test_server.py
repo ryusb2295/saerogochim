@@ -1,4 +1,5 @@
 import io
+import json
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -55,6 +56,12 @@ class ServerTests(unittest.TestCase):
         for path in server.STATIC:
             h.path=path;h.do_GET();self.assertEqual(h.reply.call_args.args[0],200)
         h.path='/server.py';h.do_GET();self.assertEqual(h.reply.call_args.args[0],404)
+
+    def test_store_data(self):
+        data=json.loads((server.ROOT/'data'/'gyeongsan-stores.json').read_text(encoding='utf-8'))
+        self.assertTrue(data['rows'] and data['dongs'] and data['cats'])
+        for d,c,name in data['rows']:
+            self.assertLess(d,len(data['dongs']));self.assertLess(c,len(data['cats']));self.assertTrue(name)
 
     def test_provider_error(self):
         error=server.urllib.error.HTTPError('https://api.openai.com',401,'unauthorized',{},None)

@@ -21,7 +21,8 @@ API_KEY = ''
 MODEL = os.environ.get('OPENAI_IMAGE_MODEL', 'gpt-image-2.5-flare')
 # 앱 설치(PWA)에 필요한 파일. 목록에 있는 것만 내보낸다.
 STATIC = {'/manifest.json': 'application/manifest+json', '/sw.js': 'text/javascript; charset=utf-8',
-          '/icons/icon-192.png': 'image/png', '/icons/icon-512.png': 'image/png'}
+          '/icons/icon-192.png': 'image/png', '/icons/icon-512.png': 'image/png',
+          '/data/gyeongsan-stores.json': 'application/json; charset=utf-8'}
 
 
 def validate(data):
