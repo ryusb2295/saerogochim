@@ -49,6 +49,13 @@ class ServerTests(unittest.TestCase):
         server.ATTEMPTS=20
         self.assertEqual(self.request(dict(BRIEF,request_id='test-12345'))[0],429)
 
+    def test_static_files(self):
+        h=server.Handler.__new__(server.Handler)
+        h.headers={'Host':'127.0.0.1:8000'};h.server=SimpleNamespace(server_port=8000);h.reply=Mock()
+        for path in server.STATIC:
+            h.path=path;h.do_GET();self.assertEqual(h.reply.call_args.args[0],200)
+        h.path='/server.py';h.do_GET();self.assertEqual(h.reply.call_args.args[0],404)
+
     def test_provider_error(self):
         error=server.urllib.error.HTTPError('https://api.openai.com',401,'unauthorized',{},None)
         with patch.object(server,'generate',side_effect=error):
