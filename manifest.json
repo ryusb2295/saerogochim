@@ -1,0 +1,17 @@
+{
+  "name": "가게온 · 우리 가게 브랜드 만들기",
+  "short_name": "가게온",
+  "description": "우리 가게의 이야기를 캐릭터와 스티커로. 가게온 브랜드 스튜디오.",
+  "lang": "ko",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5ef",
+  "theme_color": "#f7f5ef",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
