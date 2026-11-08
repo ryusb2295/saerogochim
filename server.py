@@ -1,6 +1,5 @@
 """Local Gageon development server. Python 3.10+, no pip dependencies."""
 import base64
-import getpass
 import json
 import os
 from pathlib import Path
@@ -37,6 +36,12 @@ def validate(data):
     if not result['name'] or not result['industry']:
         raise ValueError('가게 이름과 업종을 입력해주세요.')
     return result
+
+
+def configured_api_key():
+    if os.environ.get('GAGEON_ENABLE_IMAGE_API') != '1':
+        return ''
+    return os.environ.get('OPENAI_API_KEY', '').strip()
 
 
 def generate(brief):
@@ -148,9 +153,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    API_KEY = os.environ.get('OPENAI_API_KEY', '').strip()
-    if not API_KEY:
-        API_KEY = getpass.getpass('OpenAI API key (hidden, Enter for demo): ').strip()
+    API_KEY = configured_api_key()
     server = ThreadingHTTPServer(('127.0.0.1', 8000), Handler)
     print('Gageon: http://127.0.0.1:8000 | ' + ('AI ready' if API_KEY else 'Demo mode'))
     print('Local development only. Ctrl+C to stop. Maximum 20 generation attempts per run.')

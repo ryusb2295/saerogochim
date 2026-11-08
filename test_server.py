@@ -1,5 +1,6 @@
 import io
 import json
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -24,6 +25,12 @@ class ServerTests(unittest.TestCase):
     def test_free_form_industry(self):
         self.assertEqual(server.validate(BRIEF)['industry'],BRIEF['industry'])
 
+    def test_api_is_disabled_without_explicit_opt_in(self):
+        with patch.dict(server.os.environ, {'OPENAI_API_KEY':'test-key'}, clear=True):
+            self.assertEqual(server.configured_api_key(), '')
+        with patch.dict(server.os.environ, {'GAGEON_ENABLE_IMAGE_API':'1','OPENAI_API_KEY':' test-key '}, clear=True):
+            self.assertEqual(server.configured_api_key(), 'test-key')
+
     def test_required_and_type(self):
         for invalid in [[],{},dict(BRIEF, industry=' '),dict(BRIEF,feature=7)]:
             with self.assertRaises(ValueError):server.validate(invalid)
@@ -42,6 +49,16 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(self.request(payload)[0],200)
             self.assertEqual(self.request(payload)[0],200)
             generate.assert_called_once_with(BRIEF)
+
+    def test_delayed_mock_response(self):
+        def delayed(brief):
+            time.sleep(0.02)
+            return {'image':'data:image/png;base64,example'}
+        started=time.monotonic()
+        with patch.object(server,'generate',side_effect=delayed):
+            code,_=self.request(dict(BRIEF,request_id='test-delay-123'))
+        self.assertEqual(code,200)
+        self.assertGreaterEqual(time.monotonic()-started,0.02)
 
     def test_busy(self):
         with server.LOCK:self.assertEqual(self.request(dict(BRIEF,request_id='test-12345'))[0],409)

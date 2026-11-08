@@ -1,8 +1,8 @@
 // 가게온 서비스 워커: 앱 설치와 오프라인 열기를 위한 최소 캐시
 // 화면 파일은 항상 네트워크를 먼저 확인해서 새 버전이 바로 보이게 하고,
 // 연결이 끊겼을 때만 저장해 둔 파일을 보여준다. /api 요청은 건드리지 않는다.
-const CACHE = 'gageon-v1';
-const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'gageon-v2';
+const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './data/gyeongsan-stores.json'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
