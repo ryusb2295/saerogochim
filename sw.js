@@ -1,7 +1,7 @@
 // 가게온 서비스 워커: 앱 설치와 오프라인 열기를 위한 최소 캐시
 // 화면 파일은 항상 네트워크를 먼저 확인해서 새 버전이 바로 보이게 하고,
 // 연결이 끊겼을 때만 저장해 둔 파일을 보여준다. /api 요청은 건드리지 않는다.
-const CACHE = 'gageon-v1';
+const CACHE = 'gageon-v2';
 const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -21,7 +21,8 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/api/')) return;
   event.respondWith(
-    fetch(request)
+    // Pages가 10분 캐시(max-age=600)를 주기 때문에 매번 서버에 새 버전인지 물어본다
+    fetch(request, { cache: 'no-cache' })
       .then(response => {
         if (response.ok) {
           const copy = response.clone();
