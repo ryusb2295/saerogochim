@@ -444,6 +444,9 @@ function appBar() {
   // #logout은 마이페이지 '로그아웃' 버튼이 누르는 숨은 버튼
   return `<header class="app-bar">${left}<div class="app-actions">${bellButton()}<button class="icon-btn" data-page="mypage" aria-label="마이페이지">${icon('user')}</button><button id="logout" hidden></button></div></header>`;
 }
+// 메뉴에 없는 하위 화면은 속한 메뉴 칸을 켜 둔다 (수락된 의뢰 → 대시보드 등)
+const NAV_PARENT = { jobs: 'dash', quote: 'market', request: 'requests', newreq: 'requests', chat: 'chats', studio: 'home', notis: 'mypage', guide: 'mypage' };
+const navTab = () => { const p = NAV_PARENT[page] || page; return p === 'requests' && !REAL ? 'home' : p };
 function bellButton() { return REAL ? `<button class="bell" data-page="notis" aria-label="알림">${icon('bell')}<i id="bell-count" ${notiCount ? '' : 'hidden'}>${notiCount}</i></button>` : '' }
 function bindPrint() {
   if (REAL) bindReal();

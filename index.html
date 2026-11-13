@@ -253,7 +253,7 @@ const nameSize=Math.min(Number(s.fontSize)||58,620/Math.max(s.name.length,1));
 return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 800 800">${mode==='sns'?`<rect width="800" height="800" fill="${t.bg}"/><circle cx="400" cy="355" r="270" fill="white" opacity=".45"/>`:outer}<image href="${esc(raw)}" x="170" y="110" width="460" height="430"/><g fill="${t.ink}" font-family="Malgun Gothic,Apple SD Gothic Neo,sans-serif" text-anchor="middle"><text x="400" y="600" font-size="${nameSize}" font-weight="800">${esc(s.name||'우리 가게')}</text><text x="400" y="661" font-size="${Math.min(28,600/Math.max(s.message.length,1))}" letter-spacing="1">${esc(s.message)}</text><text x="400" y="711" font-size="18" opacity=".6">${esc(s.industry)}</text></g></svg>`;
 }
 function logo(){return `<button class="logo" data-page="home" aria-label="가게온 홈"><span class="logo-mark">${icon('shop')}</span>가게온<small>·</small></button>`}
-function nav(cls){return `<nav class="${cls}" aria-label="주요 메뉴">${navItems().map(([p,i,l])=>`<button data-page="${p}" class="${page===p?'active':''}" ${page===p?'aria-current="page"':''}>${icon(i)}<span>${l}</span></button>`).join('')}</nav>`}
+function nav(cls){return `<nav class="${cls}" aria-label="주요 메뉴">${navItems().map(([p,i,l])=>`<button data-page="${p}" class="${navTab()===p?'active':''}" ${navTab()===p?'aria-current="page"':''}>${icon(i)}<span>${l}</span></button>`).join('')}</nav>`}
 // 체험용 계정: 아이디·비밀번호·복구 코드를 이 브라우저에만 저장한다. 원문 대신 PBKDF2 해시만 둔다.
 // shortcut: 다른 기기·브라우저에서는 로그인 안 됨, 출시 때 Supabase Auth + 서버 복구 코드 API로 교체 (docs/PRD.md 10장)
 const USERS_KEY='gageon-users-v1',SESSION_KEY='gageon-session-v1';
