@@ -30,7 +30,8 @@ STATIC = {'/manifest.json': 'application/manifest+json', '/sw.js': 'text/javascr
           '/icons/icon-192.png': 'image/png', '/icons/icon-512.png': 'image/png',
           '/data/gyeongsan-stores.json': 'application/json; charset=utf-8',
           '/config.js': 'text/javascript; charset=utf-8', '/print.js': 'text/javascript; charset=utf-8',
-          '/chat.js': 'text/javascript; charset=utf-8'}
+          '/chat.js': 'text/javascript; charset=utf-8',
+          '/vendor/astryx-theme-neutral.css': 'text/css; charset=utf-8'}
 # Supabase 로그인 사용자만 AI를 쓰게 하고 하루 횟수를 센다. 비어 있으면(테스트, 오프라인 목업) 예전처럼 동작
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
 SUPABASE_KEY = os.environ.get('SUPABASE_PUBLISHABLE_KEY', '')

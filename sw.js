@@ -2,7 +2,7 @@
 // 화면 파일은 항상 네트워크를 먼저 확인해서 새 버전이 바로 보이게 하고,
 // 연결이 끊겼을 때만 저장해 둔 파일을 보여준다. /api 요청은 건드리지 않는다.
 const CACHE = 'gageon-v3';
-const SHELL = ['./', './index.html', './manifest.json', './config.js', './print.js', './chat.js', './icons/icon-192.png', './icons/icon-512.png'];
+const SHELL = ['./', './index.html', './manifest.json', './config.js', './print.js', './chat.js', './icons/icon-192.png', './icons/icon-512.png', './vendor/astryx-theme-neutral.css'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

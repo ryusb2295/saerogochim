@@ -12,6 +12,8 @@
 
 어떤 AI 서비스 그림이 가게온에 맞는지 고르려면 `python scripts/compare_images.py`를 실행합니다. 같은 가게 정보와 같은 프롬프트로 OpenAI와 Gemini 캐릭터를 뽑아 `compare/` 폴더에 서비스 이름을 가린 비교 페이지(index.html)를 만들고, 정답은 key.json에 따로 둡니다. 요청마다 요금이 나와서 실행 전에 요청 수를 보여주고 확인을 받습니다.
 
+화면 색, 글꼴, 모서리 값은 Meta의 오픈소스 디자인 시스템 [Astryx](https://github.com/meta/astryx) 테마 변수 체계를 따릅니다. `vendor/astryx-theme-neutral.css`(MIT)를 불러온 뒤 `index.html`의 "가게온 테마"에서 가게온 색과 글꼴을 덮어씁니다. 컴포넌트는 React 전용이라 쓰지 않았고, 나중에 React로 옮기면 같은 테마를 그대로 가져갈 수 있습니다.
+
 가게 위치(경산시 행정동)를 고르면 브랜드 노트에 같은 업종 가게 수와 주변 가게 이름에 자주 쓰인 말을 보여줍니다. 공공데이터포털의 [소상공인시장진흥공단 상가(상권)정보](https://www.data.go.kr/data/15083033/fileData.do)에서 경산시 가게만 뽑아 `data/gyeongsan-stores.json`으로 넣었고, 새 분기 파일이 나오면 `python scripts/build_stores.py <zip 파일>`로 다시 만듭니다. 실제 AI 생성용 연결 코드는 구현했으며 유료 API 실호출은 아직 검증하지 않았습니다.
 
 입력 검증·인증 토큰·중복/동시 요청·호출 한도·오류 처리 등 모의 서버 테스트와 상가 데이터 검사 10개 통과. 브라우저 화면 조작 및 다운로드 종단간 검증은 미완료입니다. 서버는 로컬 개발 전용이고 온라인 배포는 하지 않았습니다.
