@@ -214,10 +214,16 @@ const ST_CLS = { open: 'open', accepted: 'acc', in_progress: 'prog', delivered: 
 function reqCard(x) {
   const qs = (x.quotations || []).filter(q => q.status !== 'withdrawn'), names = qs.map(q => q.print_shops?.name || '?');
   const tail = x.status === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? '업체와 제작을 진행하고 있어요' : '진행이 끝난 요청이에요';
-  return `<button class="req-card2" data-req="${x.id}"><div class="top"><div><p class="meta" style="margin:0"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
+  return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
 }
 function requestsPage() {
-  const r = useData('requests', () => q(sb.from('print_requests').select('id,title,item,status,created_at,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit)));
+  const r = useData('requests', async () => {
+    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,preview_path,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
+    if (!rows.length) return rows;
+    const { data } = await sb.storage.from('request-previews').createSignedUrls(rows.map(x => x.preview_path), 300);
+    const urls = Object.fromEntries((data || []).filter(x => x.signedUrl).map(x => [x.path, x.signedUrl]));
+    return rows.map(x => ({ ...x, url: urls[x.preview_path] }));
+  });
   const goNew = `<button class="go-card" data-go-new>${icon('box')}<div><strong>견적을 요청해 보세요</strong><small>여러 인쇄소의 견적을 한 번에 비교할 수 있어요</small></div><span class="chev" aria-hidden="true">›</span></button>`;
   return stateView(r, 'requests', d => {
     const open = d.slice(0, reqLimit).filter(x => x.status === 'open'), rest = d.slice(0, reqLimit).filter(x => x.status !== 'open');
