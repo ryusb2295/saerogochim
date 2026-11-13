@@ -6,8 +6,11 @@ const REAL = !!(CFG.supabaseUrl && CFG.supabaseKey && window.supabase && !/[?&]m
 const sb = REAL ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
 // 아이디 로그인을 Supabase 이메일 로그인에 얹기 위한 내부용 주소 (.invalid는 실제로 메일이 가지 않는 예약 도메인)
 const ID_DOMAIN = '@users.gageon.invalid';
-// 누구나 써 보는 공개 체험 계정(소상공인). 비밀번호가 공개돼 있으니 시연 발표에는 별도 계정을 쓴다
+// 누구나 써 보는 공개 체험 계정. 비밀번호가 공개돼 있으니 시연 발표에는 별도 계정을 쓴다
 const PUBLIC_DEMO = { id: 'demo', pw: 'demo1234' };
+// 다른 학과 팀원용 '바로 둘러보기' 버튼. 해커톤 시연 전에 false로 바꿔 버튼을 숨긴다
+const QUICK_LOGIN = true;
+const QUICK = { owner: PUBLIC_DEMO, printer: { id: 'demoprint', pw: 'demo1234' } };
 let myRole = 'owner', uid = '', myShop = null, notiCount = 0, notiChannel = null, quoteChannel = null;
 let reqId = '', convId = '', signupRole = 'owner', marketFilter = '', marketItems = {}, quoteSort = 'total';
 let reqDraft = { item: 'sticker', quantity: 500, width: 50, height: 50, unit: 'mm', material: '아트지', finishing: [], region_sido: '대구', region_sigungu: '', note: '', title: '', item_other: '' };
@@ -105,11 +108,21 @@ function realAuthForm() {
     return `<h1>회원가입</h1><p class="sub">어떤 회원으로 가입할지 골라주세요.</p><div class="choices role-pick" role="radiogroup" aria-label="회원 유형">${[['owner', '소상공인', 'AI로 브랜드를 만들고 인쇄 견적을 받아요'], ['printer', '인쇄소', '제작 요청을 보고 견적을 보내요']].map(([v, l, d]) => `<button type="button" class="choice${signupRole === v ? ' selected' : ''}" role="radio" aria-checked="${signupRole === v}" data-signup-role="${v}"><strong>${l}</strong><small>${d}</small></button>`).join('')}</div>
 <form id="real-signup" novalidate>${fld('su-id', '아이디', 'text', 'data-rule="id" maxlength="20" autocomplete="username" autocapitalize="off" placeholder="영문 소문자, 숫자 4~20자"')}${fld('su-pw', '비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password" placeholder="영문+숫자 8자 이상"')}${fld('su-pw2', '비밀번호 확인', 'password', 'data-rule="pw" data-same="su-pw" maxlength="64" autocomplete="new-password"')}${fld('su-shop', owner ? '가게 이름' : '업체명', 'text', `data-rule="shop" maxlength="24" placeholder="${owner ? '예: 몽글빵집' : '예: 대구인쇄'}"`)}<label class="check"><input type="checkbox" id="su-agree" aria-describedby="su-agree-err">시연용 서비스라 입력한 정보가 해커톤 기간 동안 저장되는 것에 동의해요. (필수)</label><p class="field-error" id="su-agree-err" role="alert" hidden></p><p class="field-error" id="su-form-err" role="alert" hidden></p><button class="primary full" type="submit" style="margin-top:12px">가입하기</button></form><div class="auth-links"><span>이미 계정이 있나요?</span><button type="button" class="text-button" data-auth="login">로그인</button></div>`;
   }
-  return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><ol class="flow" aria-label="만드는 순서"><li>가게 정보 입력</li><li class="ai-step">AI 브랜드 분석</li><li>캐릭터·홍보물</li><li>인쇄 견적</li></ol><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', `maxlength="20" autocomplete="username" autocapitalize="off" value="${PUBLIC_DEMO.id}"`)}${fld('li-pw', '비밀번호', 'password', `maxlength="64" autocomplete="current-password" value="${PUBLIC_DEMO.pw}"`)}<p class="help" style="margin:-12px 0 16px">체험 계정(${PUBLIC_DEMO.id} / ${PUBLIC_DEMO.pw})이 채워져 있어요. 로그인만 누르면 돼요.</p><p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>`;
+  return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><ol class="flow" aria-label="만드는 순서"><li>가게 정보 입력</li><li class="ai-step">AI 브랜드 분석</li><li>캐릭터·홍보물</li><li>인쇄 견적</li></ol><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>${QUICK_LOGIN ? `<div class="quick-login"><p>체험용 계정으로 바로 둘러보기</p><button type="button" class="quick-btn" data-quick="owner"><span class="q-ico">${icon('shop')}</span><span><strong>소상공인으로 둘러보기</strong><small>브랜드 만들기, 견적 비교, 채팅</small></span><span class="chev" aria-hidden="true">›</span></button><button type="button" class="quick-btn" data-quick="printer"><span class="q-ico dark">${icon('box')}</span><span><strong>인쇄소로 둘러보기</strong><small>요청 찾기, 견적 보내기, 의뢰 관리</small></span><span class="chev" aria-hidden="true">›</span></button><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
 }
 function goHomeAfterLogin() { page = myRole === 'printer' ? 'dash' : 'home'; state = { ...initial(), name: myRole === 'owner' ? shop : '' }; step = 1; render(); scrollTo(0, 0) }
 function bindReal() {
   document.querySelectorAll('[data-signup-role]').forEach(b => b.onclick = () => { signupRole = b.dataset.signupRole; const keep = ['su-id', 'su-shop'].map(i => $('#' + i)?.value); render(); ['su-id', 'su-shop'].forEach((i, n) => { if ($('#' + i)) $('#' + i).value = keep[n] || '' }) });
+  document.querySelectorAll('[data-quick]').forEach(b => b.onclick = async () => {
+    const a = QUICK[b.dataset.quick], all = document.querySelectorAll('[data-quick]');
+    all.forEach(x => x.disabled = true); b.querySelector('small').textContent = '들어가는 중…';
+    try {
+      const { error } = await sb.auth.signInWithPassword({ email: a.id + ID_DOMAIN, password: a.pw });
+      if (error) throw error;
+      if (!await loadMe()) throw Error('profile');
+      goHomeAfterLogin();
+    } catch (e) { toast('체험 계정으로 들어가지 못했어요. ' + errMsg(e)); render() }
+  });
   if ($('#real-login')) $('#real-login').onsubmit = async e => {
     e.preventDefault();
     const b = e.target.querySelector('[type=submit]'), err = m => { $('#li-form-err').textContent = m; $('#li-form-err').hidden = !m };
@@ -152,7 +165,7 @@ function bindReal() {
     try { await q(sb.from('profiles').update({ display_name: v }).eq('id', uid)); if (myShop) await q(sb.from('print_shops').update({ name: v }).eq('id', myShop.id)); shop = v; render(); toast('이름을 바꿨어요.') } catch (e2) { toast(errMsg(e2)) }
   };
   if ($('#real-pw-form')) $('#real-pw-form').onsubmit = async e => {
-    e.preventDefault(); const f = e.target; if (user === PUBLIC_DEMO.id || !checkForm(f)) return;
+    e.preventDefault(); const f = e.target; if ([PUBLIC_DEMO.id, QUICK.printer.id].includes(user) || !checkForm(f)) return;
     const b = f.querySelector('[type=submit]'); b.disabled = true;
     try {
       const { error } = await sb.auth.signInWithPassword({ email: user + ID_DOMAIN, password: $('#pw-cur').value });
@@ -166,7 +179,7 @@ function realMypage() {
 <div class="my-list"><div>아이디<small>${esc(user)}</small></div><div>회원 유형<small>${myRole === 'printer' ? '인쇄소' : '소상공인'}</small></div></div>
 <div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form></div>
 <div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}<button data-page="guide">이용 가이드<small>›</small></button></div>
-${user === PUBLIC_DEMO.id ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${user === PUBLIC_DEMO.id ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
+${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
 }
 
