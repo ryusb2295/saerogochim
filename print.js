@@ -112,9 +112,9 @@ function realAuthForm() {
 }
 function goHomeAfterLogin() { page = myRole === 'printer' ? 'dash' : 'home'; state = { ...initial(), name: myRole === 'owner' ? shop : '' }; step = 1; render(); scrollTo(0, 0) }
 function bindReal() {
-  document.querySelectorAll('[data-signup-role]').forEach(b => b.onclick = () => { signupRole = b.dataset.signupRole; const keep = ['su-id', 'su-shop'].map(i => $('#' + i)?.value); render(); ['su-id', 'su-shop'].forEach((i, n) => { if ($('#' + i)) $('#' + i).value = keep[n] || '' }) });
-  document.querySelectorAll('[data-quick]').forEach(b => b.onclick = async () => {
-    const a = QUICK[b.dataset.quick], all = document.querySelectorAll('[data-quick]');
+  $('#app').querySelectorAll('[data-signup-role]').forEach(b => b.onclick = () => { signupRole = b.dataset.signupRole; const keep = ['su-id', 'su-shop'].map(i => $('#' + i)?.value); render(); ['su-id', 'su-shop'].forEach((i, n) => { if ($('#' + i)) $('#' + i).value = keep[n] || '' }) });
+  $('#app').querySelectorAll('[data-quick]').forEach(b => b.onclick = async () => {
+    const a = QUICK[b.dataset.quick], all = $('#app').querySelectorAll('[data-quick]');
     all.forEach(x => x.disabled = true); b.querySelector('small').textContent = '들어가는 중…';
     try {
       const { error } = await sb.auth.signInWithPassword({ email: a.id + ID_DOMAIN, password: a.pw });
@@ -475,24 +475,24 @@ function bindPrint() {
   if (page !== 'request' && quoteChannel) { sb.removeChannel(quoteChannel); quoteChannel = null }
   if (page !== 'chat' && window.leaveChat) leaveChat();
   if (page === 'chat' && window.mountChat) mountChat();
-  document.querySelectorAll('[data-reload]').forEach(b => b.onclick = () => reload(b.dataset.reload));
-  document.querySelectorAll('[data-more]').forEach(b => b.onclick = () => { if (b.dataset.more === 'market') marketLimit += 20; else reqLimit += 20; reload(enteredKey) });
+  $('#app').querySelectorAll('[data-reload]').forEach(b => b.onclick = () => reload(b.dataset.reload));
+  $('#app').querySelectorAll('[data-more]').forEach(b => b.onclick = () => { if (b.dataset.more === 'market') marketLimit += 20; else reqLimit += 20; reload(enteredKey) });
   if ($('#to-request')) $('#to-request').onclick = () => { if (!REAL) return toast('실제 계정으로 로그인하면 견적을 받을 수 있어요.'); syncForm?.(); page = 'newreq'; render(); scrollTo(0, 0) };
-  document.querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
-  document.querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
-  document.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });
-  document.querySelectorAll('[data-chat]').forEach(b => b.onclick = () => { convId = b.dataset.chat; page = 'chat'; render(); scrollTo(0, 0) });
-  document.querySelectorAll('[data-accept]').forEach(b => b.onclick = () => modal({
+  $('#app').querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
+  $('#app').querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
+  $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });
+  $('#app').querySelectorAll('[data-chat]').forEach(b => b.onclick = () => { convId = b.dataset.chat; page = 'chat'; render(); scrollTo(0, 0) });
+  $('#app').querySelectorAll('[data-accept]').forEach(b => b.onclick = () => modal({
     title: '이 견적을 수락할까요?', ok: '수락하기',
     body: `<p><b>${esc(b.dataset.shop)}</b> · 총 ${won(b.dataset.total)} · ${ymd(b.dataset.date)} 납품 예상</p><p class="help">수락하면 다른 견적은 자동으로 거절되고, 이 업체와 채팅이 열려요. 되돌릴 수 없어요.</p>`,
     onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); toast('견적을 수락했어요. 채팅을 시작해 보세요.'); page = 'chat'; setTimeout(() => { render(); scrollTo(0, 0) }) }
   }));
-  document.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => modal({ title: '요청을 취소할까요?', ok: '요청 취소', danger: true, body: '<p class="help">받은 견적은 모두 거절 처리되고 되돌릴 수 없어요.</p>', onOk: async () => { await q(sb.rpc('cancel_request', { p_request: b.dataset.cancel })); toast('요청을 취소했어요.'); setTimeout(() => reload('request-' + reqId)) } }));
-  document.querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => reload('request-' + reqId)) } }));
-  document.querySelectorAll('[data-noti]').forEach(b => b.onclick = () => { const n = V.notis?.data?.find(x => String(x.id) === b.dataset.noti); if (!n) return; const [p, id] = (NOTI_GO[n.type] || (() => ['home']))(n); if (id) reqId = id; page = p; render(); scrollTo(0, 0) });
+  $('#app').querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => modal({ title: '요청을 취소할까요?', ok: '요청 취소', danger: true, body: '<p class="help">받은 견적은 모두 거절 처리되고 되돌릴 수 없어요.</p>', onOk: async () => { await q(sb.rpc('cancel_request', { p_request: b.dataset.cancel })); toast('요청을 취소했어요.'); setTimeout(() => reload('request-' + reqId)) } }));
+  $('#app').querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => reload('request-' + reqId)) } }));
+  $('#app').querySelectorAll('[data-noti]').forEach(b => b.onclick = () => { const n = V.notis?.data?.find(x => String(x.id) === b.dataset.noti); if (!n) return; const [p, id] = (NOTI_GO[n.type] || (() => ['home']))(n); if (id) reqId = id; page = p; render(); scrollTo(0, 0) });
   // 제작 요청 폼
-  document.querySelectorAll('[data-req-item]').forEach(b => b.onclick = () => { syncReq(); reqDraft.item = b.dataset.reqItem; reqDraft.title = ''; render() });
-  document.querySelectorAll('[data-finish]').forEach(b => b.onclick = () => { syncReq(); const f = reqDraft.finishing, v = b.dataset.finish; reqDraft.finishing = f.includes(v) ? f.filter(x => x !== v) : [...f, v]; render() });
+  $('#app').querySelectorAll('[data-req-item]').forEach(b => b.onclick = () => { syncReq(); reqDraft.item = b.dataset.reqItem; reqDraft.title = ''; render() });
+  $('#app').querySelectorAll('[data-finish]').forEach(b => b.onclick = () => { syncReq(); const f = reqDraft.finishing, v = b.dataset.finish; reqDraft.finishing = f.includes(v) ? f.filter(x => x !== v) : [...f, v]; render() });
   if ($('#req-form')) {
     $('#req-form').oninput = syncReq;
     $('#req-form').onsubmit = e => { e.preventDefault(); if (checkReq()) submitRequest(e.target.querySelector('[type=submit]')) };
@@ -504,9 +504,9 @@ function bindPrint() {
     syncReq(); uploadFile = f; render();
   };
   // 인쇄소
-  document.querySelectorAll('[data-market]').forEach(b => b.onclick = () => { marketFilter = b.dataset.market; marketLimit = 20; render() });
-  document.querySelectorAll('[data-quote]').forEach(b => b.onclick = () => { reqId = b.dataset.quote; page = 'quote'; render(); scrollTo(0, 0) });
-  document.querySelectorAll('[data-myquote]').forEach(b => b.onclick = () => { reqId = b.dataset.myquote; page = b.dataset.st === 'accepted' ? 'jobs' : 'quote'; render(); scrollTo(0, 0) });
+  $('#app').querySelectorAll('[data-market]').forEach(b => b.onclick = () => { marketFilter = b.dataset.market; marketLimit = 20; render() });
+  $('#app').querySelectorAll('[data-quote]').forEach(b => b.onclick = () => { reqId = b.dataset.quote; page = 'quote'; render(); scrollTo(0, 0) });
+  $('#app').querySelectorAll('[data-myquote]').forEach(b => b.onclick = () => { reqId = b.dataset.myquote; page = b.dataset.st === 'accepted' ? 'jobs' : 'quote'; render(); scrollTo(0, 0) });
   if ($('#quote-form')) {
     const total = () => { if ($('#qt-total')) $('#qt-total').textContent = won((+$('#qt-unit').value || 0) * (+$('#qt-qty').value || 0)) };
     $('#quote-form').oninput = total;
@@ -526,10 +526,10 @@ function bindPrint() {
       });
     };
   }
-  document.querySelectorAll('[data-withdraw]').forEach(b => b.onclick = () => modal({ title: '견적을 철회할까요?', ok: '철회', danger: true, body: '<p class="help">마감 전이면 다시 보낼 수 있어요.</p>', onOk: async () => { await q(sb.rpc('withdraw_quotation', { p_quote: b.dataset.withdraw })); toast('견적을 철회했어요.'); setTimeout(() => reload('quote-' + reqId)) } }));
-  document.querySelectorAll('[data-original]').forEach(b => b.onclick = async () => {
+  $('#app').querySelectorAll('[data-withdraw]').forEach(b => b.onclick = () => modal({ title: '견적을 철회할까요?', ok: '철회', danger: true, body: '<p class="help">마감 전이면 다시 보낼 수 있어요.</p>', onOk: async () => { await q(sb.rpc('withdraw_quotation', { p_quote: b.dataset.withdraw })); toast('견적을 철회했어요.'); setTimeout(() => reload('quote-' + reqId)) } }));
+  $('#app').querySelectorAll('[data-original]').forEach(b => b.onclick = async () => {
     b.disabled = true;
     try { const d = await q(sb.storage.from('request-files').createSignedUrl(b.dataset.original, 300, { download: true })); location.href = d.signedUrl } catch (e) { toast(errMsg(e)) } finally { b.disabled = false }
   });
-  document.querySelectorAll('[data-advance]').forEach(b => b.onclick = () => modal({ title: b.dataset.ask || '상태를 바꿀까요?', ok: '바꾸기', body: '<p class="help">소상공인에게 알림이 가요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.advance, p_status: b.dataset.to })); setTimeout(() => reload('jobs')) } }));
+  $('#app').querySelectorAll('[data-advance]').forEach(b => b.onclick = () => modal({ title: b.dataset.ask || '상태를 바꿀까요?', ok: '바꾸기', body: '<p class="help">소상공인에게 알림이 가요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.advance, p_status: b.dataset.to })); setTimeout(() => reload('jobs')) } }));
 }

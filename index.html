@@ -355,8 +355,8 @@ function clearError(f,err){if(!f.value.trim())return;f.classList.remove('invalid
 function go(n){step=n;if(n>=2)ensureBrand();render();window.scrollTo({top:0,behavior:'smooth'})}
 // 로그인·회원가입·재설정·복구 코드·마이페이지 계정 폼
 function bindAuth(){
-document.querySelectorAll('[data-auth]').forEach(b=>b.onclick=()=>{auth=b.dataset.auth;render();$('.start-body input')?.focus()});
-document.querySelectorAll('[data-rule]').forEach(f=>f.onblur=()=>{if(!f.value)return;let m=rules[f.dataset.rule](f.dataset.rule==='id'?f.value.trim().toLowerCase():f.value);if(!m&&f.id==='su-id'&&users()[f.value.trim().toLowerCase()])m='이미 쓰고 있는 아이디예요.';if(!m&&f.dataset.same&&f.value!==$('#'+f.dataset.same).value)m='비밀번호가 서로 달라요.';setErr(f.id,m)});
+$('#app').querySelectorAll('[data-auth]').forEach(b=>b.onclick=()=>{auth=b.dataset.auth;render();$('.start-body input')?.focus()});
+$('#app').querySelectorAll('[data-rule]').forEach(f=>f.onblur=()=>{if(!f.value)return;let m=rules[f.dataset.rule](f.dataset.rule==='id'?f.value.trim().toLowerCase():f.value);if(!m&&f.id==='su-id'&&users()[f.value.trim().toLowerCase()])m='이미 쓰고 있는 아이디예요.';if(!m&&f.dataset.same&&f.value!==$('#'+f.dataset.same).value)m='비밀번호가 서로 달라요.';setErr(f.id,m)});
 const busy=async(form,fn)=>{const b=form.querySelector('[type=submit]');b.disabled=true;try{await fn()}catch{toast('처리하지 못했어요. 브라우저 저장 설정을 확인해주세요.')}finally{if(b.isConnected)b.disabled=false}};
 const showCode=(code,back)=>{pendingCode=code;codeReturn=back;page='code';render()};
 if($('#login-form'))$('#login-form').onsubmit=e=>{e.preventDefault();const f=e.target;busy(f,async()=>{const id=$('#li-id').value.trim().toLowerCase(),pw=$('#li-pw').value,err=m=>{$('#li-form-err').textContent=m;$('#li-form-err').hidden=!m};if(!id||!pw)return err('아이디와 비밀번호를 적어주세요.');const all=users(),u=all[id];if(u?.loginLock>Date.now())return err('로그인을 5번 틀려서 잠시 막아뒀어요. '+lockMsg(u.loginLock));if(!(await matches(pw,u?.pw))){if(u){u.loginFail=(u.loginFail||0)+1;if(u.loginFail>=5){u.loginLock=Date.now()+5*60000;u.loginFail=0}saveUsers(all)}$('#li-pw').value='';return err('아이디 또는 비밀번호가 맞지 않아요.')}u.loginFail=0;u.loginLock=0;saveUsers(all);signIn(id);state={...initial(),name:shop};page='home';render()})};
@@ -375,10 +375,11 @@ if($('#leave-form'))$('#leave-form').onsubmit=e=>{e.preventDefault();const f=e.t
 }
 function bind(){
 if($('#generate-ai'))$('#generate-ai').onclick=generateAI;
-document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{syncForm();page=b.dataset.page;render();window.scrollTo({top:0})});
-document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));
-document.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>{syncForm();state[b.dataset.field]=b.dataset.value;if(step===1){document.querySelectorAll('[data-field]').forEach(x=>{const selected=state[x.dataset.field]===x.dataset.value;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected))})}else render()});
-document.querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>{state.theme=Number(b.dataset.theme);render()});
+$('#app').querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{syncForm();page=b.dataset.page;render();window.scrollTo({top:0})});
+$('#app').querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));
+$('#app').querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>{syncForm();state[b.dataset.field]=b.dataset.value;if(step===1){$('#app').querySelectorAll('[data-field]').forEach(x=>{const selected=state[x.dataset.field]===x.dataset.value;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected))})}else render()});
+// <html data-theme> 같은 브라우저·확장 프로그램 속성과 겹치지 않게 버튼만 고른다
+$('#app').querySelectorAll('button[data-theme]').forEach(b=>b.onclick=()=>{state.theme=Number(b.dataset.theme);render()});
 if($('#brand-form'))$('#brand-form').onsubmit=e=>{e.preventDefault();syncForm();state.name=state.name.trim();const empty=[['store-name','name-error',state.name],['industry','industry-error',state.industry.trim()]].filter(x=>!x[2]);empty.forEach(([id,err])=>{const f=$('#'+id);f.classList.add('invalid');f.setAttribute('aria-invalid','true');$('#'+err).hidden=false});if(empty.length){const f=$('#'+empty[0][0]);f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true});return}go(2)};
 if($('#store-name'))$('#store-name').oninput=e=>{state.name=e.target.value;clearError(e.target,'name-error')};
 if($('#dong'))$('#dong').onchange=e=>{state.dong=e.target.value};
@@ -398,7 +399,7 @@ if($('#logout'))$('#logout').onclick=()=>{signOut();render()};
 bindAuth();
 bindPrint();
 if($('#save'))$('#save').onclick=save;
-document.querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.set);download('sticker',setSticker(i),b,'_스티커_'+STICKER_SET[i].replace(/[!\s]/g,''))});
+$('#app').querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.set);download('sticker',setSticker(i),b,'_스티커_'+STICKER_SET[i].replace(/[!\s]/g,''))});
 if($('#post-text'))$('#post-text').oninput=e=>{state.postText=e.target.value;refreshSticker()};
 if($('#use-slogan'))$('#use-slogan').onclick=()=>{state.message=state.brand.slogan;render();toast('슬로건을 스티커 문구로 넣었어요.')};
 if($('#reanalyze'))$('#reanalyze').onclick=()=>{if(state.brand)state.brand.key='';ensureBrand()};
@@ -407,8 +408,8 @@ if($('#resume-draft'))$('#resume-draft').onclick=()=>{const d=draft();if(!d)retu
 if($('#name-form'))$('#name-form').onsubmit=e=>{e.preventDefault();const v=$('#my-shop').value.trim();if(!v){toast('가게 이름을 적어주세요.');return}try{const u=users();if(u[user]){u[user].shop=v;saveUsers(u)}}catch{toast('저장하지 못했어요.');return}shop=v;render();toast('가게 이름을 바꿨어요.')};
 if($('#logout-my'))$('#logout-my').onclick=()=>$('#logout').click();
 if($('#wipe'))$('#wipe').onclick=()=>{if(!confirm('이 브라우저의 계정, 저장한 브랜드, 작업 중인 내용, 체험 횟수가 모두 지워져요. 되돌릴 수 없어요. 지울까요?'))return;try{[KEY,SHOP_KEY,SEED_KEY,DRAFT_KEY,USAGE_KEY,USERS_KEY,SESSION_KEY].forEach(k=>localStorage.removeItem(k))}catch{}signOut();render()};
-document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const r=records().find(r=>r.id===b.dataset.open);if(r){state={...initial(),...r};page='studio';go(3)}});
-document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{if(confirm('이 브라우저에 저장된 브랜드를 삭제할까요?')){try{localStorage.setItem(KEY,JSON.stringify(records().filter(r=>r.id!==b.dataset.delete)));render();toast('브랜드를 삭제했어요.')}catch{toast('삭제하지 못했어요. 브라우저 저장 설정을 확인해주세요.')}}});
+$('#app').querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const r=records().find(r=>r.id===b.dataset.open);if(r){state={...initial(),...r};page='studio';go(3)}});
+$('#app').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{if(confirm('이 브라우저에 저장된 브랜드를 삭제할까요?')){try{localStorage.setItem(KEY,JSON.stringify(records().filter(r=>r.id!==b.dataset.delete)));render();toast('브랜드를 삭제했어요.')}catch{toast('삭제하지 못했어요. 브라우저 저장 설정을 확인해주세요.')}}});
 }
 async function upload(e){const file=e.target.files[0];if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2*1024*1024){toast('2MB 이하 PNG·JPG·WebP를 선택해주세요.');e.target.value='';return}try{const bmp=await createImageBitmap(file);const c=document.createElement('canvas');const ratio=Math.min(1,640/Math.max(bmp.width,bmp.height));c.width=bmp.width*ratio;c.height=bmp.height*ratio;c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);state.customImage=c.toDataURL('image/png');state.generated=false;bmp.close();render();toast('내 캐릭터를 적용했어요.')}catch{toast('이미지를 열 수 없어요. 다른 파일을 선택해주세요.')}}
 function save(){try{let rs=records();state.id=state.id||(globalThis.crypto?.randomUUID?.()||'brand-'+Date.now()+'-'+Math.random().toString(36).slice(2));const r={...state,savedAt:Date.now()};const idx=rs.findIndex(x=>x.id===r.id);if(idx>=0)rs[idx]=r;else rs.unshift(r);if(rs.length>12){toast('최대 12개까지 저장할 수 있어요. 기존 브랜드를 정리해주세요.');return}localStorage.setItem(KEY,JSON.stringify(rs));toast('내 브랜드에 저장했어요.')}catch{toast('저장 공간이 부족하거나 저장이 차단됐어요. PNG를 다운로드해주세요.')}}
