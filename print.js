@@ -22,8 +22,8 @@ const Q_ST = { submitted: ['검토 중', 'st-open'], withdrawn: ['철회', 'st-d
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
 const FINISH = ['무광 코팅', '유광 코팅', '도무송 재단', '박'];
-const PAGE_LABEL = { dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', chats: '채팅', chat: '채팅', notis: '알림' };
-const ERR = { not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.' };
+const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', chats: '채팅', chat: '채팅', notis: '알림' };
+const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.' };
 
 const chip = ([label, cls]) => `<span class="st ${cls}">${label}</span>`;
 const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
@@ -95,11 +95,11 @@ async function loadMe() {
   const p = await q(sb.from('profiles').select('role,display_name').eq('id', u.id).single());
   uid = u.id; myRole = p.role; user = u.user_metadata?.username || ''; shop = p.display_name;
   if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
-  startNotis();
+  if (myRole !== 'admin') startNotis();
   return true;
 }
 async function restoreSession() {
-  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; return } } catch {}
+  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; return } } catch {}
   page = 'start';
 }
 function realAuthForm() {
@@ -110,7 +110,7 @@ function realAuthForm() {
   }
   return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><ol class="flow" aria-label="만드는 순서"><li>가게 정보 입력</li><li class="ai-step">AI 브랜드 분석</li><li>캐릭터·홍보물</li><li>인쇄 견적</li></ol><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>${QUICK_LOGIN ? `<div class="quick-login"><p>체험용 계정으로 바로 둘러보기</p><button type="button" class="quick-btn" data-quick="owner"><span class="q-ico">${icon('shop')}</span><span><strong>소상공인으로 둘러보기</strong><small>브랜드 만들기, 견적 비교, 채팅</small></span><span class="chev" aria-hidden="true">›</span></button><button type="button" class="quick-btn" data-quick="printer"><span class="q-ico dark">${icon('box')}</span><span><strong>인쇄소로 둘러보기</strong><small>요청 찾기, 견적 보내기, 의뢰 관리</small></span><span class="chev" aria-hidden="true">›</span></button><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
 }
-function goHomeAfterLogin() { page = myRole === 'printer' ? 'dash' : 'home'; state = { ...initial(), name: myRole === 'owner' ? shop : '' }; step = 1; render(); scrollTo(0, 0) }
+function goHomeAfterLogin() { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; state = { ...initial(), name: myRole === 'owner' ? shop : '' }; step = 1; render(); scrollTo(0, 0) }
 function bindReal() {
   $('#app').querySelectorAll('[data-signup-role]').forEach(b => b.onclick = () => { signupRole = b.dataset.signupRole; const keep = ['su-id', 'su-shop'].map(i => $('#' + i)?.value); render(); ['su-id', 'su-shop'].forEach((i, n) => { if ($('#' + i)) $('#' + i).value = keep[n] || '' }) });
   $('#app').querySelectorAll('[data-quick]').forEach(b => b.onclick = async () => {
@@ -160,6 +160,25 @@ function bindReal() {
     try { setErr('su-id', await q(sb.rpc('username_available', { p_username: v })) ? '' : '이미 쓰고 있는 아이디예요.') } catch {}
   };
   if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; signOut(); render() };
+  if ($('#admin-logout')) $('#admin-logout').onclick = () => $('#logout').click();
+  $('#app').querySelectorAll('[data-admin-delete]').forEach(b => b.onclick = () => {
+    const name = b.dataset.username, id = b.dataset.adminDelete;
+    modal({ title: '계정을 탈퇴시킬까요?', ok: '계정 탈퇴', danger: true,
+      body: `<p><b>${esc(name)}</b> 계정과 관련 요청·견적·채팅·파일이 삭제됩니다. 되돌릴 수 없어요.</p><label for="admin-confirm">확인하려면 아이디를 입력해주세요.</label><input id="admin-confirm" type="text" autocomplete="off" autocapitalize="off" placeholder="${esc(name)}">`,
+      onOk: async () => {
+        if ($('#admin-confirm').value.trim() !== name) throw Error('confirm_username');
+        const files = await q(sb.rpc('admin_account_files', { p_user: id }));
+        for (const bucket of ['brand-assets', 'request-files', 'request-previews']) {
+          const paths = files.filter(f => f.bucket_id === bucket).map(f => f.name);
+          for (let i = 0; i < paths.length; i += 100) await q(sb.storage.from(bucket).remove(paths.slice(i, i + 100)));
+        }
+        await q(sb.rpc('admin_delete_account', { p_user: id }));
+        toast(`${name} 계정을 탈퇴 처리했어요.`);
+        reload('admin-accounts');
+      }
+    });
+    $('#admin-confirm')?.focus();
+  });
   if ($('#real-name-form')) $('#real-name-form').onsubmit = async e => {
     e.preventDefault(); const v = $('#my-shop').value.trim(); if (!v || v.length > 24) return toast('이름은 1~24자로 적어주세요.');
     try { await q(sb.from('profiles').update({ display_name: v }).eq('id', uid)); if (myShop) await q(sb.from('print_shops').update({ name: v }).eq('id', myShop.id)); shop = v; render(); toast('이름을 바꿨어요.') } catch (e2) { toast(errMsg(e2)) }
@@ -181,6 +200,15 @@ function realMypage() {
 <div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}<button data-page="guide">이용 가이드<small>›</small></button></div>
 ${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
+}
+
+function adminPage() {
+  const r = useData('admin-accounts', () => q(sb.rpc('admin_accounts')));
+  const group = (rows, role, title) => {
+    const accounts = rows.filter(x => x.role === role);
+    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''}</small></div><button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
+  };
+  return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 유형별로 확인하고 탈퇴 처리할 수 있어요.</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
 }
 
 // ---------- 알림 ----------
@@ -452,19 +480,20 @@ ${next[x.status] ? `<button class="primary full" data-advance="${x.id}" data-to=
 }
 
 // ---------- 페이지 등록, 이벤트 ----------
-const PAGES = REAL ? { dash: dashPage, market: marketPage, quote: quotePage, myquotes: myquotesPage, jobs: jobsPage, requests: requestsPage, newreq: newreqPage, request: requestPage, notis: notisPage, mypage: realMypage } : {};
+const PAGES = REAL ? { admin: adminPage, dash: dashPage, market: marketPage, quote: quotePage, myquotes: myquotesPage, jobs: jobsPage, requests: requestsPage, newreq: newreqPage, request: requestPage, notis: notisPage, mypage: realMypage } : {};
 function navItems() {
+  if (REAL && myRole === 'admin') return [['admin', 'user', '계정 관리']];
   if (REAL && myRole === 'printer') return [['dash', 'home', '대시보드'], ['market', 'search', '요청 찾기'], ['myquotes', 'folder', '보낸 견적'], ['chats', 'chat', '채팅'], ['mypage', 'user', '마이']];
   if (REAL) return [['home', 'home', '홈'], ['saved', 'folder', '내 브랜드'], ['requests', 'box', '받은 견적'], ['chats', 'chat', '채팅'], ['mypage', 'user', '마이']];
   return [['home', 'home', '홈'], ['saved', 'folder', '내 브랜드'], ['mypage', 'user', '마이페이지']];
 }
 // 화면 제목을 상단 바에 크게 쓰는 화면 (본문 첫 제목은 숨김)
-const APP_TITLE_PAGES = ['saved', 'requests', 'chats', 'mypage', 'notis', 'dash', 'market', 'myquotes', 'jobs', 'newreq', 'guide'];
+const APP_TITLE_PAGES = ['admin', 'saved', 'requests', 'chats', 'mypage', 'notis', 'dash', 'market', 'myquotes', 'jobs', 'newreq', 'guide'];
 function appBar() {
   const title = { saved: '내 브랜드', mypage: '마이페이지', studio: '브랜드 만들기', guide: '이용 가이드', ...PAGE_LABEL }[page];
   const left = title ? `<h1 class="app-title">${esc(title)}</h1>` : `<h1 class="app-title brand"><span class="logo-mark">${icon('shop')}</span>가게온</h1>`;
   // #logout은 마이페이지 '로그아웃' 버튼이 누르는 숨은 버튼
-  return `<header class="app-bar">${left}<div class="app-actions">${bellButton()}<button class="icon-btn" data-page="mypage" aria-label="마이페이지">${icon('user')}</button><button id="logout" hidden></button></div></header>`;
+  return `<header class="app-bar">${left}<div class="app-actions">${myRole === 'admin' ? '<button class="secondary" id="admin-logout">로그아웃</button>' : `${bellButton()}<button class="icon-btn" data-page="mypage" aria-label="마이페이지">${icon('user')}</button>`}<button id="logout" hidden></button></div></header>`;
 }
 // 메뉴에 없는 하위 화면은 속한 메뉴 칸을 켜 둔다 (수락된 의뢰 → 대시보드 등)
 const NAV_PARENT = { jobs: 'dash', quote: 'market', request: 'requests', newreq: 'requests', chat: 'chats', studio: 'home', notis: 'mypage', guide: 'mypage' };
