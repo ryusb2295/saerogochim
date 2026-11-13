@@ -1,5 +1,6 @@
 // 공개 체험 계정에 다양한 인쇄 요청을 한 번씩 추가한다.
 // 실행: node scripts/seed_showcase.mjs --apply
+// 기존 시연 요청의 미리보기를 워터마크 버전으로 교체: --repair-previews
 // 같은 제목이 이미 있으면 요청을 다시 만들지 않아 재실행해도 중복되지 않는다.
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -72,28 +73,51 @@ async function login(name, password) {
   });
 }
 
-if (!process.argv.includes('--apply')) {
-  console.log(`${examples.length}개 예시 준비됨. 실제 체험 계정에 추가하려면 --apply를 붙이세요.`);
+const apply = process.argv.includes('--apply');
+const repairPreviews = process.argv.includes('--repair-previews');
+if (!apply && !repairPreviews) {
+  console.log(`${examples.length}개 예시 준비됨. 추가는 --apply, 미리보기 복구는 --repair-previews를 붙이세요.`);
   process.exit(0);
 }
 
 const owner = await login('demo', process.env.DEMO_OWNER_PASSWORD || 'demo1234');
 const ownerToken = owner.access_token;
 const ownerId = owner.user.id;
-const current = await api(`/rest/v1/print_requests?select=id,title,status&owner_id=eq.${ownerId}`, { token: ownerToken });
+const current = await api(`/rest/v1/print_requests?select=id,title,status,preview_path&owner_id=eq.${ownerId}`, { token: ownerToken });
 const requests = new Map(current.map(row => [row.title, row]));
 
 for (const example of examples) {
   if (requests.has(example.title)) {
+    if (repairPreviews) {
+      const path = requests.get(example.title).preview_path;
+      const preview = await readFile(join(root, 'assets', 'demo', 'previews', example.asset));
+      await api('/storage/v1/object/request-previews', {
+        method: 'DELETE', token: ownerToken, body: { prefixes: [path] }
+      });
+      try {
+        await api(`/storage/v1/object/request-previews/${path}`, {
+          method: 'POST', token: ownerToken, body: preview, type: 'image/png'
+        });
+      } catch (error) {
+        const original = await readFile(join(root, 'assets', 'demo', example.asset));
+        await api(`/storage/v1/object/request-previews/${path}`, {
+          method: 'POST', token: ownerToken, body: original, type: 'image/png'
+        });
+        throw error;
+      }
+      console.log(`워터마크 미리보기 교체: ${example.title}`);
+    }
     console.log(`유지: ${example.title}`);
     continue;
   }
+  if (!apply) continue;
   const id = randomUUID();
   const image = await readFile(join(root, 'assets', 'demo', example.asset));
+  const preview = await readFile(join(root, 'assets', 'demo', 'previews', example.asset));
   const designPath = `${ownerId}/${id}/original.png`;
   const previewPath = `${ownerId}/${id}.png`;
   await api(`/storage/v1/object/request-files/${designPath}`, { method: 'POST', token: ownerToken, body: image, type: 'image/png' });
-  await api(`/storage/v1/object/request-previews/${previewPath}`, { method: 'POST', token: ownerToken, body: image, type: 'image/png' });
+  await api(`/storage/v1/object/request-previews/${previewPath}`, { method: 'POST', token: ownerToken, body: preview, type: 'image/png' });
   const row = await api('/rest/v1/print_requests', {
     method: 'POST', token: ownerToken, prefer: 'return=representation',
     body: {
@@ -107,6 +131,11 @@ for (const example of examples) {
   });
   requests.set(example.title, row[0]);
   console.log(`추가: ${example.title}`);
+}
+
+if (!apply) {
+  console.log('시연 미리보기 교체 완료');
+  process.exit(0);
 }
 
 const printer = await login('demoprint', process.env.DEMO_PRINTER_PASSWORD || 'demo1234');
