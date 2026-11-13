@@ -28,7 +28,56 @@ HEX = re.compile(r'^#[0-9a-fA-F]{6}$')
 # 앱 설치(PWA)에 필요한 파일. 목록에 있는 것만 내보낸다.
 STATIC = {'/manifest.json': 'application/manifest+json', '/sw.js': 'text/javascript; charset=utf-8',
           '/icons/icon-192.png': 'image/png', '/icons/icon-512.png': 'image/png',
-          '/data/gyeongsan-stores.json': 'application/json; charset=utf-8'}
+          '/data/gyeongsan-stores.json': 'application/json; charset=utf-8',
+          '/config.js': 'text/javascript; charset=utf-8', '/print.js': 'text/javascript; charset=utf-8',
+          '/chat.js': 'text/javascript; charset=utf-8'}
+# Supabase 로그인 사용자만 AI를 쓰게 하고 하루 횟수를 센다. 비어 있으면(테스트, 오프라인 목업) 예전처럼 동작
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
+SUPABASE_KEY = os.environ.get('SUPABASE_PUBLISHABLE_KEY', '')
+DAILY_LIMIT = {'image': int(os.environ.get('AI_DAILY_IMAGE', '5')), 'brand': int(os.environ.get('AI_DAILY_BRAND', '30'))}
+
+
+class QuotaError(Exception):
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code, self.message = code, message
+
+
+def consume_quota(auth_header, kind):
+    """사용자 토큰으로 Supabase 함수 consume_ai를 불러 하루 횟수를 1 줄인다. 토큰이 틀리면 Supabase가 401을 준다."""
+    if not SUPABASE_URL:
+        return None
+    if not auth_header.startswith('Bearer ') or len(auth_header) > 4096:
+        raise QuotaError(401, '로그인 후 이용해주세요.')
+    request = urllib.request.Request(SUPABASE_URL + '/rest/v1/rpc/consume_ai',
+        data=json.dumps({'p_kind': kind, 'p_limit': DAILY_LIMIT[kind]}).encode(),
+        headers={'apikey': SUPABASE_KEY, 'Authorization': auth_header, 'Content-Type': 'application/json'}, method='POST')
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return json.loads(response.read(1024))
+    except urllib.error.HTTPError as error:
+        body = error.read(2048).decode('utf-8', 'replace')
+        if 'ai_limit' in body:
+            raise QuotaError(429, f'오늘 AI 사용 횟수({DAILY_LIMIT[kind]}회)를 다 썼어요. 내일 다시 이용해주세요.')
+        if error.code in (401, 403) or 'forbidden' in body or 'JWT' in body:
+            raise QuotaError(401, '로그인이 만료됐어요. 다시 로그인해주세요.')
+        raise QuotaError(503, '사용량을 확인하지 못했어요. 잠시 후 다시 시도해주세요.')
+    except (TimeoutError, urllib.error.URLError):
+        raise QuotaError(503, '사용량을 확인하지 못했어요. 잠시 후 다시 시도해주세요.')
+
+
+def load_public_config():
+    """환경변수가 없으면 화면용 config.js의 공개 값(URL, publishable 키)을 읽는다. 비밀 키는 여기 없다."""
+    global SUPABASE_URL, SUPABASE_KEY
+    if SUPABASE_URL:
+        return
+    try:
+        text = (ROOT / 'config.js').read_text(encoding='utf-8')
+    except OSError:
+        return
+    url, key = re.search(r"supabaseUrl:\s*'([^']+)'", text), re.search(r"supabaseKey:\s*'([^']+)'", text)
+    if url and key:
+        SUPABASE_URL, SUPABASE_KEY = url.group(1).rstrip('/'), key.group(1)
 
 
 def validate(data):
@@ -125,10 +174,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/api/status':
             return self.reply(200, {'ready': bool(API_KEY), 'token': TOKEN,
                                     'remaining': max(0, MAX_ATTEMPTS - ATTEMPTS)})
-        if self.path in ('/', '/index.html'):
+        path = self.path.split('?', 1)[0]           # ?mock=1 같은 화면용 옵션은 무시
+        if path in ('/', '/index.html'):
             return self.reply(200, (ROOT / 'index.html').read_bytes(), 'text/html; charset=utf-8')
-        if self.path in STATIC:
-            return self.reply(200, (ROOT / self.path[1:]).read_bytes(), STATIC[self.path])
+        if path in STATIC:
+            return self.reply(200, (ROOT / path[1:]).read_bytes(), STATIC[path])
         return self.reply(404, {'error': '찾을 수 없어요.'})
 
     def do_POST(self):
@@ -166,6 +216,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(code, result)
             if ATTEMPTS >= MAX_ATTEMPTS:
                 return self.reply(429, {'error': '이번 서버 실행의 생성 한도 20회에 도달했어요.'})
+            try:
+                consume_quota(self.headers.get('Authorization', ''), 'image')
+            except QuotaError as error:
+                return self.reply(error.code, {'error': error.message})
             ATTEMPTS += 1
             try:
                 result, code = generate(brief), 200
@@ -189,6 +243,10 @@ class Handler(BaseHTTPRequestHandler):
         global TEXT_ATTEMPTS
         if TEXT_ATTEMPTS >= MAX_TEXT_ATTEMPTS:
             return self.reply(429, {'error': f'이번 서버 실행의 브랜드 분석 한도 {MAX_TEXT_ATTEMPTS}회에 도달했어요.'})
+        try:
+            consume_quota(self.headers.get('Authorization', ''), 'brand')
+        except QuotaError as error:
+            return self.reply(error.code, {'error': error.message})
         TEXT_ATTEMPTS += 1
         try:
             return self.reply(200, analyze(brief))
@@ -204,9 +262,11 @@ if __name__ == '__main__':
     API_KEY = os.environ.get('OPENAI_API_KEY', '').strip()
     if not API_KEY:
         API_KEY = getpass.getpass('OpenAI API key (hidden, Enter for demo): ').strip()
+    load_public_config()
     server = ThreadingHTTPServer(('127.0.0.1', 8000), Handler)
     print('Gageon: http://127.0.0.1:8000 | ' + ('AI ready' if API_KEY else 'Demo mode'))
     print('Local development only. Ctrl+C to stop. Maximum 20 generation attempts per run.')
+    print('Supabase login required for AI: ' + (SUPABASE_URL or 'off'))
     try:
         server.serve_forever()
     except KeyboardInterrupt:

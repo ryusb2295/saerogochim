@@ -19,7 +19,7 @@ class ServerTests(unittest.TestCase):
         return h.reply.call_args.args
 
     def setUp(self):
-        server.RESULTS.clear();server.ATTEMPTS=0;server.TEXT_ATTEMPTS=0;server.API_KEY='test-only'
+        server.RESULTS.clear();server.ATTEMPTS=0;server.TEXT_ATTEMPTS=0;server.API_KEY='test-only';server.SUPABASE_URL=''
 
     def test_free_form_industry(self):
         self.assertEqual(server.validate(BRIEF)['industry'],BRIEF['industry'])
@@ -56,6 +56,8 @@ class ServerTests(unittest.TestCase):
         for path in server.STATIC:
             h.path=path;h.do_GET();self.assertEqual(h.reply.call_args.args[0],200)
         h.path='/server.py';h.do_GET();self.assertEqual(h.reply.call_args.args[0],404)
+        h.path='/?mock=1';h.do_GET();self.assertEqual(h.reply.call_args.args[0],200)
+        h.path='/server.py?x=1';h.do_GET();self.assertEqual(h.reply.call_args.args[0],404)
 
     def test_store_data(self):
         data=json.loads((server.ROOT/'data'/'gyeongsan-stores.json').read_text(encoding='utf-8'))
@@ -90,5 +92,25 @@ class ServerTests(unittest.TestCase):
     def test_brand_limit(self):
         server.TEXT_ATTEMPTS=server.MAX_TEXT_ATTEMPTS
         self.assertEqual(self.request(BRIEF,path='/api/brand')[0],429)
+
+    def test_login_required_when_supabase_on(self):
+        server.SUPABASE_URL='https://example.supabase.co'
+        with patch.object(server,'generate') as generate:
+            self.assertEqual(self.request(dict(BRIEF,request_id='test-12345'))[0],401)
+            generate.assert_not_called()
+        self.assertEqual(self.request(BRIEF,path='/api/brand')[0],401)
+
+    def test_daily_limit_from_supabase(self):
+        server.SUPABASE_URL='https://example.supabase.co'
+        err=server.urllib.error.HTTPError('u',400,'bad',{},io.BytesIO(b'{"message":"ai_limit"}'))
+        with patch.object(server.urllib.request,'urlopen',side_effect=err), patch.object(server,'generate') as generate:
+            code,result=self.request(dict(BRIEF,request_id='test-12345'),Authorization='Bearer token')
+            self.assertEqual(code,429);generate.assert_not_called()
+
+    def test_quota_ok_then_generate(self):
+        server.SUPABASE_URL='https://example.supabase.co'
+        resp=Mock();resp.read.return_value=b'4';resp.__enter__=Mock(return_value=resp);resp.__exit__=Mock(return_value=False)
+        with patch.object(server.urllib.request,'urlopen',return_value=resp), patch.object(server,'generate',return_value={'image':'data:image/png;base64,x'}):
+            self.assertEqual(self.request(dict(BRIEF,request_id='test-12345'),Authorization='Bearer token')[0],200)
 
 if __name__=='__main__':unittest.main()
