@@ -19,17 +19,42 @@ jobs:
           import os
           import urllib.request
 
-          with open(os.environ["GITHUB_EVENT_PATH"]) as f:
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as f:
               event = json.load(f)
 
-          lines = [f"**{event['repository']['full_name']} · main 업데이트**"]
+          commits = event.get("commits", [])
+          repo = event["repository"]
+          sender = event["sender"]
 
-          for commit in event.get("commits", [])[:10]:
+          if not commits:
+              print("No commits to notify.")
+              raise SystemExit(0)
+
+          descriptions = []
+          for commit in commits[:10]:
               title = commit["message"].splitlines()[0][:150]
-              lines.append(f"- {commit['id'][:7]} {title}")
+              author = commit["author"]["name"]
+              descriptions.append(
+                  f"[`{commit['id'][:7]}`]({commit['url']}) "
+                  f"{title} - {author}"
+              )
 
+          count = len(commits)
           payload = json.dumps({
-              "content": "\n".join(lines),
+              "embeds": [{
+                  "author": {
+                      "name": sender["login"],
+                      "icon_url": sender["avatar_url"],
+                      "url": sender["html_url"]
+                  },
+                  "title": (
+                      f"[{repo['name']}:main] {count} new "
+                      f"{'commit' if count == 1 else 'commits'}"
+                  ),
+                  "url": event["compare"],
+                  "description": "\n".join(descriptions)[:4096],
+                  "color": 7506394
+              }],
               "allowed_mentions": {"parse": []}
           }).encode("utf-8")
 
