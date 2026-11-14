@@ -28,8 +28,6 @@ jobs:
               title = commit["message"].splitlines()[0][:150]
               lines.append(f"- {commit['id'][:7]} {title}")
 
-          lines.append(event["compare"])
-
           payload = json.dumps({
               "content": "\n".join(lines),
               "allowed_mentions": {"parse": []}
