@@ -1,0 +1,49 @@
+name: Discord notification
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord notification
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          with open(os.environ["GITHUB_EVENT_PATH"]) as f:
+              event = json.load(f)
+
+          lines = [f"**{event['repository']['full_name']} · main 업데이트**"]
+
+          for commit in event.get("commits", [])[:10]:
+              title = commit["message"].splitlines()[0][:150]
+              lines.append(f"- {commit['id'][:7]} {title}")
+
+          lines.append(event["compare"])
+
+          payload = json.dumps({
+              "content": "\n".join(lines),
+              "allowed_mentions": {"parse": []}
+          }).encode("utf-8")
+
+          request = urllib.request.Request(
+              os.environ["WEBHOOK_URL"],
+              data=payload,
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "GitHub-Actions"
+              }
+          )
+
+          with urllib.request.urlopen(request) as response:
+              print("Sent:", response.status)
+          PY
