@@ -397,14 +397,21 @@ function dashPage() {
     const signed = fresh.length ? (await sb.storage.from('request-previews').createSignedUrls(fresh.slice(0, 6).map(x => x.preview_path), 300)).data || [] : [];
     const decided = mine.filter(x => ['accepted', 'declined'].includes(x.status));
     return { fresh, urls: Object.fromEntries(signed.map(x => [x.path, x.signedUrl])), mine, jobs, convs,
-      rate: decided.length ? Math.round(decided.filter(x => x.status === 'accepted').length / decided.length * 100) : null };
+      decided: decided.length, rate: decided.length ? Math.round(decided.filter(x => x.status === 'accepted').length / decided.length * 100) : null };
   });
-  const head = `<section class="shop-hero"><span class="avatar">${esc((shop || '?').slice(0, 1))}</span><div><strong>${esc(shop)}</strong><small>${myShop?.verified ? '<b class="ok">승인된 인쇄소</b>' : '<b class="wait">승인 대기 중</b>'} · 새 요청에 견적을 보내 의뢰를 받아요</small></div></section>`;
+  const head = `<section class="shop-hero"><span class="avatar">${esc((shop || '?').slice(0, 1))}</span><div><strong>${esc(shop)}</strong><small>${myShop?.verified ? '<b class="ok">승인된 인쇄소</b>' : '<b class="wait">승인 대기 중</b>'}${V.dash?.data?.rate != null ? ` · 수락률 ${V.dash.data.rate}% (${V.dash.data.decided}건 중)` : ' · 새 요청에 견적을 보내 의뢰를 받아요'}</small></div></section>`;
   if (!myShop?.verified) return head + emptyBox('운영자 승인을 기다리고 있어요', '승인되면 소상공인의 제작 요청을 보고 견적을 보낼 수 있어요.');
   const next = { accepted: '제작 시작하기', in_progress: '납품 완료 알리기', delivered: '소상공인 확인 대기' };
   return head + stateView(r, 'dash', d => {
-    const waiting = d.mine.filter(x => x.status === 'submitted').length, unread = d.convs.reduce((a, c) => a + Number(c.unread), 0);
-    return `<div class="kpi-row">${[['market', '새 요청', d.fresh.length], ['myquotes', '검토 중 견적', waiting], ['jobs', '진행 중', d.jobs.length], ['myquotes', '수락률', d.rate === null ? '-' : d.rate + '%']].map(([p, l, n]) => `<button data-page="${p}"><b>${n}</b><small>${l}</small></button>`).join('')}</div>
+    const waitList = d.mine.filter(x => x.status === 'submitted'), unread = d.convs.reduce((a, c) => a + Number(c.unread), 0);
+    const daysAgo = t => { const n = Math.floor((Date.now() - new Date(t)) / 864e5); return n <= 0 ? '오늘' : n + '일 전' };
+    const soonest = d.fresh.map(x => x.quote_deadline).filter(Boolean).sort()[0], oldest = waitList.map(x => x.updated_at).sort()[0];
+    const byStatus = s => d.jobs.filter(x => x.status === s).length, dueToday = d.jobs.filter(x => x.status !== 'delivered' && x.due_date && new Date(x.due_date) - Date.now() < 864e5).length;
+    const jobHint = [dueToday && `<b class="urgent">오늘 마감 ${dueToday}건</b>`, byStatus('accepted') && `제작 전 ${byStatus('accepted')}건`, byStatus('in_progress') && `제작 중 ${byStatus('in_progress')}건`, byStatus('delivered') && `확인 대기 ${byStatus('delivered')}건`].filter(Boolean).join(' · ');
+    const todo = [['market', '새 요청', d.fresh.length, d.fresh.length ? `견적 마감이 가장 빠른 요청: ${dday(soonest)}` : '새 요청이 오면 알림으로 알려드려요'],
+      ['myquotes', '답을 기다리는 견적', waitList.length, waitList.length ? `가장 오래 기다린 견적: ${daysAgo(oldest)} 보냄` : '보낸 견적에 답이 오면 알려드려요'],
+      ['jobs', '진행 중인 의뢰', d.jobs.length, d.jobs.length ? jobHint : '견적이 수락되면 여기에서 제작을 관리해요']];
+    return `<div class="section-head"><h2>지금 할 일</h2></div><div class="todo">${todo.map(([p, l, n, hint]) => `<button data-page="${p}" class="${n ? '' : 'idle'}"><div><strong>${l} <em>${n}건</em></strong><small>${hint}</small></div><span class="chev" aria-hidden="true">›</span></button>`).join('')}</div>
 <div class="section-head"><h2>새로 올라온 요청</h2>${d.fresh.length ? '<button class="text-button" data-page="market">전체 보기</button>' : ''}</div>
 ${d.fresh.length ? `<div class="h-scroll">${d.fresh.slice(0, 6).map(x => `<button class="mini-req" data-quote="${x.id}"><div class="thumb">${d.urls[x.preview_path] ? `<img src="${esc(d.urls[x.preview_path])}" alt="" loading="lazy">` : ''}<span class="dday">${dday(x.quote_deadline)}</span></div><strong>${esc(x.title)}</strong><small>${x.item === 'other' ? esc(x.item_other) : ITEM[x.item]} · ${Number(x.quantity).toLocaleString()}개</small><small>${esc(x.region_sido)} ${esc(x.region_sigungu)}</small></button>`).join('')}</div>`
       : `<div class="go-card" style="cursor:default">${icon('search')}<div><strong>지금은 새 요청이 없어요</strong><small>요청이 올라오면 알림으로 알려드려요</small></div></div>`}
