@@ -31,7 +31,7 @@ async function mountChat() {
     if (!chatInfo) { if (log) log.innerHTML = emptyBox('볼 수 없는 채팅이에요', '참여한 채팅만 열 수 있어요.'); return }
     chatMsgs = rows.reverse(); chatAll = rows.length < 50;
     render();                                       // 헤더에 상대 이름 반영
-    sb.rpc('mark_read', { p_conv: convId }).then(() => {}, () => {});
+    sb.rpc('mark_read', { p_conv: convId }).then(() => refreshChatUnread(), () => {});
     subscribeChat();
   } catch (e) { chatConv = ''; if (log) log.innerHTML = errorBox(errMsg(e), 'chat') }   // 다시 시도하면 처음부터 불러오게
 }

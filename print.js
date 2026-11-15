@@ -11,7 +11,7 @@ const PUBLIC_DEMO = { id: 'demo', pw: 'demo1234' };
 // 다른 학과 팀원용 '바로 둘러보기' 버튼. 해커톤 시연 전에 false로 바꿔 버튼을 숨긴다
 const QUICK_LOGIN = true;
 const QUICK = { owner: PUBLIC_DEMO, printer: { id: 'demoprint', pw: 'demo1234' } };
-let myRole = 'owner', uid = '', myShop = null, notiCount = 0, notiChannel = null, quoteChannel = null;
+let myRole = 'owner', uid = '', myShop = null, notiCount = 0, chatUnread = 0, notiChannel = null, quoteChannel = null;
 let reqId = '', convId = '', signupRole = 'owner', marketFilter = '', marketItems = {}, quoteSort = 'total';
 let reqDraft = { item: 'sticker', quantity: 500, width: 50, height: 50, unit: 'mm', material: '아트지', finishing: [], region_sido: '대구', region_sigungu: '', note: '', title: '', item_other: '' };
 let uploadFile = null;
@@ -159,7 +159,7 @@ function bindReal() {
     const m = rules.id(v); if (m) return setErr('su-id', m);
     try { setErr('su-id', await q(sb.rpc('username_available', { p_username: v })) ? '' : '이미 쓰고 있는 아이디예요.') } catch {}
   };
-  if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; signOut(); render() };
+  if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
   if ($('#admin-logout')) $('#admin-logout').onclick = () => $('#logout').click();
   $('#app').querySelectorAll('[data-admin-delete]').forEach(b => b.onclick = () => {
     const name = b.dataset.username, id = b.dataset.adminDelete;
@@ -218,12 +218,15 @@ async function startNotis() {
     notiCount = count || 0;
     if (notiChannel) sb.removeChannel(notiChannel);
     notiChannel = sb.channel('notis-' + uid).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + uid }, p => {
-      notiCount++; toast(p.new.title);
+      notiCount++; toast(p.new.title); if (p.new.type === 'message') refreshChatUnread();
       if (!modalOpen() && ['requests', 'request', 'dash', 'myquotes', 'jobs', 'notis', 'chats'].includes(page)) reload(enteredKey); else paintBell();
     }).subscribe();
-    paintBell();
+    paintBell(); refreshChatUnread();
   } catch {}
 }
+// 하단 메뉴 채팅 탭의 안 읽은 메시지 수. 알림 종처럼 앱이 켜질 때 세고, 새 메시지 알림이나 읽음 처리 때 다시 센다
+async function refreshChatUnread() { try { const d = await q(sb.rpc('my_conversations')); chatUnread = (d || []).reduce((s, c) => s + Number(c.unread || 0), 0); paintNav() } catch {} }
+function paintNav() { document.querySelectorAll('nav [data-page="chats"]').forEach(b => { let i = b.querySelector('.nav-badge'); if (!chatUnread) { if (i) i.remove(); return } if (!i) { i = document.createElement('i'); i.className = 'nav-badge'; b.appendChild(i) } i.textContent = chatUnread > 99 ? '99+' : chatUnread }) }
 function paintBell() { const b = $('#bell-count'); if (b) { b.textContent = notiCount > 99 ? '99+' : notiCount; b.hidden = !notiCount } }
 function stopChannels() { [notiChannel, quoteChannel].forEach(c => c && sb.removeChannel(c)); notiChannel = quoteChannel = null; if (window.leaveChat) leaveChat() }
 const NOTI_GO = { quote_received: n => ['request', n.ref_id], quote_accepted: () => ['chats'], quote_declined: () => ['myquotes'], status_changed: n => myRole === 'owner' ? ['request', n.ref_id] : ['jobs'], message: () => ['chats'] };
