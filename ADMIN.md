@@ -7,8 +7,24 @@
 1. Supabase Dashboard의 SQL Editor에서 [`supabase/07_admin.sql`](supabase/07_admin.sql)을 실행합니다.
 2. **로컬 컴퓨터에서만** Supabase 프로젝트의 `service_role` 키와 관리자 초기 비밀번호를 환경변수 `SUPABASE_SERVICE_ROLE_KEY`, `GAGEON_ADMIN_PASSWORD`로 설정합니다.
 3. `node scripts/create_admin.mjs`를 실행합니다. 이미 `admin` 계정이 있으면 비밀번호를 바꾸지 않습니다.
+4. SQL Editor에서 [`supabase/08_launch.sql`](supabase/08_launch.sql)을 실행합니다. 인쇄소 승인 버튼이 이 함수를 씁니다.
 
 `service_role` 키는 서버 전용 권한이므로 `config.js`, GitHub 저장소, GitHub Pages, 브라우저에 넣으면 안 됩니다. 초기 비밀번호도 파일에 저장하지 않습니다. 실행 후 환경변수를 지웁니다.
+
+## 인쇄소 승인
+
+새로 가입한 인쇄소는 '승인 대기' 상태라 견적을 보낼 수 없습니다. 관리자 화면 인쇄소 목록의 **승인** 버튼을 누르면 바로 견적을 보낼 수 있고, 인쇄소에 알림이 갑니다. **승인 취소**를 누르면 다시 견적을 보낼 수 없습니다.
+
+## 사업자등록번호 확인 (국세청)
+
+인쇄소는 가입할 때 사업자등록번호를 적습니다. 관리자 화면 인쇄소 목록의 **국세청 확인**을 누르면 국세청에서 계속사업자, 휴업자, 폐업자 여부를 받아와 보여줍니다. 계속사업자인지 보고 **승인**을 누르면 됩니다.
+
+최초 1회 설정:
+
+1. 공공데이터포털(data.go.kr)에서 "국세청_사업자등록정보 진위확인 및 상태조회 서비스"를 활용신청하고, 마이페이지에서 **일반 인증키(Decoding)** 를 복사합니다.
+2. SQL Editor에서 [`supabase/09_bizno.sql`](supabase/09_bizno.sql)을 실행합니다.
+3. Supabase Dashboard → Edge Functions → **Deploy a new function** → Via Editor에서 이름을 `verify-biz`로 하고 [`supabase/functions/verify-biz/index.ts`](supabase/functions/verify-biz/index.ts) 내용을 붙여넣어 배포합니다. 함수가 관리자 여부를 직접 확인하므로 함수 설정의 **Verify JWT** 는 꺼도 됩니다.
+4. Edge Functions → Secrets에서 `NTS_SERVICE_KEY` 이름으로 1번의 인증키를 저장합니다. 이 키는 저장소나 채팅에 올리지 않습니다.
 
 ## 탈퇴 처리
 
