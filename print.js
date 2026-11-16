@@ -18,6 +18,8 @@ let uploadFile = null;
 
 const ITEM = { sticker: '스티커', wrapping: '포장지', shopping_bag: '쇼핑백', other: '기타' };
 const REQ_ST = { open: ['견적 받는 중', 'st-open'], accepted: ['업체 선택', 'st-acc'], in_progress: ['제작 중', 'st-prog'], delivered: ['납품 완료', 'st-prog'], completed: ['완료', 'st-done'], canceled: ['취소', 'st-done'], expired: ['마감', 'st-done'], choose: ['업체 고르기', 'st-acc'] };
+// 소상공인 의뢰 화면의 진행 상황. 지금 단계에만 설명을 보여준다
+const STEP_INFO = [['업체 선택', '견적을 수락했어요. 채팅으로 규격과 배송을 맞춰요'], ['제작 중', '인쇄소가 만들고 있어요'], ['납품', '인쇄소가 보냈어요. 받으면 완료 확인을 눌러주세요'], ['완료', '받은 걸 확인했어요']];
 const Q_ST = { submitted: ['검토 중', 'st-open'], withdrawn: ['철회', 'st-done'], accepted: ['수락됨', 'st-acc'], declined: ['미선택', 'st-done'] };
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
@@ -94,6 +96,16 @@ function modal({ title, body, ok, danger = false, onOk }) {
     try { await onOk(); close() } catch (e) { const p = el.querySelector('.field-error'); p.textContent = errMsg(e); p.hidden = false; okBtn.disabled = false; okBtn.textContent = ok }
   };
   okBtn.focus();
+}
+// 수락, 완료처럼 되돌릴 수 없는 일이 끝났을 때 체크 표시와 다음 할 일을 보여준다
+function doneSheet(title, sub, ok, go) {
+  const el = document.createElement('div');
+  el.className = 'modal-back';
+  el.innerHTML = `<div class="modal done-modal" role="alertdialog" aria-modal="true" aria-labelledby="done-title"><span class="done-check">${icon('check')}</span><h2 id="done-title">${title}</h2><p class="help">${sub}</p><button class="primary full">${ok}</button></div>`;
+  document.body.append(el);
+  const b = el.querySelector('button');
+  b.onclick = () => { el.remove(); go?.() };
+  b.focus();
 }
 const modalOpen = () => !!document.querySelector('.modal-back');
 // 카카오(다음) 우편번호 서비스. API 키 없이 스크립트만 불러 쓰고, 처음 누를 때 한 번만 받는다
@@ -310,7 +322,7 @@ function notisPage() {
 }
 
 // ---------- 소상공인: 받은 견적 목록, 견적 비교, 제작 요청 ----------
-let reqLimit = 20;
+let reqLimit = 20, reqTab = 'live';
 const ST_CLS = { open: 'open', accepted: 'acc', in_progress: 'prog', delivered: 'prog', completed: 'done', canceled: 'done', expired: 'done', choose: 'acc' };
 // 견적 마감이 지난 open 요청: 받은 견적이 있으면 아직 고를 수 있고(accept_quotation은 마감 뒤에도 허용), 없으면 마감
 const reqSt = (x, n) => x.status === 'open' && Date.parse(x.quote_deadline) <= Date.now() ? (n ? 'choose' : 'expired') : x.status;
@@ -330,9 +342,12 @@ function requestsPage() {
   const goNew = `<button class="go-card" data-go-new>${icon('box')}<div><strong>견적을 요청해 보세요</strong><small>여러 인쇄소의 견적을 한 번에 비교할 수 있어요</small></div><span class="chev" aria-hidden="true">›</span></button>`;
   return stateView(r, 'requests', d => {
     const live = x => ['open', 'choose'].includes(reqSt(x, (x.quotations || []).filter(q => q.status !== 'withdrawn').length));
-    const open = d.slice(0, reqLimit).filter(live), rest = d.slice(0, reqLimit).filter(x => !live(x));
-    return `<h2 class="sec-label">견적 받는 중</h2>${goNew}${open.map(reqCard).join('')}
-${rest.length ? `<h2 class="sec-label">요청 마감<small>견적 받기가 끝났어요</small></h2>${rest.map(reqCard).join('')}` : ''}${d.length > reqLimit ? '<button class="secondary full" data-more="requests">더 보기</button>' : ''}`;
+    const all = d.slice(0, reqLimit), open = all.filter(live), making = all.filter(x => ['accepted', 'in_progress', 'delivered'].includes(x.status)), past = all.filter(x => !live(x) && !making.includes(x));
+    const tabs = `<div class="seg req-tabs" role="tablist">${[['live', `진행 중 ${open.length + making.length}`], ['past', `지난 의뢰 ${past.length}`]].map(([v, l]) => `<button role="tab" aria-selected="${reqTab === v}" class="${reqTab === v ? 'on' : ''}" data-reqtab="${v}">${l}</button>`).join('')}</div>`;
+    const more = d.length > reqLimit ? '<button class="secondary full" data-more="requests">더 보기</button>' : '';
+    if (reqTab === 'past') return tabs + (past.length ? past.map(reqCard).join('') : emptyBox('지난 의뢰가 없어요', '완료하거나 취소한 의뢰가 여기에 모여요.')) + more;
+    return `${tabs}${goNew}${making.length ? `<h2 class="sec-label">제작 진행 중</h2>${making.map(reqCard).join('')}` : ''}
+${open.length ? `<h2 class="sec-label">견적 받는 중</h2>${open.map(reqCard).join('')}` : ''}${more}`;
   });
 }
 async function loadRequest(id) {
@@ -357,11 +372,14 @@ function requestPage() {
     const live = quotes.filter(x => x.status !== 'withdrawn');
     const sorted = [...live].sort(quoteSort === 'total' ? (a, b) => (a.total_price + a.shipping_fee) - (b.total_price + b.shipping_fee) : (a, b) => a.delivery_date.localeCompare(b.delivery_date));
     const steps = ['accepted', 'in_progress', 'delivered', 'completed'], at = steps.indexOf(req.status);
+    // 견적이 둘 이상일 때만 가장 싼 곳과 가장 빨리 오는 곳을 표시한다
+    const minT = Math.min(...live.map(x => x.total_price + x.shipping_fee)), minD = live.map(x => x.delivery_date).sort()[0];
+    const tags = x => live.length < 2 ? '' : (x.total_price + x.shipping_fee === minT ? '<span class="q-tag">최저가</span>' : '') + (x.delivery_date === minD ? '<span class="q-tag fast">가장 빠른 납기</span>' : '');
     return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button>
 <section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[reqSt(req, live.length)])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
-${at >= 0 ? `<ol class="progress">${['업체 선택', '제작 중', '납품', '완료'].map((l, i) => `<li class="${i <= at ? 'done' : ''}">${l}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="primary" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
+${at >= 0 ? `<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${req.updated_at ? ' · ' + ymd(req.updated_at) : ''}</small>` : ''}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="primary" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
 <div class="section-head" style="margin-top:${at >= 0 ? 32 : 0}px"><h2>견적 ${live.length}개</h2>${live.length > 1 ? `<div class="seg">${[['total', '총액순'], ['date', '빠른 납기순']].map(([v, l]) => `<button class="${quoteSort === v ? 'on' : ''}" data-sort="${v}">${l}</button>`).join('')}</div>` : ''}</div>
-${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong><small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
+${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong>${tags(x)}<small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
 <div class="nums"><div><small>총액 (배송비 포함)</small><b>${won(x.total_price + x.shipping_fee)}</b></div><div><small>배송비</small><b>${won(x.shipping_fee)}</b></div><div><small>납품 예상</small><b>${ymd(x.delivery_date)}</b></div></div>
 <p class="price-row">${won(x.unit_price)} × ${Number(x.quantity).toLocaleString()}개 = ${won(x.total_price)} · 제작 ${x.production_days}일</p>${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
 ${req.status === 'open' && x.status === 'submitted' ? `<button class="primary full" data-accept="${x.id}" data-shop="${esc(x.print_shops?.name || '')}" data-total="${x.total_price + x.shipping_fee}" data-date="${x.delivery_date}">이 견적 수락</button>` : ''}</article>`).join('')
@@ -594,14 +612,15 @@ function bindPrint() {
   $('#app').querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });
+  $('#app').querySelectorAll('[data-reqtab]').forEach(b => b.onclick = () => { reqTab = b.dataset.reqtab; render() });
   $('#app').querySelectorAll('[data-chat]').forEach(b => b.onclick = () => { convId = b.dataset.chat; page = 'chat'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-accept]').forEach(b => b.onclick = () => modal({
     title: '이 견적을 수락할까요?', ok: '수락하기',
     body: `<p><b>${esc(b.dataset.shop)}</b> · 총 ${won(b.dataset.total)} · ${ymd(b.dataset.date)} 납품 예상</p><p class="help">수락하면 다른 견적은 자동으로 거절되고, 이 업체와 채팅이 열려요. 되돌릴 수 없어요.</p>`,
-    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); toast('견적을 수락했어요. 채팅을 시작해 보세요.'); page = 'chat'; setTimeout(() => { render(); scrollTo(0, 0) }) }
+    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); setTimeout(() => { reload('request-' + reqId); doneSheet('견적을 수락했어요', `${esc(b.dataset.shop)}와 채팅이 열렸어요. 규격과 배송을 맞춰보세요.`, '채팅 시작하기', () => { page = 'chat'; render(); scrollTo(0, 0) }) }) }
   }));
   $('#app').querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => modal({ title: '요청을 취소할까요?', ok: '요청 취소', danger: true, body: '<p class="help">받은 견적은 모두 거절 처리되고 되돌릴 수 없어요.</p>', onOk: async () => { await q(sb.rpc('cancel_request', { p_request: b.dataset.cancel })); toast('요청을 취소했어요.'); setTimeout(() => reload('request-' + reqId)) } }));
-  $('#app').querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => reload('request-' + reqId)) } }));
+  $('#app').querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => { reload('request-' + reqId); doneSheet('제작이 완료됐어요', '거래가 끝났어요. 받은 견적의 지난 의뢰에서 다시 볼 수 있어요.', '확인') }) } }));
   $('#app').querySelectorAll('[data-noti]').forEach(b => b.onclick = () => { const n = V.notis?.data?.find(x => String(x.id) === b.dataset.noti); if (!n) return; const [p, id] = (NOTI_GO[n.type] || (() => ['home']))(n); if (id) reqId = id; page = p; render(); scrollTo(0, 0) });
   // 제작 요청 폼
   $('#app').querySelectorAll('[data-req-item]').forEach(b => b.onclick = () => { syncReq(); reqDraft.item = b.dataset.reqItem; reqDraft.title = ''; render() });
