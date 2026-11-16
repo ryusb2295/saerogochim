@@ -29,7 +29,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['01_schema.sql', '02_policies.sql', '03_functions.sql', '04_storage_realtime.sql', '06_printer_lists.sql']) await db.exec(sql(f));
+for (const f of ['01_schema.sql', '02_policies.sql', '03_functions.sql', '04_storage_realtime.sql', '06_printer_lists.sql', '07_admin.sql', '08_launch.sql']) await db.exec(sql(f));
 
 let failed = 0;
 const ok = (cond, label) => { console.log((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) failed++; };
@@ -155,6 +155,21 @@ await fails(A, `insert into ai_usage (user_id, kind, used) values ($1, 'image', 
 // 기타
 await fails(C, `select notify($1, 'message', null, 'spam')`, [A], '알림 함수 직접 호출 불가');
 ok((await as(A, `select * from notifications where user_id <> $1`, [A])).rows.length === 0, '남의 알림 조회 불가');
+
+// 관리자 승인, 브랜드 저장 (08_launch.sql)
+const ADM = await signup('boss01', 'owner');
+await db.query(`update profiles set role = 'admin' where id = $1`, [ADM]);
+await fails(A, `select admin_set_verified($1, true)`, [D], '일반 회원은 인쇄소 승인 불가', 'forbidden');
+await as(ADM, `select admin_set_verified($1, true)`, [D]);
+ok((await db.query(`select verified from print_shops where owner_id = $1`, [D])).rows[0].verified === true, '관리자가 인쇄소 승인');
+ok((await db.query(`select count(*)::int n from notifications where user_id = $1 and title like '인쇄소 승인%'`, [D])).rows[0].n === 1, '승인되면 인쇄소에 알림');
+await fails(ADM, `select admin_set_verified($1, true)`, [A], '소상공인은 승인 대상 아님', 'account_unavailable');
+const B1 = '22222222-2222-2222-2222-222222222222';
+const upsertBrand = name => as(A, `insert into brands (id, owner_id, name, data) values ($1, $2, $3, '{}') on conflict (id) do update set name = excluded.name, data = excluded.data`, [B1, A, name]);
+await upsertBrand('한우랑'); await upsertBrand('한우랑2');
+ok((await as(A, `select name from brands`)).rows[0].name === '한우랑2', '브랜드 저장, 덮어쓰기');
+ok((await as(C, `select * from brands`)).rows.length === 0, '남의 브랜드 조회 불가');
+await fails(C, `insert into brands (owner_id, name) values ($1, 'x')`, [A], '남의 계정으로 브랜드 저장 불가');
 
 console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');
 process.exit(failed ? 1 : 0);

@@ -17,7 +17,7 @@ let reqDraft = { item: 'sticker', quantity: 500, width: 50, height: 50, unit: 'm
 let uploadFile = null;
 
 const ITEM = { sticker: '스티커', wrapping: '포장지', shopping_bag: '쇼핑백', other: '기타' };
-const REQ_ST = { open: ['견적 받는 중', 'st-open'], accepted: ['업체 선택', 'st-acc'], in_progress: ['제작 중', 'st-prog'], delivered: ['납품 완료', 'st-prog'], completed: ['완료', 'st-done'], canceled: ['취소', 'st-done'], expired: ['마감', 'st-done'] };
+const REQ_ST = { open: ['견적 받는 중', 'st-open'], accepted: ['업체 선택', 'st-acc'], in_progress: ['제작 중', 'st-prog'], delivered: ['납품 완료', 'st-prog'], completed: ['완료', 'st-done'], canceled: ['취소', 'st-done'], expired: ['마감', 'st-done'], choose: ['업체 고르기', 'st-acc'] };
 const Q_ST = { submitted: ['검토 중', 'st-open'], withdrawn: ['철회', 'st-done'], accepted: ['수락됨', 'st-acc'], declined: ['미선택', 'st-done'] };
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
@@ -96,8 +96,24 @@ async function loadMe() {
   uid = u.id; myRole = p.role; user = u.user_metadata?.username || ''; shop = p.display_name;
   if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
   if (myRole !== 'admin') startNotis();
+  if (myRole === 'owner') await cloudBrand.load();
   return true;
 }
+// 내 브랜드: 화면은 지금처럼 localStorage(KEY) 목록을 읽고, 로그인하면 계정(brands 테이블) 내용으로 채운다
+const cloudBrand = {
+  async load() {
+    let list = [];
+    try { list = (await q(sb.from('brands').select('id,data,updated_at').eq('owner_id', uid).order('updated_at', { ascending: false }).limit(12))).map(b => ({ ...b.data, id: b.id, savedAt: Date.parse(b.updated_at) })) } catch {}
+    if (!list.length && user === PUBLIC_DEMO.id) list = samples();   // 공개 체험 계정만 예시 브랜드를 보여준다
+    try { localStorage.setItem(KEY, JSON.stringify(list)) } catch {}
+  },
+  save(r) {
+    const { id, savedAt, ...data } = r;
+    q(sb.from('brands').upsert({ id, owner_id: uid, name: r.name || '이름 없는 브랜드', industry: r.industry || null, data, updated_at: new Date().toISOString() })).catch(() => toast('계정에 저장하지 못했어요. 이 기기에만 저장됐어요.'));
+  },
+  remove(id) { q(sb.from('brands').delete().eq('id', id)).catch(() => toast('계정에서 지우지 못했어요. 다시 시도해주세요.')) }
+};
+window.cloudBrand = cloudBrand;
 async function restoreSession() {
   try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; return } } catch {}
   page = 'start';
@@ -161,6 +177,10 @@ function bindReal() {
   };
   if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
   if ($('#admin-logout')) $('#admin-logout').onclick = () => $('#logout').click();
+  $('#app').querySelectorAll('[data-admin-verify]').forEach(b => b.onclick = async () => {
+    const on = b.dataset.on === 'true'; b.disabled = true;
+    try { await q(sb.rpc('admin_set_verified', { p_user: b.dataset.adminVerify, p_verified: on })); toast(`${b.dataset.username} ${on ? '인쇄소를 승인했어요.' : '인쇄소 승인을 취소했어요.'}`); reload('admin-accounts') } catch (e) { toast(errMsg(e)); b.disabled = false }
+  });
   $('#app').querySelectorAll('[data-admin-delete]').forEach(b => b.onclick = () => {
     const name = b.dataset.username, id = b.dataset.adminDelete;
     modal({ title: '계정을 탈퇴시킬까요?', ok: '계정 탈퇴', danger: true,
@@ -206,9 +226,9 @@ function adminPage() {
   const r = useData('admin-accounts', () => q(sb.rpc('admin_accounts')));
   const group = (rows, role, title) => {
     const accounts = rows.filter(x => x.role === role);
-    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''}</small></div><button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
+    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''}</small></div><span class="admin-actions">${role === 'printer' ? `<button class="${x.verified ? 'secondary' : 'primary'}" data-admin-verify="${esc(x.id)}" data-on="${!x.verified}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} ${x.verified ? '승인 취소' : '승인'}">${x.verified ? '승인 취소' : '승인'}</button>` : ''}<button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></span></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
   };
-  return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 유형별로 확인하고 탈퇴 처리할 수 있어요.</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
+  return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 확인하고, 인쇄소를 승인하거나 탈퇴 처리해요. 승인된 인쇄소만 견적을 보낼 수 있어요.</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
 }
 
 // ---------- 알림 ----------
@@ -219,6 +239,7 @@ async function startNotis() {
     if (notiChannel) sb.removeChannel(notiChannel);
     notiChannel = sb.channel('notis-' + uid).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + uid }, p => {
       notiCount++; toast(p.new.title); if (p.new.type === 'message') refreshChatUnread();
+      if (myShop && p.new.type === 'status_changed' && !p.new.ref_id) myShop.verified = true;   // 관리자 승인 알림 (08_launch.sql)
       if (!modalOpen() && ['requests', 'request', 'dash', 'myquotes', 'jobs', 'notis', 'chats'].includes(page)) reload(enteredKey); else paintBell();
     }).subscribe();
     paintBell(); refreshChatUnread();
@@ -241,15 +262,17 @@ function notisPage() {
 
 // ---------- 소상공인: 받은 견적 목록, 견적 비교, 제작 요청 ----------
 let reqLimit = 20;
-const ST_CLS = { open: 'open', accepted: 'acc', in_progress: 'prog', delivered: 'prog', completed: 'done', canceled: 'done', expired: 'done' };
+const ST_CLS = { open: 'open', accepted: 'acc', in_progress: 'prog', delivered: 'prog', completed: 'done', canceled: 'done', expired: 'done', choose: 'acc' };
+// 견적 마감이 지난 open 요청: 받은 견적이 있으면 아직 고를 수 있고(accept_quotation은 마감 뒤에도 허용), 없으면 마감
+const reqSt = (x, n) => x.status === 'open' && Date.parse(x.quote_deadline) <= Date.now() ? (n ? 'choose' : 'expired') : x.status;
 function reqCard(x) {
-  const qs = (x.quotations || []).filter(q => q.status !== 'withdrawn'), names = qs.map(q => q.print_shops?.name || '?');
-  const tail = x.status === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? '업체와 제작을 진행하고 있어요' : '진행이 끝난 요청이에요';
-  return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
+  const qs = (x.quotations || []).filter(q => q.status !== 'withdrawn'), names = qs.map(q => q.print_shops?.name || '?'), st = reqSt(x, qs.length);
+  const tail = st === 'choose' ? '견적 마감, 받은 견적 중에서 업체를 골라주세요' : st === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? '업체와 제작을 진행하고 있어요' : '진행이 끝난 요청이에요';
+  return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[st]}">${REQ_ST[st][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
 }
 function requestsPage() {
   const r = useData('requests', async () => {
-    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,preview_path,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
+    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,quote_deadline,preview_path,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
     if (!rows.length) return rows;
     const { data } = await sb.storage.from('request-previews').createSignedUrls(rows.map(x => x.preview_path), 300);
     const urls = Object.fromEntries((data || []).filter(x => x.signedUrl).map(x => [x.path, x.signedUrl]));
@@ -257,7 +280,8 @@ function requestsPage() {
   });
   const goNew = `<button class="go-card" data-go-new>${icon('box')}<div><strong>견적을 요청해 보세요</strong><small>여러 인쇄소의 견적을 한 번에 비교할 수 있어요</small></div><span class="chev" aria-hidden="true">›</span></button>`;
   return stateView(r, 'requests', d => {
-    const open = d.slice(0, reqLimit).filter(x => x.status === 'open'), rest = d.slice(0, reqLimit).filter(x => x.status !== 'open');
+    const live = x => ['open', 'choose'].includes(reqSt(x, (x.quotations || []).filter(q => q.status !== 'withdrawn').length));
+    const open = d.slice(0, reqLimit).filter(live), rest = d.slice(0, reqLimit).filter(x => !live(x));
     return `<h2 class="sec-label">견적 받는 중</h2>${goNew}${open.map(reqCard).join('')}
 ${rest.length ? `<h2 class="sec-label">요청 마감<small>견적 받기가 끝났어요</small></h2>${rest.map(reqCard).join('')}` : ''}${d.length > reqLimit ? '<button class="secondary full" data-more="requests">더 보기</button>' : ''}`;
   });
@@ -285,14 +309,14 @@ function requestPage() {
     const sorted = [...live].sort(quoteSort === 'total' ? (a, b) => (a.total_price + a.shipping_fee) - (b.total_price + b.shipping_fee) : (a, b) => a.delivery_date.localeCompare(b.delivery_date));
     const steps = ['accepted', 'in_progress', 'delivered', 'completed'], at = steps.indexOf(req.status);
     return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button>
-<section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[req.status])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
+<section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[reqSt(req, live.length)])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
 ${at >= 0 ? `<ol class="progress">${['업체 선택', '제작 중', '납품', '완료'].map((l, i) => `<li class="${i <= at ? 'done' : ''}">${l}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="primary" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
 <div class="section-head" style="margin-top:${at >= 0 ? 32 : 0}px"><h2>견적 ${live.length}개</h2>${live.length > 1 ? `<div class="seg">${[['total', '총액순'], ['date', '빠른 납기순']].map(([v, l]) => `<button class="${quoteSort === v ? 'on' : ''}" data-sort="${v}">${l}</button>`).join('')}</div>` : ''}</div>
 ${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong><small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
 <div class="nums"><div><small>총액 (배송비 포함)</small><b>${won(x.total_price + x.shipping_fee)}</b></div><div><small>배송비</small><b>${won(x.shipping_fee)}</b></div><div><small>납품 예상</small><b>${ymd(x.delivery_date)}</b></div></div>
 <p class="price-row">${won(x.unit_price)} × ${Number(x.quantity).toLocaleString()}개 = ${won(x.total_price)} · 제작 ${x.production_days}일</p>${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
 ${req.status === 'open' && x.status === 'submitted' ? `<button class="primary full" data-accept="${x.id}" data-shop="${esc(x.print_shops?.name || '')}" data-total="${x.total_price + x.shipping_fee}" data-date="${x.delivery_date}">이 견적 수락</button>` : ''}</article>`).join('')
-        : emptyBox(req.status === 'open' ? '견적을 기다리고 있어요' : '받은 견적이 없어요', req.status === 'open' ? '인쇄소가 견적을 보내면 알림으로 알려드려요.' : '')}
+        : reqSt(req, 0) === 'expired' ? emptyBox('견적 마감 전에 받은 견적이 없어요', '마감일을 넉넉히 잡아 다시 요청해 보세요.') : emptyBox(req.status === 'open' ? '견적을 기다리고 있어요' : '받은 견적이 없어요', req.status === 'open' ? '인쇄소가 견적을 보내면 알림으로 알려드려요.' : '')}
 ${req.status === 'open' ? `<button class="text-button danger-text" data-cancel="${req.id}">요청 취소</button>` : ''}`;
   });
 }

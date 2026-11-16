@@ -7,8 +7,13 @@
 1. Supabase Dashboard의 SQL Editor에서 [`supabase/07_admin.sql`](supabase/07_admin.sql)을 실행합니다.
 2. **로컬 컴퓨터에서만** Supabase 프로젝트의 `service_role` 키와 관리자 초기 비밀번호를 환경변수 `SUPABASE_SERVICE_ROLE_KEY`, `GAGEON_ADMIN_PASSWORD`로 설정합니다.
 3. `node scripts/create_admin.mjs`를 실행합니다. 이미 `admin` 계정이 있으면 비밀번호를 바꾸지 않습니다.
+4. SQL Editor에서 [`supabase/08_launch.sql`](supabase/08_launch.sql)을 실행합니다. 인쇄소 승인 버튼이 이 함수를 씁니다.
 
 `service_role` 키는 서버 전용 권한이므로 `config.js`, GitHub 저장소, GitHub Pages, 브라우저에 넣으면 안 됩니다. 초기 비밀번호도 파일에 저장하지 않습니다. 실행 후 환경변수를 지웁니다.
+
+## 인쇄소 승인
+
+새로 가입한 인쇄소는 '승인 대기' 상태라 견적을 보낼 수 없습니다. 관리자 화면 인쇄소 목록의 **승인** 버튼을 누르면 바로 견적을 보낼 수 있고, 인쇄소에 알림이 갑니다. **승인 취소**를 누르면 다시 견적을 보낼 수 없습니다.
 
 ## 탈퇴 처리
 
