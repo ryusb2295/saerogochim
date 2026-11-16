@@ -1,0 +1,9 @@
+# Vercel에는 화면에 필요한 파일만 올린다. 서버 코드, DB 스크립트, 문서는 사이트 주소로 내려받을 수 없게 뺀다
+supabase/
+scripts/
+.github/
+server.py
+test_*.py
+*.md
+architecture.html
+architecture-source.json
