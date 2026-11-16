@@ -87,6 +87,21 @@ function modal({ title, body, ok, danger = false, onOk }) {
   okBtn.focus();
 }
 const modalOpen = () => !!document.querySelector('.modal-back');
+// 카카오(다음) 우편번호 서비스. API 키 없이 스크립트만 불러 쓰고, 처음 누를 때 한 번만 받는다
+let postcodeJs = null;
+const loadPostcode = () => postcodeJs ||= new Promise((ok, fail) => { const s = document.createElement('script'); s.src = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'; s.onload = ok; s.onerror = () => { postcodeJs = null; fail(Error('postcode')) }; document.head.append(s) });
+const SIDO_FULL = { 경상북도: '경북', 경상남도: '경남', 충청북도: '충북', 충청남도: '충남', 전라북도: '전북', 전라남도: '전남' };
+const toSido = x => { const s = SIDO_FULL[x] || String(x || '').replace(/(특별자치시|특별자치도|특별시|광역시|도)$/, ''); return SIDO.includes(s) ? s : '' };
+async function findAddress(done) {
+  try { await loadPostcode() } catch { return toast('주소 검색을 불러오지 못했어요. 인터넷 연결을 확인하거나 직접 입력해주세요.') }
+  const prev = document.activeElement, el = document.createElement('div');
+  el.className = 'modal-back';
+  el.innerHTML = '<div class="modal addr-sheet" role="dialog" aria-modal="true" aria-label="주소 검색"><div class="addr-head"><h2>주소 검색</h2><button class="text-button" data-x>닫기</button></div><div class="addr-embed"></div></div>';
+  document.body.append(el);
+  const close = () => { el.remove(); prev?.focus?.() };
+  el.querySelector('[data-x]').onclick = close; el.onclick = e => { if (e.target === el) close() }; el.onkeydown = e => { if (e.key === 'Escape') close() };
+  new daum.Postcode({ width: '100%', height: '100%', oncomplete: d => { close(); done({ sido: toSido(d.sido), sigungu: d.sigungu, road: d.roadAddress || d.jibunAddress, zonecode: d.zonecode }) } }).embed(el.querySelector('.addr-embed'));
+}
 
 // ---------- 로그인, 가입 ----------
 async function loadMe() {
@@ -94,7 +109,7 @@ async function loadMe() {
   if (!u) return false;
   const p = await q(sb.from('profiles').select('role,display_name').eq('id', u.id).single());
   uid = u.id; myRole = p.role; user = u.user_metadata?.username || ''; shop = p.display_name;
-  if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
+  if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified,region_sido,region_sigungu').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
   if (myRole !== 'admin') startNotis();
   if (myRole === 'owner') await cloudBrand.load();
   return true;
@@ -205,6 +220,18 @@ function bindReal() {
     });
     $('#admin-confirm')?.focus();
   });
+  if ($('#rq-addr')) $('#rq-addr').onclick = () => findAddress(a => {
+    if (a.sido) $('#rq-sido').value = a.sido; $('#rq-sigungu').value = a.sigungu; syncReq();
+    toast(`${a.sido || ''} ${a.sigungu}(으)로 넣었어요. 상세 주소는 업체를 고른 뒤 채팅으로 알려주세요.`);
+  });
+  // 상세 주소는 수락된 의뢰 상대에게만 보인다 (shop_address 함수)
+  if ($('#shop-addr')) $('#shop-addr').onclick = () => findAddress(a => modal({ title: '상세 주소를 적어주세요', ok: '저장',
+    body: `<p>${esc(a.road)}</p><label for="addr-detail">상세 주소 <small>선택</small></label><input id="addr-detail" type="text" maxlength="60" placeholder="예: 2층 201호">`,
+    onOk: async () => {
+      // 상세 주소는 본인도 다시 읽을 수 없게 막혀 있어서(02_policies.sql) 이번 화면에서만 보여준다
+      const full = (a.road + ' ' + $('#addr-detail').value.trim()).trim(), patch = { region_sido: a.sido || null, region_sigungu: a.sigungu, address_detail: full };
+      await q(sb.from('print_shops').update(patch).eq('id', myShop.id)); Object.assign(myShop, patch); render(); toast('업체 주소를 저장했어요.');
+    } }));
   if ($('#real-name-form')) $('#real-name-form').onsubmit = async e => {
     e.preventDefault(); const v = $('#my-shop').value.trim(); if (!v || v.length > 24) return toast('이름은 1~24자로 적어주세요.');
     try { await q(sb.from('profiles').update({ display_name: v }).eq('id', uid)); if (myShop) await q(sb.from('print_shops').update({ name: v }).eq('id', myShop.id)); shop = v; render(); toast('이름을 바꿨어요.') } catch (e2) { toast(errMsg(e2)) }
@@ -222,7 +249,7 @@ function bindReal() {
 function realMypage() {
   return `<section class="intro"><h1>마이페이지</h1><p>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''}</p></section>
 <div class="my-list"><div>아이디<small>${esc(user)}</small></div><div>회원 유형<small>${myRole === 'printer' ? '인쇄소' : '소상공인'}</small></div></div>
-<div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form></div>
+<div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form>${myRole === 'printer' && myShop ? `<button id="shop-addr">업체 주소<small>${myShop.address_detail ? esc(myShop.address_detail) : myShop.region_sigungu ? esc(`${myShop.region_sido || ''} ${myShop.region_sigungu}`.trim()) + ' · 다시 찾기 ›' : '주소 검색 ›'}</small></button>` : ''}</div>
 <div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}<button data-page="guide">이용 가이드<small>›</small></button></div>
 ${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
@@ -351,6 +378,7 @@ ${fld('rq-title', '요청 제목', 'text', `maxlength="40" value="${esc(d.title)
 <fieldset class="field"><legend>코팅, 후가공 <small>선택</small></legend><div class="choices wrap">${FINISH.map(x => `<button type="button" class="choice${d.finishing.includes(x) ? ' selected' : ''}" data-finish="${x}" aria-pressed="${d.finishing.includes(x)}">${x}</button>`).join('')}</div></fieldset>
 <div class="grid2">${fld('rq-due', '희망 납기', 'date', `min="${dayAfter(3)}" value="${d.due || dayAfter(14)}"`)}${fld('rq-deadline', '견적 마감', 'date', `min="${dayAfter(1)}" value="${d.deadline || dayAfter(3)}"`)}</div>
 <div class="grid2"><div class="field"><label for="rq-sido">배송 지역</label><select id="rq-sido">${opt(SIDO, d.region_sido)}</select></div>${fld('rq-sigungu', '시/군/구', 'text', `maxlength="20" placeholder="예: 북구" value="${esc(d.region_sigungu)}"`)}</div>
+<button type="button" class="secondary full addr-btn" id="rq-addr">${icon('search')}주소로 배송 지역 찾기</button>
 <div class="field"><label for="rq-note">추가 요청사항 <small>선택</small></label><textarea id="rq-note" maxlength="500" placeholder="예: 원형 재단, 흰 테두리 2mm">${esc(d.note)}</textarea></div>
 <p class="help">상세 주소와 연락처는 업체를 고른 뒤 채팅으로 주고받아요.</p><p class="field-error" id="rq-form-err" role="alert" hidden></p>
 <button class="primary full" type="submit">견적 요청 보내기</button></form>`;
