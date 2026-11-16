@@ -18,11 +18,13 @@ let uploadFile = null;
 
 const ITEM = { sticker: '스티커', wrapping: '포장지', shopping_bag: '쇼핑백', other: '기타' };
 const REQ_ST = { open: ['견적 받는 중', 'st-open'], accepted: ['업체 선택', 'st-acc'], in_progress: ['제작 중', 'st-prog'], delivered: ['납품 완료', 'st-prog'], completed: ['완료', 'st-done'], canceled: ['취소', 'st-done'], expired: ['마감', 'st-done'], choose: ['업체 고르기', 'st-acc'] };
+// 소상공인 의뢰 화면의 진행 상황. 지금 단계에만 설명을 보여준다
+const STEP_INFO = [['업체 선택', '견적을 수락했어요. 채팅으로 규격과 배송을 맞춰요'], ['제작 중', '인쇄소가 만들고 있어요'], ['납품', '인쇄소가 보냈어요. 받으면 완료 확인을 눌러주세요'], ['완료', '받은 걸 확인했어요']];
 const Q_ST = { submitted: ['검토 중', 'st-open'], withdrawn: ['철회', 'st-done'], accepted: ['수락됨', 'st-acc'], declined: ['미선택', 'st-done'] };
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
 const FINISH = ['무광 코팅', '유광 코팅', '도무송 재단', '박'];
-const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', chats: '채팅', chat: '채팅', notis: '알림' };
+const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', pay: '결제', chats: '채팅', chat: '채팅', notis: '알림' };
 const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.', biz_no_missing: '사업자등록번호가 없는 인쇄소예요.', nts_key_missing: '국세청 API 키가 아직 설정되지 않았어요.', nts_failed: '국세청 조회에 실패했어요. 잠시 뒤 다시 시도해주세요.' };
 
 const chip = ([label, cls]) => `<span class="st ${cls}">${label}</span>`;
@@ -55,11 +57,20 @@ let enteredKey = '';
 function useData(key, fn) {
   if (enteredKey !== key) { enteredKey = key; delete V[key] }
   if (!V[key]) {
-    V[key] = { loading: true };
-    fn().then(d => { V[key] = { data: d } }, e => { V[key] = { error: errMsg(e) } }).finally(() => { if (enteredKey === key) render() });
+    // 전에 본 내용을 먼저 보여주고 뒤에서 새로 받아온다. 달라졌을 때만 다시 그려 입력 중인 글이 덜 지워지게 한다
+    const old = seen[uid + key];
+    V[key] = old ? { data: JSON.parse(old) } : { loading: true };
+    fn().then(d => {
+      const s = JSON.stringify(d), same = s === old;
+      seen[uid + key] = s; V[key] = { data: d };
+      if (!same && enteredKey === key) render();
+    }, e => { V[key] = { error: errMsg(e) }; if (enteredKey === key) render() });
   }
   return V[key];
 }
+const seen = {};
+// 채팅 상대마다 다른 바탕색을 줘서 목록에서 구분되게 한다
+const avatar = name => { const n = name || '?'; return `<span class="avatar" style="background:hsl(${[...n].reduce((a, c) => a + c.codePointAt(0), 0) % 360} 45% 90%)">${esc(n.slice(0, 1))}</span>` };
 const reload = key => { delete V[key]; enteredKey = ''; render() };
 const skeleton = (n = 3) => `<div aria-busy="true" aria-label="불러오는 중">${'<div class="sk sk-card"></div>'.repeat(n)}</div>`;
 const errorBox = (msg, key) => `<div class="empty" role="alert"><h2>불러오지 못했어요</h2><p>${esc(msg)}</p><button class="secondary" data-reload="${esc(key)}">다시 시도</button></div>`;
@@ -86,7 +97,32 @@ function modal({ title, body, ok, danger = false, onOk }) {
   };
   okBtn.focus();
 }
+// 수락, 완료처럼 되돌릴 수 없는 일이 끝났을 때 체크 표시와 다음 할 일을 보여준다
+function doneSheet(title, sub, ok, go) {
+  const el = document.createElement('div');
+  el.className = 'modal-back';
+  el.innerHTML = `<div class="modal done-modal" role="alertdialog" aria-modal="true" aria-labelledby="done-title"><span class="done-check">${icon('check')}</span><h2 id="done-title">${title}</h2><p class="help">${sub}</p><button class="primary full">${ok}</button></div>`;
+  document.body.append(el);
+  const b = el.querySelector('button');
+  b.onclick = () => { el.remove(); go?.() };
+  b.focus();
+}
 const modalOpen = () => !!document.querySelector('.modal-back');
+// 카카오(다음) 우편번호 서비스. API 키 없이 스크립트만 불러 쓰고, 처음 누를 때 한 번만 받는다
+let postcodeJs = null;
+const loadPostcode = () => postcodeJs ||= new Promise((ok, fail) => { const s = document.createElement('script'); s.src = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'; s.onload = ok; s.onerror = () => { postcodeJs = null; fail(Error('postcode')) }; document.head.append(s) });
+const SIDO_FULL = { 경상북도: '경북', 경상남도: '경남', 충청북도: '충북', 충청남도: '충남', 전라북도: '전북', 전라남도: '전남' };
+const toSido = x => { const s = SIDO_FULL[x] || String(x || '').replace(/(특별자치시|특별자치도|특별시|광역시|도)$/, ''); return SIDO.includes(s) ? s : '' };
+async function findAddress(done) {
+  try { await loadPostcode() } catch { return toast('주소 검색을 불러오지 못했어요. 인터넷 연결을 확인하거나 직접 입력해주세요.') }
+  const prev = document.activeElement, el = document.createElement('div');
+  el.className = 'modal-back';
+  el.innerHTML = '<div class="modal addr-sheet" role="dialog" aria-modal="true" aria-label="주소 검색"><div class="addr-head"><h2>주소 검색</h2><button class="text-button" data-x>닫기</button></div><div class="addr-embed"></div></div>';
+  document.body.append(el);
+  const close = () => { el.remove(); prev?.focus?.() };
+  el.querySelector('[data-x]').onclick = close; el.onclick = e => { if (e.target === el) close() }; el.onkeydown = e => { if (e.key === 'Escape') close() };
+  new daum.Postcode({ width: '100%', height: '100%', oncomplete: d => { close(); done({ sido: toSido(d.sido), sigungu: d.sigungu, road: d.roadAddress || d.jibunAddress, zonecode: d.zonecode }) } }).embed(el.querySelector('.addr-embed'));
+}
 
 // ---------- 로그인, 가입 ----------
 async function loadMe() {
@@ -94,7 +130,7 @@ async function loadMe() {
   if (!u) return false;
   const p = await q(sb.from('profiles').select('role,display_name').eq('id', u.id).single());
   uid = u.id; myRole = p.role; user = u.user_metadata?.username || ''; shop = p.display_name;
-  if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
+  if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified,region_sido,region_sigungu').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
   if (myRole !== 'admin') startNotis();
   if (myRole === 'owner') await cloudBrand.load();
   return true;
@@ -115,7 +151,7 @@ const cloudBrand = {
 };
 window.cloudBrand = cloudBrand;
 async function restoreSession() {
-  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; return } } catch {}
+  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; await payReturn(); return } } catch {}
   page = 'start';
 }
 function realAuthForm() {
@@ -124,7 +160,7 @@ function realAuthForm() {
     return `<h1>회원가입</h1><p class="sub">어떤 회원으로 가입할지 골라주세요.</p><div class="choices role-pick" role="radiogroup" aria-label="회원 유형">${[['owner', '소상공인', 'AI로 브랜드를 만들고 인쇄 견적을 받아요'], ['printer', '인쇄소', '제작 요청을 보고 견적을 보내요']].map(([v, l, d]) => `<button type="button" class="choice${signupRole === v ? ' selected' : ''}" role="radio" aria-checked="${signupRole === v}" data-signup-role="${v}"><strong>${l}</strong><small>${d}</small></button>`).join('')}</div>
 <form id="real-signup" novalidate>${fld('su-id', '아이디', 'text', 'data-rule="id" maxlength="20" autocomplete="username" autocapitalize="off" placeholder="영문 소문자, 숫자 4~20자"')}${fld('su-pw', '비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password" placeholder="영문+숫자 8자 이상"')}${fld('su-pw2', '비밀번호 확인', 'password', 'data-rule="pw" data-same="su-pw" maxlength="64" autocomplete="new-password"')}${fld('su-shop', owner ? '가게 이름' : '업체명', 'text', `data-rule="shop" maxlength="24" placeholder="${owner ? '예: 몽글빵집' : '예: 대구인쇄'}"`)}${owner ? '' : fld('su-biz', '사업자등록번호', 'text', 'data-rule="biz" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="숫자 10자리 (- 없이 적어도 돼요)"') + '<p class="help" style="margin:-6px 0 12px">운영자가 국세청에서 영업 중인 사업자인지 확인한 뒤 승인해요.</p>'}<label class="check"><input type="checkbox" id="su-agree" aria-describedby="su-agree-err">시연용 서비스라 입력한 정보가 해커톤 기간 동안 저장되는 것에 동의해요. (필수)</label><p class="field-error" id="su-agree-err" role="alert" hidden></p><p class="field-error" id="su-form-err" role="alert" hidden></p><button class="primary full" type="submit" style="margin-top:12px">가입하기</button></form><div class="auth-links"><span>이미 계정이 있나요?</span><button type="button" class="text-button" data-auth="login">로그인</button></div>`;
   }
-  return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><ol class="flow" aria-label="만드는 순서"><li>가게 정보 입력</li><li class="ai-step">AI 브랜드 분석</li><li>캐릭터·홍보물</li><li>인쇄 견적</li></ol><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>${QUICK_LOGIN ? `<div class="quick-login"><p>체험용 계정으로 바로 둘러보기</p><button type="button" class="quick-btn" data-quick="owner"><span class="q-ico">${icon('shop')}</span><span><strong>소상공인으로 둘러보기</strong><small>브랜드 만들기, 견적 비교, 채팅</small></span><span class="chev" aria-hidden="true">›</span></button><button type="button" class="quick-btn" data-quick="printer"><span class="q-ico dark">${icon('box')}</span><span><strong>인쇄소로 둘러보기</strong><small>요청 찾기, 견적 보내기, 의뢰 관리</small></span><span class="chev" aria-hidden="true">›</span></button><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
+  return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>${QUICK_LOGIN ? `<div class="quick-login"><p>체험용 계정으로 바로 둘러보기</p><button type="button" class="quick-btn" data-quick="owner"><span class="q-ico">${icon('shop')}</span><span><strong>소상공인으로 둘러보기</strong><small>브랜드 만들기, 견적 비교, 채팅</small></span><span class="chev" aria-hidden="true">›</span></button><button type="button" class="quick-btn" data-quick="printer"><span class="q-ico dark">${icon('box')}</span><span><strong>인쇄소로 둘러보기</strong><small>요청 찾기, 견적 보내기, 의뢰 관리</small></span><span class="chev" aria-hidden="true">›</span></button><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
 }
 function goHomeAfterLogin() { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; state = { ...initial(), name: myRole === 'owner' ? shop : '' }; step = 1; render(); scrollTo(0, 0) }
 function bindReal() {
@@ -205,6 +241,18 @@ function bindReal() {
     });
     $('#admin-confirm')?.focus();
   });
+  if ($('#rq-addr')) $('#rq-addr').onclick = () => findAddress(a => {
+    if (a.sido) $('#rq-sido').value = a.sido; $('#rq-sigungu').value = a.sigungu; syncReq();
+    toast(`${a.sido || ''} ${a.sigungu}(으)로 넣었어요. 상세 주소는 업체를 고른 뒤 채팅으로 알려주세요.`);
+  });
+  // 상세 주소는 수락된 의뢰 상대에게만 보인다 (shop_address 함수)
+  if ($('#shop-addr')) $('#shop-addr').onclick = () => findAddress(a => modal({ title: '상세 주소를 적어주세요', ok: '저장',
+    body: `<p>${esc(a.road)}</p><label for="addr-detail">상세 주소 <small>선택</small></label><input id="addr-detail" type="text" maxlength="60" placeholder="예: 2층 201호">`,
+    onOk: async () => {
+      // 상세 주소는 본인도 다시 읽을 수 없게 막혀 있어서(02_policies.sql) 이번 화면에서만 보여준다
+      const full = (a.road + ' ' + $('#addr-detail').value.trim()).trim(), patch = { region_sido: a.sido || null, region_sigungu: a.sigungu, address_detail: full };
+      await q(sb.from('print_shops').update(patch).eq('id', myShop.id)); Object.assign(myShop, patch); render(); toast('업체 주소를 저장했어요.');
+    } }));
   if ($('#real-name-form')) $('#real-name-form').onsubmit = async e => {
     e.preventDefault(); const v = $('#my-shop').value.trim(); if (!v || v.length > 24) return toast('이름은 1~24자로 적어주세요.');
     try { await q(sb.from('profiles').update({ display_name: v }).eq('id', uid)); if (myShop) await q(sb.from('print_shops').update({ name: v }).eq('id', myShop.id)); shop = v; render(); toast('이름을 바꿨어요.') } catch (e2) { toast(errMsg(e2)) }
@@ -220,10 +268,9 @@ function bindReal() {
   };
 }
 function realMypage() {
-  return `<section class="intro"><h1>마이페이지</h1><p>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''}</p></section>
-<div class="my-list"><div>아이디<small>${esc(user)}</small></div><div>회원 유형<small>${myRole === 'printer' ? '인쇄소' : '소상공인'}</small></div></div>
-<div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form></div>
-<div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}<button data-page="guide">이용 가이드<small>›</small></button></div>
+  return `<section class="shop-hero">${avatar(shop)}<div><strong>${esc(shop)}</strong><small>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''} · ${esc(user)}</small></div></section>
+<div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form>${myRole === 'printer' && myShop ? `<button id="shop-addr">업체 주소<small>${myShop.address_detail ? esc(myShop.address_detail) : myShop.region_sigungu ? esc(`${myShop.region_sido || ''} ${myShop.region_sigungu}`.trim()) + ' · 다시 찾기 ›' : '주소 검색 ›'}</small></button>` : ''}</div>
+<div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}${myRole === 'owner' ? `<div>AI 캐릭터 생성<small>${Math.max(0, MOCK_LIMIT - used())} / ${MOCK_LIMIT}회 남음</small></div>` : ''}<button data-page="guide">이용 가이드<small>›</small></button></div>
 ${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
 }
@@ -275,18 +322,18 @@ function notisPage() {
 }
 
 // ---------- 소상공인: 받은 견적 목록, 견적 비교, 제작 요청 ----------
-let reqLimit = 20;
+let reqLimit = 20, reqTab = 'live';
 const ST_CLS = { open: 'open', accepted: 'acc', in_progress: 'prog', delivered: 'prog', completed: 'done', canceled: 'done', expired: 'done', choose: 'acc' };
 // 견적 마감이 지난 open 요청: 받은 견적이 있으면 아직 고를 수 있고(accept_quotation은 마감 뒤에도 허용), 없으면 마감
 const reqSt = (x, n) => x.status === 'open' && Date.parse(x.quote_deadline) <= Date.now() ? (n ? 'choose' : 'expired') : x.status;
 function reqCard(x) {
   const qs = (x.quotations || []).filter(q => q.status !== 'withdrawn'), names = qs.map(q => q.print_shops?.name || '?'), st = reqSt(x, qs.length);
-  const tail = st === 'choose' ? '견적 마감, 받은 견적 중에서 업체를 골라주세요' : st === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? '업체와 제작을 진행하고 있어요' : '진행이 끝난 요청이에요';
-  return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[st]}">${REQ_ST[st][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
+  const tail = st === 'choose' ? '견적 마감, 받은 견적 중에서 업체를 골라주세요' : st === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? (x.paid_at ? '결제 완료 · 업체와 제작을 진행하고 있어요' : '<b class="need-pay">결제 대기</b> 눌러서 결제해 주세요') : '진행이 끝난 요청이에요';
+  return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[st]}">${REQ_ST[st][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
 }
 function requestsPage() {
   const r = useData('requests', async () => {
-    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,quote_deadline,preview_path,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
+    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,quote_deadline,preview_path,paid_at,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
     if (!rows.length) return rows;
     const { data } = await sb.storage.from('request-previews').createSignedUrls(rows.map(x => x.preview_path), 300);
     const urls = Object.fromEntries((data || []).filter(x => x.signedUrl).map(x => [x.path, x.signedUrl]));
@@ -295,9 +342,12 @@ function requestsPage() {
   const goNew = `<button class="go-card" data-go-new>${icon('box')}<div><strong>견적을 요청해 보세요</strong><small>여러 인쇄소의 견적을 한 번에 비교할 수 있어요</small></div><span class="chev" aria-hidden="true">›</span></button>`;
   return stateView(r, 'requests', d => {
     const live = x => ['open', 'choose'].includes(reqSt(x, (x.quotations || []).filter(q => q.status !== 'withdrawn').length));
-    const open = d.slice(0, reqLimit).filter(live), rest = d.slice(0, reqLimit).filter(x => !live(x));
-    return `<h2 class="sec-label">견적 받는 중</h2>${goNew}${open.map(reqCard).join('')}
-${rest.length ? `<h2 class="sec-label">요청 마감<small>견적 받기가 끝났어요</small></h2>${rest.map(reqCard).join('')}` : ''}${d.length > reqLimit ? '<button class="secondary full" data-more="requests">더 보기</button>' : ''}`;
+    const all = d.slice(0, reqLimit), open = all.filter(live), making = all.filter(x => ['accepted', 'in_progress', 'delivered'].includes(x.status)), past = all.filter(x => !live(x) && !making.includes(x));
+    const tabs = `<div class="seg req-tabs" role="tablist">${[['live', `진행 중 ${open.length + making.length}`], ['past', `지난 의뢰 ${past.length}`]].map(([v, l]) => `<button role="tab" aria-selected="${reqTab === v}" class="${reqTab === v ? 'on' : ''}" data-reqtab="${v}">${l}</button>`).join('')}</div>`;
+    const more = d.length > reqLimit ? '<button class="secondary full" data-more="requests">더 보기</button>' : '';
+    if (reqTab === 'past') return tabs + (past.length ? past.map(reqCard).join('') : emptyBox('지난 의뢰가 없어요', '완료하거나 취소한 의뢰가 여기에 모여요.')) + more;
+    return `${tabs}${goNew}${making.length ? `<h2 class="sec-label">제작 진행 중</h2>${making.map(reqCard).join('')}` : ''}
+${open.length ? `<h2 class="sec-label">견적 받는 중</h2>${open.map(reqCard).join('')}` : ''}${more}`;
   });
 }
 async function loadRequest(id) {
@@ -322,17 +372,69 @@ function requestPage() {
     const live = quotes.filter(x => x.status !== 'withdrawn');
     const sorted = [...live].sort(quoteSort === 'total' ? (a, b) => (a.total_price + a.shipping_fee) - (b.total_price + b.shipping_fee) : (a, b) => a.delivery_date.localeCompare(b.delivery_date));
     const steps = ['accepted', 'in_progress', 'delivered', 'completed'], at = steps.indexOf(req.status);
+    // 견적이 둘 이상일 때만 가장 싼 곳과 가장 빨리 오는 곳을 표시한다
+    const minT = Math.min(...live.map(x => x.total_price + x.shipping_fee)), minD = live.map(x => x.delivery_date).sort()[0];
+    const tags = x => live.length < 2 ? '' : (x.total_price + x.shipping_fee === minT ? '<span class="q-tag">최저가</span>' : '') + (x.delivery_date === minD ? '<span class="q-tag fast">가장 빠른 납기</span>' : '');
+    // 단계별 시각 칸(10_photo_tracking_pay.sql)이 없는 DB에서는 지금 단계에 마지막 수정일만 보여준다
+    const when = i => { const t = req[['accepted_at', 'started_at', 'delivered_at', 'completed_at'][i]] || (i === at && req.updated_at); return t ? ' · ' + ymd(t) : '' };
+    const ship = req.tracking_no ? `<small class="track">${esc(req.courier || '택배')} ${esc(req.tracking_no)}</small>` : '';
+    const picked = quotes.find(x => x.status === 'accepted'), due = picked ? picked.total_price + picked.shipping_fee : 0;
+    const pay = at < 0 || !picked ? '' : req.paid_at ? `<p class="paid">${icon('check')}결제 완료 · ${won(due)} · ${ymd(req.paid_at)} <small>테스트 결제</small></p>`
+      : CFG.tossClientKey && 'paid_at' in req ? `<div class="pay-card"><strong>결제를 기다리고 있어요</strong><small>결제하면 인쇄소에 알림이 가요</small><button class="primary full" data-pay="${due}">${won(due)} 결제하기</button></div>` : '';
     return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button>
 <section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[reqSt(req, live.length)])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
-${at >= 0 ? `<ol class="progress">${['업체 선택', '제작 중', '납품', '완료'].map((l, i) => `<li class="${i <= at ? 'done' : ''}">${l}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="primary" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
+${at >= 0 ? `${pay}<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${when(i)}</small>` : i < at && when(i) ? `<small>${when(i).slice(3)}</small>` : ''}${i === 2 && i <= at ? ship : ''}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="${pay.includes('data-pay') ? 'secondary' : 'primary'}" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
 <div class="section-head" style="margin-top:${at >= 0 ? 32 : 0}px"><h2>견적 ${live.length}개</h2>${live.length > 1 ? `<div class="seg">${[['total', '총액순'], ['date', '빠른 납기순']].map(([v, l]) => `<button class="${quoteSort === v ? 'on' : ''}" data-sort="${v}">${l}</button>`).join('')}</div>` : ''}</div>
-${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong><small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
+${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong>${tags(x)}<small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
 <div class="nums"><div><small>총액 (배송비 포함)</small><b>${won(x.total_price + x.shipping_fee)}</b></div><div><small>배송비</small><b>${won(x.shipping_fee)}</b></div><div><small>납품 예상</small><b>${ymd(x.delivery_date)}</b></div></div>
 <p class="price-row">${won(x.unit_price)} × ${Number(x.quantity).toLocaleString()}개 = ${won(x.total_price)} · 제작 ${x.production_days}일</p>${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
 ${req.status === 'open' && x.status === 'submitted' ? `<button class="primary full" data-accept="${x.id}" data-shop="${esc(x.print_shops?.name || '')}" data-total="${x.total_price + x.shipping_fee}" data-date="${x.delivery_date}">이 견적 수락</button>` : ''}</article>`).join('')
         : reqSt(req, 0) === 'expired' ? emptyBox('견적 마감 전에 받은 견적이 없어요', '마감일을 넉넉히 잡아 다시 요청해 보세요.') : emptyBox(req.status === 'open' ? '견적을 기다리고 있어요' : '받은 견적이 없어요', req.status === 'open' ? '인쇄소가 견적을 보내면 알림으로 알려드려요.' : '')}
 ${req.status === 'open' ? `<button class="text-button danger-text" data-cancel="${req.id}">요청 취소</button>` : ''}`;
   });
+}
+
+// ---------- 결제 (토스페이먼츠 테스트) ----------
+// shortcut: 토스 승인 API를 부르지 않고 결제창에서 돌아오면 결제 완료로 적는다. 시연용이고,
+//           실제 돈을 받으려면 Edge Function에서 시크릿 키로 승인한 뒤 mark_paid를 부르게 바꾼다
+let payAmount = 0, payWidgets = null;
+function payPage() {
+  return `<button class="text-button" data-req="${esc(reqId)}">${icon('back')}견적 비교</button><section class="intro"><h1>결제하기</h1><p>테스트 결제라 실제 돈은 나가지 않아요.</p></section>
+<div class="pay-sum"><span>결제 금액</span><b>${won(payAmount)}</b></div><div id="pay-methods">${skeleton(2)}</div><div id="pay-agree"></div>
+<p class="field-error" id="pay-err" role="alert" hidden></p><button class="primary full" id="pay-go" disabled>${won(payAmount)} 결제하기</button>`;
+}
+const loadScript = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s) });
+async function mountPay() {
+  const box = $('#pay-methods'), go = $('#pay-go'), err = $('#pay-err');
+  if (!box || box.dataset.on) return;
+  box.dataset.on = 1;
+  try {
+    if (!payAmount) throw Error('결제할 금액이 없어요. 견적 화면에서 다시 눌러주세요.');
+    if (!window.TossPayments) await loadScript('https://js.tosspayments.com/v2/standard');
+    payWidgets = TossPayments(CFG.tossClientKey).widgets({ customerKey: TossPayments.ANONYMOUS });
+    await payWidgets.setAmount({ currency: 'KRW', value: payAmount });
+    box.innerHTML = '';
+    await Promise.all([payWidgets.renderPaymentMethods({ selector: '#pay-methods', variantKey: 'DEFAULT' }), payWidgets.renderAgreement({ selector: '#pay-agree', variantKey: 'AGREEMENT' })]);
+    go.disabled = false;
+    const back = location.origin + location.pathname + '?req=' + reqId + '&pay=';
+    go.onclick = async () => {
+      err.hidden = true;
+      // 주문번호는 영문, 숫자, -, _ 6~64자. 다시 시도해도 겹치지 않게 시각을 붙인다
+      try { await payWidgets.requestPayment({ orderId: `g-${reqId}-${Date.now().toString(36)}`, orderName: V['request-' + reqId]?.data?.req?.title || '가게온 인쇄 의뢰', successUrl: back + 'ok', failUrl: back + 'fail' }) }
+      catch (e) { err.textContent = e?.message || '결제를 시작하지 못했어요.'; err.hidden = false }
+    };
+  } catch (e) { box.innerHTML = ''; err.textContent = e?.message || '결제창을 불러오지 못했어요. 연결을 확인하고 다시 시도해주세요.'; err.hidden = false }
+}
+// 결제창에서 돌아왔을 때: 주소의 결과를 읽고 지운 뒤 그 의뢰 화면으로 간다
+async function payReturn() {
+  const p = new URLSearchParams(location.search), st = p.get('pay');
+  if (!st) return;
+  history.replaceState(history.state, '', location.pathname);
+  if (myRole !== 'owner' || !p.get('req')) return;
+  reqId = p.get('req'); page = 'request';
+  if (st !== 'ok' || !p.get('paymentKey')) { setTimeout(() => toast(p.get('message') || '결제를 취소했어요.')); return }
+  try { await q(sb.rpc('mark_paid', { p_request: reqId, p_pay_key: p.get('paymentKey') })); setTimeout(() => doneSheet('결제가 완료됐어요', `${won(p.get('amount'))} · 테스트 결제라 실제 돈은 나가지 않았어요.`, '확인')) }
+  catch (e) { setTimeout(() => toast(errMsg(e))) }
 }
 
 // 제작 요청 폼: 디자인은 지금 만든 스티커(1600px PNG) 또는 직접 올린 이미지
@@ -351,6 +453,7 @@ ${fld('rq-title', '요청 제목', 'text', `maxlength="40" value="${esc(d.title)
 <fieldset class="field"><legend>코팅, 후가공 <small>선택</small></legend><div class="choices wrap">${FINISH.map(x => `<button type="button" class="choice${d.finishing.includes(x) ? ' selected' : ''}" data-finish="${x}" aria-pressed="${d.finishing.includes(x)}">${x}</button>`).join('')}</div></fieldset>
 <div class="grid2">${fld('rq-due', '희망 납기', 'date', `min="${dayAfter(3)}" value="${d.due || dayAfter(14)}"`)}${fld('rq-deadline', '견적 마감', 'date', `min="${dayAfter(1)}" value="${d.deadline || dayAfter(3)}"`)}</div>
 <div class="grid2"><div class="field"><label for="rq-sido">배송 지역</label><select id="rq-sido">${opt(SIDO, d.region_sido)}</select></div>${fld('rq-sigungu', '시/군/구', 'text', `maxlength="20" placeholder="예: 북구" value="${esc(d.region_sigungu)}"`)}</div>
+<button type="button" class="secondary full addr-btn" id="rq-addr">${icon('search')}주소로 배송 지역 찾기</button>
 <div class="field"><label for="rq-note">추가 요청사항 <small>선택</small></label><textarea id="rq-note" maxlength="500" placeholder="예: 원형 재단, 흰 테두리 2mm">${esc(d.note)}</textarea></div>
 <p class="help">상세 주소와 연락처는 업체를 고른 뒤 채팅으로 주고받아요.</p><p class="field-error" id="rq-form-err" role="alert" hidden></p>
 <button class="primary full" type="submit">견적 요청 보내기</button></form>`;
@@ -435,22 +538,29 @@ function dashPage() {
     const signed = fresh.length ? (await sb.storage.from('request-previews').createSignedUrls(fresh.slice(0, 6).map(x => x.preview_path), 300)).data || [] : [];
     const decided = mine.filter(x => ['accepted', 'declined'].includes(x.status));
     return { fresh, urls: Object.fromEntries(signed.map(x => [x.path, x.signedUrl])), mine, jobs, convs,
-      rate: decided.length ? Math.round(decided.filter(x => x.status === 'accepted').length / decided.length * 100) : null };
+      decided: decided.length, rate: decided.length ? Math.round(decided.filter(x => x.status === 'accepted').length / decided.length * 100) : null };
   });
-  const head = `<section class="shop-hero"><span class="avatar">${esc((shop || '?').slice(0, 1))}</span><div><strong>${esc(shop)}</strong><small>${myShop?.verified ? '<b class="ok">승인된 인쇄소</b>' : '<b class="wait">승인 대기 중</b>'} · 새 요청에 견적을 보내 의뢰를 받아요</small></div></section>`;
+  const head = `<section class="shop-hero"><span class="avatar">${esc((shop || '?').slice(0, 1))}</span><div><strong>${esc(shop)}</strong><small>${myShop?.verified ? '<b class="ok">승인된 인쇄소</b>' : '<b class="wait">승인 대기 중</b>'}${V.dash?.data?.rate != null ? ` · 수락률 ${V.dash.data.rate}% (${V.dash.data.decided}건 중)` : ' · 새 요청에 견적을 보내 의뢰를 받아요'}</small></div></section>`;
   if (!myShop?.verified) return head + emptyBox('운영자 승인을 기다리고 있어요', '승인되면 소상공인의 제작 요청을 보고 견적을 보낼 수 있어요.');
   const next = { accepted: '제작 시작하기', in_progress: '납품 완료 알리기', delivered: '소상공인 확인 대기' };
   return head + stateView(r, 'dash', d => {
-    const waiting = d.mine.filter(x => x.status === 'submitted').length, unread = d.convs.reduce((a, c) => a + Number(c.unread), 0);
-    return `<div class="kpi-row">${[['market', '새 요청', d.fresh.length], ['myquotes', '검토 중 견적', waiting], ['jobs', '진행 중', d.jobs.length], ['myquotes', '수락률', d.rate === null ? '-' : d.rate + '%']].map(([p, l, n]) => `<button data-page="${p}"><b>${n}</b><small>${l}</small></button>`).join('')}</div>
+    const waitList = d.mine.filter(x => x.status === 'submitted');
+    const daysAgo = t => { const n = Math.floor((Date.now() - new Date(t)) / 864e5); return n <= 0 ? '오늘' : n + '일 전' };
+    const soonest = d.fresh.map(x => x.quote_deadline).filter(Boolean).sort()[0], oldest = waitList.map(x => x.updated_at).sort()[0];
+    const byStatus = s => d.jobs.filter(x => x.status === s).length, dueToday = d.jobs.filter(x => x.status !== 'delivered' && x.due_date && new Date(x.due_date) - Date.now() < 864e5).length;
+    const jobHint = [dueToday && `<b class="urgent">오늘 마감 ${dueToday}건</b>`, byStatus('accepted') && `제작 전 ${byStatus('accepted')}건`, byStatus('in_progress') && `제작 중 ${byStatus('in_progress')}건`, byStatus('delivered') && `확인 대기 ${byStatus('delivered')}건`].filter(Boolean).join(' · ');
+    const todo = [['market', '새 요청', d.fresh.length, d.fresh.length ? `견적 마감이 가장 빠른 요청: ${dday(soonest)}` : '새 요청이 오면 알림으로 알려드려요'],
+      ['myquotes', '답을 기다리는 견적', waitList.length, waitList.length ? `가장 오래 기다린 견적: ${daysAgo(oldest)} 보냄` : '보낸 견적에 답이 오면 알려드려요'],
+      ['jobs', '진행 중인 의뢰', d.jobs.length, d.jobs.length ? jobHint : '견적이 수락되면 여기에서 제작을 관리해요']];
+    return `<div class="section-head"><h2>지금 할 일</h2></div><div class="todo">${todo.map(([p, l, n, hint]) => `<button data-page="${p}" class="${n ? '' : 'idle'}"><div><strong>${l} <em>${n}건</em></strong><small>${hint}</small></div><span class="chev" aria-hidden="true">›</span></button>`).join('')}</div>
 <div class="section-head"><h2>새로 올라온 요청</h2>${d.fresh.length ? '<button class="text-button" data-page="market">전체 보기</button>' : ''}</div>
 ${d.fresh.length ? `<div class="h-scroll">${d.fresh.slice(0, 6).map(x => `<button class="mini-req" data-quote="${x.id}"><div class="thumb">${d.urls[x.preview_path] ? `<img src="${esc(d.urls[x.preview_path])}" alt="" loading="lazy">` : ''}<span class="dday">${dday(x.quote_deadline)}</span></div><strong>${esc(x.title)}</strong><small>${x.item === 'other' ? esc(x.item_other) : ITEM[x.item]} · ${Number(x.quantity).toLocaleString()}개</small><small>${esc(x.region_sido)} ${esc(x.region_sigungu)}</small></button>`).join('')}</div>`
       : `<div class="go-card" style="cursor:default">${icon('search')}<div><strong>지금은 새 요청이 없어요</strong><small>요청이 올라오면 알림으로 알려드려요</small></div></div>`}
 <div class="section-head"><h2>진행 중인 의뢰</h2>${d.jobs.length ? '<button class="text-button" data-page="jobs">관리</button>' : ''}</div>
 ${d.jobs.length ? `<div class="list">${d.jobs.slice(0, 3).map(x => `<button class="job-row" data-page="jobs"><div><strong>${esc(x.title)}</strong><small>납기 ${ymd(x.due_date)} · ${next[x.status]}</small></div>${chip(REQ_ST[x.status])}</button>`).join('')}</div>`
       : `<div class="go-card" style="cursor:default">${icon('box')}<div><strong>진행 중인 의뢰가 없어요</strong><small>견적이 수락되면 여기에서 제작 상태를 관리해요</small></div></div>`}
-<div class="section-head"><h2>최근 채팅</h2>${unread ? `<span class="badge">${unread}</span>` : ''}</div>
-${d.convs.length ? `<div class="list">${d.convs.slice(0, 2).map(c => `<button class="chat-row" data-chat="${c.id}"><span class="avatar">${esc((c.other_name || '?').slice(0, 1))}</span><div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>`
+<div class="section-head"><h2>최근 채팅</h2></div>
+${d.convs.length ? `<div class="list">${d.convs.slice(0, 2).map(c => `<button class="chat-row" data-chat="${c.id}">${avatar(c.other_name)}<div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>`
       : `<p class="help">견적이 수락되면 소상공인과 채팅할 수 있어요.</p>`}`;
   });
 }
@@ -498,7 +608,7 @@ function myquotesPage() {
 }
 function jobsPage() {
   const r = useData('jobs', async () => {
-    const rows = await q(sb.from('print_requests').select('id,owner_id,title,item,item_other,quantity,width,height,unit,material,finishing,due_date,region_sido,region_sigungu,note,status,design_path,preview_path').neq('owner_id', uid).order('due_date'));
+    const rows = await q(sb.from('print_requests').select('*').neq('owner_id', uid).order('due_date'));   // 결제, 송장 칸은 DB에 있을 때만 온다
     if (!rows.length) return [];
     const [convs, people, signed] = await Promise.all([
       q(sb.from('conversations').select('id,request_id').in('request_id', rows.map(x => x.id))),
@@ -511,7 +621,7 @@ function jobsPage() {
   const steps = ['accepted', 'in_progress', 'delivered', 'completed'];
   const active = d => d.filter(x => x.status !== 'completed'), done = d => d.filter(x => x.status === 'completed');
   const card = x => `<article class="job-card">
-<div class="job-top"><div class="job-info"><p class="meta"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>납기 ${ymd(x.due_date)}${x.status !== 'completed' ? ` · ${dday(x.due_date).replace('오늘 마감', '오늘')}` : ''}</p><strong>${esc(x.title)}</strong><small>${specLine(x)}</small><small>의뢰인 ${esc(x.client || '소상공인')} · ${esc(x.region_sido)} ${esc(x.region_sigungu)}</small></div>${x.url ? `<img src="${esc(x.url)}" alt="${esc(x.title)} 디자인" loading="lazy">` : ''}</div>
+<div class="job-top"><div class="job-info"><p class="meta"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>납기 ${ymd(x.due_date)}${x.status !== 'completed' ? ` · ${dday(x.due_date).replace('오늘 마감', '오늘')}` : ''}</p><strong>${esc(x.title)}</strong><small>${specLine(x)}</small><small>의뢰인 ${esc(x.client || '소상공인')} · ${esc(x.region_sido)} ${esc(x.region_sigungu)}</small>${x.paid_at || x.tracking_no ? `<small>${x.paid_at ? '<b class="open">결제 완료</b>' : ''}${x.tracking_no ? `송장 ${esc(x.courier || '')} ${esc(x.tracking_no)}` : ''}</small>` : ''}</div>${x.url ? `<img src="${esc(x.url)}" alt="${esc(x.title)} 디자인" loading="lazy">` : ''}</div>
 <ol class="progress">${['업체 선택', '제작 중', '납품', '완료'].map((l, i) => `<li class="${i <= steps.indexOf(x.status) ? 'done' : ''}">${l}</li>`).join('')}</ol>
 ${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
 <div class="job-links"><button data-original="${esc(x.design_path)}">${icon('download')}원본 파일</button>${x.conv ? `<button data-chat="${x.conv}">${icon('chat')}채팅하기</button>` : ''}</div>
@@ -521,7 +631,7 @@ ${next[x.status] ? `<button class="primary full" data-advance="${x.id}" data-to=
 }
 
 // ---------- 페이지 등록, 이벤트 ----------
-const PAGES = REAL ? { admin: adminPage, dash: dashPage, market: marketPage, quote: quotePage, myquotes: myquotesPage, jobs: jobsPage, requests: requestsPage, newreq: newreqPage, request: requestPage, notis: notisPage, mypage: realMypage } : {};
+const PAGES = REAL ? { admin: adminPage, dash: dashPage, market: marketPage, quote: quotePage, myquotes: myquotesPage, jobs: jobsPage, requests: requestsPage, newreq: newreqPage, request: requestPage, pay: payPage, notis: notisPage, mypage: realMypage } : {};
 function navItems() {
   if (REAL && myRole === 'admin') return [['admin', 'user', '계정 관리']];
   if (REAL && myRole === 'printer') return [['dash', 'home', '대시보드'], ['market', 'search', '요청 찾기'], ['myquotes', 'folder', '보낸 견적'], ['chats', 'chat', '채팅'], ['mypage', 'user', '마이']];
@@ -551,14 +661,15 @@ function bindPrint() {
   $('#app').querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });
+  $('#app').querySelectorAll('[data-reqtab]').forEach(b => b.onclick = () => { reqTab = b.dataset.reqtab; render() });
   $('#app').querySelectorAll('[data-chat]').forEach(b => b.onclick = () => { convId = b.dataset.chat; page = 'chat'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-accept]').forEach(b => b.onclick = () => modal({
     title: '이 견적을 수락할까요?', ok: '수락하기',
     body: `<p><b>${esc(b.dataset.shop)}</b> · 총 ${won(b.dataset.total)} · ${ymd(b.dataset.date)} 납품 예상</p><p class="help">수락하면 다른 견적은 자동으로 거절되고, 이 업체와 채팅이 열려요. 되돌릴 수 없어요.</p>`,
-    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); toast('견적을 수락했어요. 채팅을 시작해 보세요.'); page = 'chat'; setTimeout(() => { render(); scrollTo(0, 0) }) }
+    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); setTimeout(() => { reload('request-' + reqId); doneSheet('견적을 수락했어요', `${esc(b.dataset.shop)}와 채팅이 열렸어요. 결제하면 인쇄소에 알림이 가요.`, CFG.tossClientKey ? `${won(b.dataset.total)} 결제하기` : '채팅 시작하기', () => { if (CFG.tossClientKey) { payAmount = Number(b.dataset.total); page = 'pay' } else page = 'chat'; render(); scrollTo(0, 0) }) }) }
   }));
   $('#app').querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => modal({ title: '요청을 취소할까요?', ok: '요청 취소', danger: true, body: '<p class="help">받은 견적은 모두 거절 처리되고 되돌릴 수 없어요.</p>', onOk: async () => { await q(sb.rpc('cancel_request', { p_request: b.dataset.cancel })); toast('요청을 취소했어요.'); setTimeout(() => reload('request-' + reqId)) } }));
-  $('#app').querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => reload('request-' + reqId)) } }));
+  $('#app').querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => { reload('request-' + reqId); doneSheet('제작이 완료됐어요', '거래가 끝났어요. 받은 견적의 지난 의뢰에서 다시 볼 수 있어요.', '확인') }) } }));
   $('#app').querySelectorAll('[data-noti]').forEach(b => b.onclick = () => { const n = V.notis?.data?.find(x => String(x.id) === b.dataset.noti); if (!n) return; const [p, id] = (NOTI_GO[n.type] || (() => ['home']))(n); if (id) reqId = id; page = p; render(); scrollTo(0, 0) });
   // 제작 요청 폼
   $('#app').querySelectorAll('[data-req-item]').forEach(b => b.onclick = () => { syncReq(); reqDraft.item = b.dataset.reqItem; reqDraft.title = ''; render() });
@@ -601,5 +712,16 @@ function bindPrint() {
     b.disabled = true;
     try { const d = await q(sb.storage.from('request-files').createSignedUrl(b.dataset.original, 300, { download: true })); location.href = d.signedUrl } catch (e) { toast(errMsg(e)) } finally { b.disabled = false }
   });
-  $('#app').querySelectorAll('[data-advance]').forEach(b => b.onclick = () => modal({ title: b.dataset.ask || '상태를 바꿀까요?', ok: '바꾸기', body: '<p class="help">소상공인에게 알림이 가요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.advance, p_status: b.dataset.to })); setTimeout(() => reload('jobs')) } }));
+  // 납품할 때는 송장번호를 같이 받는다. 비워 두면 예전처럼 상태만 바꾼다
+  $('#app').querySelectorAll('[data-advance]').forEach(b => b.onclick = () => modal({
+    title: b.dataset.ask || '상태를 바꿀까요?', ok: '바꾸기',
+    body: (b.dataset.to === 'delivered' ? `${fld('tr-courier', '택배사 (선택)', 'text', 'maxlength="20" placeholder="예: CJ대한통운"')}${fld('tr-no', '송장번호 (선택)', 'text', 'maxlength="30" inputmode="numeric" autocomplete="off"')}` : '') + '<p class="help">소상공인에게 알림이 가요.</p>',
+    onOk: async () => {
+      const no = $('#tr-no')?.value.trim();
+      if (no) await q(sb.rpc('set_tracking', { p_request: b.dataset.advance, p_courier: $('#tr-courier').value, p_no: no }));
+      await q(sb.rpc('advance_request', { p_request: b.dataset.advance, p_status: b.dataset.to })); setTimeout(() => reload('jobs'));
+    }
+  }));
+  $('#app').querySelectorAll('[data-pay]').forEach(b => b.onclick = () => { payAmount = Number(b.dataset.pay); page = 'pay'; render(); scrollTo(0, 0) });
+  if (page === 'pay') mountPay();
 }
