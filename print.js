@@ -23,7 +23,7 @@ const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울�
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
 const FINISH = ['무광 코팅', '유광 코팅', '도무송 재단', '박'];
 const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', chats: '채팅', chat: '채팅', notis: '알림' };
-const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.' };
+const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.', biz_no_missing: '사업자등록번호가 없는 인쇄소예요.', nts_key_missing: '국세청 API 키가 아직 설정되지 않았어요.', nts_failed: '국세청 조회에 실패했어요. 잠시 뒤 다시 시도해주세요.' };
 
 const chip = ([label, cls]) => `<span class="st ${cls}">${label}</span>`;
 const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
@@ -122,7 +122,7 @@ function realAuthForm() {
   if (auth === 'signup') {
     const owner = signupRole === 'owner';
     return `<h1>회원가입</h1><p class="sub">어떤 회원으로 가입할지 골라주세요.</p><div class="choices role-pick" role="radiogroup" aria-label="회원 유형">${[['owner', '소상공인', 'AI로 브랜드를 만들고 인쇄 견적을 받아요'], ['printer', '인쇄소', '제작 요청을 보고 견적을 보내요']].map(([v, l, d]) => `<button type="button" class="choice${signupRole === v ? ' selected' : ''}" role="radio" aria-checked="${signupRole === v}" data-signup-role="${v}"><strong>${l}</strong><small>${d}</small></button>`).join('')}</div>
-<form id="real-signup" novalidate>${fld('su-id', '아이디', 'text', 'data-rule="id" maxlength="20" autocomplete="username" autocapitalize="off" placeholder="영문 소문자, 숫자 4~20자"')}${fld('su-pw', '비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password" placeholder="영문+숫자 8자 이상"')}${fld('su-pw2', '비밀번호 확인', 'password', 'data-rule="pw" data-same="su-pw" maxlength="64" autocomplete="new-password"')}${fld('su-shop', owner ? '가게 이름' : '업체명', 'text', `data-rule="shop" maxlength="24" placeholder="${owner ? '예: 몽글빵집' : '예: 대구인쇄'}"`)}<label class="check"><input type="checkbox" id="su-agree" aria-describedby="su-agree-err">시연용 서비스라 입력한 정보가 해커톤 기간 동안 저장되는 것에 동의해요. (필수)</label><p class="field-error" id="su-agree-err" role="alert" hidden></p><p class="field-error" id="su-form-err" role="alert" hidden></p><button class="primary full" type="submit" style="margin-top:12px">가입하기</button></form><div class="auth-links"><span>이미 계정이 있나요?</span><button type="button" class="text-button" data-auth="login">로그인</button></div>`;
+<form id="real-signup" novalidate>${fld('su-id', '아이디', 'text', 'data-rule="id" maxlength="20" autocomplete="username" autocapitalize="off" placeholder="영문 소문자, 숫자 4~20자"')}${fld('su-pw', '비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password" placeholder="영문+숫자 8자 이상"')}${fld('su-pw2', '비밀번호 확인', 'password', 'data-rule="pw" data-same="su-pw" maxlength="64" autocomplete="new-password"')}${fld('su-shop', owner ? '가게 이름' : '업체명', 'text', `data-rule="shop" maxlength="24" placeholder="${owner ? '예: 몽글빵집' : '예: 대구인쇄'}"`)}${owner ? '' : fld('su-biz', '사업자등록번호', 'text', 'data-rule="biz" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="숫자 10자리 (- 없이 적어도 돼요)"') + '<p class="help" style="margin:-6px 0 12px">운영자가 국세청에서 영업 중인 사업자인지 확인한 뒤 승인해요.</p>'}<label class="check"><input type="checkbox" id="su-agree" aria-describedby="su-agree-err">시연용 서비스라 입력한 정보가 해커톤 기간 동안 저장되는 것에 동의해요. (필수)</label><p class="field-error" id="su-agree-err" role="alert" hidden></p><p class="field-error" id="su-form-err" role="alert" hidden></p><button class="primary full" type="submit" style="margin-top:12px">가입하기</button></form><div class="auth-links"><span>이미 계정이 있나요?</span><button type="button" class="text-button" data-auth="login">로그인</button></div>`;
   }
   return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><ol class="flow" aria-label="만드는 순서"><li>가게 정보 입력</li><li class="ai-step">AI 브랜드 분석</li><li>캐릭터·홍보물</li><li>인쇄 견적</li></ol><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>${QUICK_LOGIN ? `<div class="quick-login"><p>체험용 계정으로 바로 둘러보기</p><button type="button" class="quick-btn" data-quick="owner"><span class="q-ico">${icon('shop')}</span><span><strong>소상공인으로 둘러보기</strong><small>브랜드 만들기, 견적 비교, 채팅</small></span><span class="chev" aria-hidden="true">›</span></button><button type="button" class="quick-btn" data-quick="printer"><span class="q-ico dark">${icon('box')}</span><span><strong>인쇄소로 둘러보기</strong><small>요청 찾기, 견적 보내기, 의뢰 관리</small></span><span class="chev" aria-hidden="true">›</span></button><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
 }
@@ -162,7 +162,7 @@ function bindReal() {
     b.disabled = true; b.textContent = '가입하는 중…';
     try {
       if (!await q(sb.rpc('username_available', { p_username: id }))) { setErr('su-id', '이미 쓰고 있는 아이디예요.'); $('#su-id').focus(); return }
-      const { error } = await sb.auth.signUp({ email: id + ID_DOMAIN, password: $('#su-pw').value, options: { data: { username: id, role: signupRole, display_name: name, shop_name: name } } });
+      const { error } = await sb.auth.signUp({ email: id + ID_DOMAIN, password: $('#su-pw').value, options: { data: { username: id, role: signupRole, display_name: name, shop_name: name, ...(signupRole === 'printer' ? { biz_no: $('#su-biz').value.replace(/\D/g, '') } : {}) } } });
       if (error) return err(/registered|exists/i.test(error.message) ? '이미 쓰고 있는 아이디예요.' : errMsg(error));
       if (!await loadMe()) throw Error('profile');
       toast(signupRole === 'printer' ? '가입했어요. 운영자 승인 후 견적을 보낼 수 있어요.' : '가입했어요. 첫 브랜드를 만들어보세요.');
@@ -177,6 +177,12 @@ function bindReal() {
   };
   if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
   if ($('#admin-logout')) $('#admin-logout').onclick = () => $('#logout').click();
+  $('#app').querySelectorAll('[data-biz-check]').forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = '확인 중…';
+    const { data, error } = await sb.functions.invoke('verify-biz', { body: { user_id: b.dataset.bizCheck } });
+    if (error) { let code = ''; try { code = (await error.context.json()).error } catch {} toast(ERR[code] || '국세청 확인에 실패했어요. 잠시 뒤 다시 시도해주세요.'); b.disabled = false; b.textContent = '국세청 확인'; return }
+    toast(`국세청 확인: ${BIZ_ST[data.biz_status]?.[0] || data.biz_status}`); reload('admin-accounts');
+  });
   $('#app').querySelectorAll('[data-admin-verify]').forEach(b => b.onclick = async () => {
     const on = b.dataset.on === 'true'; b.disabled = true;
     try { await q(sb.rpc('admin_set_verified', { p_user: b.dataset.adminVerify, p_verified: on })); toast(`${b.dataset.username} ${on ? '인쇄소를 승인했어요.' : '인쇄소 승인을 취소했어요.'}`); reload('admin-accounts') } catch (e) { toast(errMsg(e)); b.disabled = false }
@@ -222,11 +228,19 @@ ${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 �
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
 }
 
+// 국세청 상태 코드 (supabase/functions/verify-biz)
+const BIZ_ST = { '01': ['계속사업자', 'ok'], '02': ['휴업자', 'bad'], '03': ['폐업자', 'bad'], none: ['국세청에 없는 번호', 'bad'] };
+const bizNo = n => n.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3');
+function bizLine(x) {
+  if (!x.biz_no) return '<small class="biz-line">사업자등록번호 없음</small>';
+  const st = BIZ_ST[x.biz_status];
+  return `<small class="biz-line">사업자 ${bizNo(x.biz_no)} · ${st ? `<b class="biz-${st[1]}">국세청 ${st[0]}</b>` : '국세청 확인 전'} <button class="text-button" data-biz-check="${esc(x.id)}">${st ? '다시 확인' : '국세청 확인'}</button></small>`;
+}
 function adminPage() {
   const r = useData('admin-accounts', () => q(sb.rpc('admin_accounts')));
   const group = (rows, role, title) => {
     const accounts = rows.filter(x => x.role === role);
-    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''}</small></div><span class="admin-actions">${role === 'printer' ? `<button class="${x.verified ? 'secondary' : 'primary'}" data-admin-verify="${esc(x.id)}" data-on="${!x.verified}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} ${x.verified ? '승인 취소' : '승인'}">${x.verified ? '승인 취소' : '승인'}</button>` : ''}<button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></span></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
+    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''}</small>${role === 'printer' ? bizLine(x) : ''}</div><span class="admin-actions">${role === 'printer' ? `<button class="${x.verified ? 'secondary' : 'primary'}" data-admin-verify="${esc(x.id)}" data-on="${!x.verified}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} ${x.verified ? '승인 취소' : '승인'}">${x.verified ? '승인 취소' : '승인'}</button>` : ''}<button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></span></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
   };
   return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 확인하고, 인쇄소를 승인하거나 탈퇴 처리해요. 승인된 인쇄소만 견적을 보낼 수 있어요.</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
 }

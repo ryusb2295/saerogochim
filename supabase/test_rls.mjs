@@ -29,7 +29,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['01_schema.sql', '02_policies.sql', '03_functions.sql', '04_storage_realtime.sql', '06_printer_lists.sql', '07_admin.sql', '08_launch.sql']) await db.exec(sql(f));
+for (const f of ['01_schema.sql', '02_policies.sql', '03_functions.sql', '04_storage_realtime.sql', '06_printer_lists.sql', '07_admin.sql', '08_launch.sql', '09_bizno.sql']) await db.exec(sql(f));
 
 let failed = 0;
 const ok = (cond, label) => { console.log((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) failed++; };
@@ -170,6 +170,16 @@ await upsertBrand('한우랑'); await upsertBrand('한우랑2');
 ok((await as(A, `select name from brands`)).rows[0].name === '한우랑2', '브랜드 저장, 덮어쓰기');
 ok((await as(C, `select * from brands`)).rows.length === 0, '남의 브랜드 조회 불가');
 await fails(C, `insert into brands (owner_id, name) values ($1, 'x')`, [A], '남의 계정으로 브랜드 저장 불가');
+
+// 사업자등록번호 (09_bizno.sql)
+const E = await signup('printer04', 'printer', { shop_name: '사업자인쇄', biz_no: '1248100998' });
+const F = await signup('printer05', 'printer', { shop_name: '번호틀림', biz_no: '12-34' });
+ok((await db.query(`select biz_no from print_shops where owner_id = $1`, [E])).rows[0].biz_no === '1248100998', '가입 때 사업자등록번호 저장');
+ok((await db.query(`select biz_no from print_shops where owner_id = $1`, [F])).rows[0].biz_no === null, '형식이 틀린 번호는 비워 둠');
+ok((await as(ADM, `select biz_no from admin_accounts() where id = $1`, [E])).rows[0].biz_no === '1248100998', '관리자 목록에 사업자등록번호');
+await fails(A, `select biz_no from print_shops`, [], '다른 회원은 사업자등록번호 조회 불가');
+await fails(E, `update print_shops set biz_status = '01' where owner_id = $1`, [E], '인쇄소가 국세청 상태를 스스로 바꿀 수 없음');
+await fails(E, `update print_shops set biz_no = '1111111111' where owner_id = $1`, [E], '가입 뒤 사업자등록번호 직접 변경 불가');
 
 console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');
 process.exit(failed ? 1 : 0);
