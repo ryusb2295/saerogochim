@@ -13,11 +13,12 @@ function chatPage() {
   return `<div class="chat-wrap"><header class="chat-head"><button class="text-button" data-page="chats" aria-label="채팅 목록">${icon('back')}</button><div><strong>${esc(i?.other_name || '채팅')}</strong><small>${esc(i?.title || '')} ${i ? chip(REQ_ST[i.request_status]) : ''}</small></div></header>
 <div id="chat-banner" class="chat-banner" role="status" hidden>연결이 끊겼어요. 다시 연결하는 중…</div>
 <div id="chat-log" class="chat-log" aria-live="polite" aria-label="메시지"></div>
-<form id="chat-form" class="chat-input"><label for="chat-text" class="sr-only">메시지</label><textarea id="chat-text" rows="1" maxlength="1000" placeholder="메시지를 입력하세요"></textarea><button class="primary" type="submit" aria-label="보내기">보내기</button></form></div>`;
+<form id="chat-form" class="chat-input"><label class="secondary chat-attach" aria-label="사진 보내기">${icon('image')}<input type="file" id="chat-file" accept="image/png,image/jpeg,image/webp" hidden></label><label for="chat-text" class="sr-only">메시지</label><textarea id="chat-text" rows="1" maxlength="1000" placeholder="메시지를 입력하세요"></textarea><button class="primary" type="submit" aria-label="보내기">보내기</button></form></div>`;
 }
 
 // 화면을 다시 그릴 때마다 호출된다. 방이 바뀌었을 때만 새로 불러오고 구독한다
 async function mountChat() {
+  enteredKey = '';   // 채팅방에 다녀오면 목록의 마지막 메시지를 새로 받아오게 한다
   paintChat();
   bindChatForm();
   if (chatConv === convId) return;
@@ -73,9 +74,11 @@ function paintChat(forceBottom = false) {
     const mine = m.sender_id === uid;
     // 같은 사람이 같은 분에 보낸 연속 메시지는 마지막에만 시간 표시
     const showTime = !next || next.sender_id !== m.sender_id || new Date(next.created_at).getMinutes() !== d.getMinutes();
-    html += `<div class="bubble-row${mine ? ' mine' : ''}"><p class="bubble${m.failed ? ' failed' : ''}">${esc(m.body)}</p>${m.failed ? `<button class="text-button danger-text" data-resend="${m.client_id}">다시 보내기</button>` : m.pending ? '<small>보내는 중</small>' : showTime ? `<small>${d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}</small>` : ''}</div>`;
+    const src = m.image_path && (m.localUrl || chatImgs[m.image_path]);
+    html += `<div class="bubble-row${mine ? ' mine' : ''}">${m.image_path ? (src ? `<a class="bubble-img" href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="보낸 사진" loading="lazy"></a>` : '<p class="bubble">사진을 불러오는 중…</p>') : `<p class="bubble${m.failed ? ' failed' : ''}">${esc(m.body)}</p>`}${m.failed ? `<button class="text-button danger-text" data-resend="${m.client_id}">다시 보내기</button>` : m.pending ? '<small>보내는 중</small>' : showTime ? `<small>${d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}</small>` : ''}</div>`;
   });
   log.innerHTML = html || '<p class="day-sep">첫 메시지를 보내보세요.</p>';
+  loadChatImgs();
   if (forceBottom || nearBottom) log.scrollTop = log.scrollHeight;
   log.querySelectorAll('[data-resend]').forEach(b => b.onclick = () => { const m = chatMsgs.find(x => x.client_id === b.dataset.resend); if (m) sendMsg(m) });
   const older = log.querySelector('[data-older]');
@@ -88,10 +91,31 @@ function paintChat(forceBottom = false) {
     } catch (e) { toast(errMsg(e)); older.disabled = false }
   };
 }
+// 사진은 비공개 버킷에 있어서 서명 주소를 받아와야 보인다. 한 번 물어본 경로는 다시 묻지 않는다
+const chatImgs = {};
+async function loadChatImgs() {
+  const need = [...new Set(chatMsgs.filter(m => m.image_path && !m.localUrl && !(m.image_path in chatImgs)).map(m => m.image_path))];
+  if (!need.length) return;
+  need.forEach(p => chatImgs[p] = '');
+  const { data } = await sb.storage.from('chat-images').createSignedUrls(need, 3600);
+  (data || []).forEach(x => { if (x.signedUrl) chatImgs[x.path] = x.signedUrl });
+  paintChat();
+}
+async function sendPhoto(file) {
+  if (!chatInfo) return;
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return toast('PNG, JPG, WebP 사진만 보낼 수 있어요.');
+  if (file.size > 5242880) return toast('사진은 5MB 이하만 보낼 수 있어요.');
+  const id = crypto.randomUUID(), path = `${uid}/${chatConv}/${id}.${file.type.split('/')[1]}`;
+  const m = { client_id: id, sender_id: uid, body: '사진', image_path: path, localUrl: URL.createObjectURL(file), created_at: new Date().toISOString(), pending: true };
+  chatMsgs.push(m); paintChat(true);
+  const { error } = await sb.storage.from('chat-images').upload(path, file, { contentType: file.type });
+  if (error) { chatMsgs = chatMsgs.filter(x => x !== m); paintChat(); return toast('사진을 보내지 못했어요. 잠시 뒤 다시 시도해주세요.') }
+  sendMsg(m);
+}
 async function sendMsg(m) {
   m.failed = false; m.pending = true; paintChat(true);
   try {
-    const { data, error } = await sb.from('messages').insert({ conversation_id: chatConv, sender_id: uid, client_id: m.client_id, body: m.body }).select().single();
+    const { data, error } = await sb.from('messages').insert({ conversation_id: chatConv, sender_id: uid, client_id: m.client_id, body: m.body, ...(m.image_path ? { image_path: m.image_path } : {}) }).select().single();
     if (error && error.code !== '23505') throw error;   // 23505: 이미 저장됨 (재시도 중복)
     if (data) addMsg(data); else { m.pending = false; paintChat() }
   } catch { m.pending = false; m.failed = true; paintChat() }
@@ -105,6 +129,8 @@ function bindChatForm() {
     const m = { client_id: crypto.randomUUID(), sender_id: uid, body: body.slice(0, 1000), created_at: new Date().toISOString(), pending: true };
     chatMsgs.push(m); sendMsg(m); t.focus();
   };
+  const pick = $('#chat-file');
+  if (pick) pick.onchange = () => { if (pick.files[0]) sendPhoto(pick.files[0]); pick.value = '' };
   // 한글 조합 중 Enter는 글자 확정이라 보내지 않는다
   t.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); f.requestSubmit() } };
 }

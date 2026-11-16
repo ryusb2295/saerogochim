@@ -24,7 +24,7 @@ const Q_ST = { submitted: ['검토 중', 'st-open'], withdrawn: ['철회', 'st-d
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
 const FINISH = ['무광 코팅', '유광 코팅', '도무송 재단', '박'];
-const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', chats: '채팅', chat: '채팅', notis: '알림' };
+const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', pay: '결제', chats: '채팅', chat: '채팅', notis: '알림' };
 const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.', biz_no_missing: '사업자등록번호가 없는 인쇄소예요.', nts_key_missing: '국세청 API 키가 아직 설정되지 않았어요.', nts_failed: '국세청 조회에 실패했어요. 잠시 뒤 다시 시도해주세요.' };
 
 const chip = ([label, cls]) => `<span class="st ${cls}">${label}</span>`;
@@ -151,7 +151,7 @@ const cloudBrand = {
 };
 window.cloudBrand = cloudBrand;
 async function restoreSession() {
-  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; return } } catch {}
+  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; await payReturn(); return } } catch {}
   page = 'start';
 }
 function realAuthForm() {
@@ -328,12 +328,12 @@ const ST_CLS = { open: 'open', accepted: 'acc', in_progress: 'prog', delivered: 
 const reqSt = (x, n) => x.status === 'open' && Date.parse(x.quote_deadline) <= Date.now() ? (n ? 'choose' : 'expired') : x.status;
 function reqCard(x) {
   const qs = (x.quotations || []).filter(q => q.status !== 'withdrawn'), names = qs.map(q => q.print_shops?.name || '?'), st = reqSt(x, qs.length);
-  const tail = st === 'choose' ? '견적 마감, 받은 견적 중에서 업체를 골라주세요' : st === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? '업체와 제작을 진행하고 있어요' : '진행이 끝난 요청이에요';
+  const tail = st === 'choose' ? '견적 마감, 받은 견적 중에서 업체를 골라주세요' : st === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? (x.paid_at ? '결제 완료 · 업체와 제작을 진행하고 있어요' : '<b class="need-pay">결제 대기</b> 눌러서 결제해 주세요') : '진행이 끝난 요청이에요';
   return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[st]}">${REQ_ST[st][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
 }
 function requestsPage() {
   const r = useData('requests', async () => {
-    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,quote_deadline,preview_path,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
+    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,quote_deadline,preview_path,paid_at,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
     if (!rows.length) return rows;
     const { data } = await sb.storage.from('request-previews').createSignedUrls(rows.map(x => x.preview_path), 300);
     const urls = Object.fromEntries((data || []).filter(x => x.signedUrl).map(x => [x.path, x.signedUrl]));
@@ -375,9 +375,15 @@ function requestPage() {
     // 견적이 둘 이상일 때만 가장 싼 곳과 가장 빨리 오는 곳을 표시한다
     const minT = Math.min(...live.map(x => x.total_price + x.shipping_fee)), minD = live.map(x => x.delivery_date).sort()[0];
     const tags = x => live.length < 2 ? '' : (x.total_price + x.shipping_fee === minT ? '<span class="q-tag">최저가</span>' : '') + (x.delivery_date === minD ? '<span class="q-tag fast">가장 빠른 납기</span>' : '');
+    // 단계별 시각 칸(10_photo_tracking_pay.sql)이 없는 DB에서는 지금 단계에 마지막 수정일만 보여준다
+    const when = i => { const t = req[['accepted_at', 'started_at', 'delivered_at', 'completed_at'][i]] || (i === at && req.updated_at); return t ? ' · ' + ymd(t) : '' };
+    const ship = req.tracking_no ? `<small class="track">${esc(req.courier || '택배')} ${esc(req.tracking_no)}</small>` : '';
+    const picked = quotes.find(x => x.status === 'accepted'), due = picked ? picked.total_price + picked.shipping_fee : 0;
+    const pay = at < 0 || !picked ? '' : req.paid_at ? `<p class="paid">${icon('check')}결제 완료 · ${won(due)} · ${ymd(req.paid_at)} <small>테스트 결제</small></p>`
+      : CFG.tossClientKey && 'paid_at' in req ? `<div class="pay-card"><strong>결제를 기다리고 있어요</strong><small>결제하면 인쇄소에 알림이 가요</small><button class="primary full" data-pay="${due}">${won(due)} 결제하기</button></div>` : '';
     return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button>
 <section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[reqSt(req, live.length)])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
-${at >= 0 ? `<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${req.updated_at ? ' · ' + ymd(req.updated_at) : ''}</small>` : ''}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="primary" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
+${at >= 0 ? `${pay}<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${when(i)}</small>` : i < at && when(i) ? `<small>${when(i).slice(3)}</small>` : ''}${i === 2 && i <= at ? ship : ''}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="${pay.includes('data-pay') ? 'secondary' : 'primary'}" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
 <div class="section-head" style="margin-top:${at >= 0 ? 32 : 0}px"><h2>견적 ${live.length}개</h2>${live.length > 1 ? `<div class="seg">${[['total', '총액순'], ['date', '빠른 납기순']].map(([v, l]) => `<button class="${quoteSort === v ? 'on' : ''}" data-sort="${v}">${l}</button>`).join('')}</div>` : ''}</div>
 ${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong>${tags(x)}<small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
 <div class="nums"><div><small>총액 (배송비 포함)</small><b>${won(x.total_price + x.shipping_fee)}</b></div><div><small>배송비</small><b>${won(x.shipping_fee)}</b></div><div><small>납품 예상</small><b>${ymd(x.delivery_date)}</b></div></div>
@@ -386,6 +392,49 @@ ${req.status === 'open' && x.status === 'submitted' ? `<button class="primary fu
         : reqSt(req, 0) === 'expired' ? emptyBox('견적 마감 전에 받은 견적이 없어요', '마감일을 넉넉히 잡아 다시 요청해 보세요.') : emptyBox(req.status === 'open' ? '견적을 기다리고 있어요' : '받은 견적이 없어요', req.status === 'open' ? '인쇄소가 견적을 보내면 알림으로 알려드려요.' : '')}
 ${req.status === 'open' ? `<button class="text-button danger-text" data-cancel="${req.id}">요청 취소</button>` : ''}`;
   });
+}
+
+// ---------- 결제 (토스페이먼츠 테스트) ----------
+// shortcut: 토스 승인 API를 부르지 않고 결제창에서 돌아오면 결제 완료로 적는다. 시연용이고,
+//           실제 돈을 받으려면 Edge Function에서 시크릿 키로 승인한 뒤 mark_paid를 부르게 바꾼다
+let payAmount = 0, payWidgets = null;
+function payPage() {
+  return `<button class="text-button" data-req="${esc(reqId)}">${icon('back')}견적 비교</button><section class="intro"><h1>결제하기</h1><p>테스트 결제라 실제 돈은 나가지 않아요.</p></section>
+<div class="pay-sum"><span>결제 금액</span><b>${won(payAmount)}</b></div><div id="pay-methods">${skeleton(2)}</div><div id="pay-agree"></div>
+<p class="field-error" id="pay-err" role="alert" hidden></p><button class="primary full" id="pay-go" disabled>${won(payAmount)} 결제하기</button>`;
+}
+const loadScript = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s) });
+async function mountPay() {
+  const box = $('#pay-methods'), go = $('#pay-go'), err = $('#pay-err');
+  if (!box || box.dataset.on) return;
+  box.dataset.on = 1;
+  try {
+    if (!payAmount) throw Error('결제할 금액이 없어요. 견적 화면에서 다시 눌러주세요.');
+    if (!window.TossPayments) await loadScript('https://js.tosspayments.com/v2/standard');
+    payWidgets = TossPayments(CFG.tossClientKey).widgets({ customerKey: TossPayments.ANONYMOUS });
+    await payWidgets.setAmount({ currency: 'KRW', value: payAmount });
+    box.innerHTML = '';
+    await Promise.all([payWidgets.renderPaymentMethods({ selector: '#pay-methods', variantKey: 'DEFAULT' }), payWidgets.renderAgreement({ selector: '#pay-agree', variantKey: 'AGREEMENT' })]);
+    go.disabled = false;
+    const back = location.origin + location.pathname + '?req=' + reqId + '&pay=';
+    go.onclick = async () => {
+      err.hidden = true;
+      // 주문번호는 영문, 숫자, -, _ 6~64자. 다시 시도해도 겹치지 않게 시각을 붙인다
+      try { await payWidgets.requestPayment({ orderId: `g-${reqId}-${Date.now().toString(36)}`, orderName: V['request-' + reqId]?.data?.req?.title || '가게온 인쇄 의뢰', successUrl: back + 'ok', failUrl: back + 'fail' }) }
+      catch (e) { err.textContent = e?.message || '결제를 시작하지 못했어요.'; err.hidden = false }
+    };
+  } catch (e) { box.innerHTML = ''; err.textContent = e?.message || '결제창을 불러오지 못했어요. 연결을 확인하고 다시 시도해주세요.'; err.hidden = false }
+}
+// 결제창에서 돌아왔을 때: 주소의 결과를 읽고 지운 뒤 그 의뢰 화면으로 간다
+async function payReturn() {
+  const p = new URLSearchParams(location.search), st = p.get('pay');
+  if (!st) return;
+  history.replaceState(history.state, '', location.pathname);
+  if (myRole !== 'owner' || !p.get('req')) return;
+  reqId = p.get('req'); page = 'request';
+  if (st !== 'ok' || !p.get('paymentKey')) { setTimeout(() => toast(p.get('message') || '결제를 취소했어요.')); return }
+  try { await q(sb.rpc('mark_paid', { p_request: reqId, p_pay_key: p.get('paymentKey') })); setTimeout(() => doneSheet('결제가 완료됐어요', `${won(p.get('amount'))} · 테스트 결제라 실제 돈은 나가지 않았어요.`, '확인')) }
+  catch (e) { setTimeout(() => toast(errMsg(e))) }
 }
 
 // 제작 요청 폼: 디자인은 지금 만든 스티커(1600px PNG) 또는 직접 올린 이미지
@@ -559,7 +608,7 @@ function myquotesPage() {
 }
 function jobsPage() {
   const r = useData('jobs', async () => {
-    const rows = await q(sb.from('print_requests').select('id,owner_id,title,item,item_other,quantity,width,height,unit,material,finishing,due_date,region_sido,region_sigungu,note,status,design_path,preview_path').neq('owner_id', uid).order('due_date'));
+    const rows = await q(sb.from('print_requests').select('*').neq('owner_id', uid).order('due_date'));   // 결제, 송장 칸은 DB에 있을 때만 온다
     if (!rows.length) return [];
     const [convs, people, signed] = await Promise.all([
       q(sb.from('conversations').select('id,request_id').in('request_id', rows.map(x => x.id))),
@@ -572,7 +621,7 @@ function jobsPage() {
   const steps = ['accepted', 'in_progress', 'delivered', 'completed'];
   const active = d => d.filter(x => x.status !== 'completed'), done = d => d.filter(x => x.status === 'completed');
   const card = x => `<article class="job-card">
-<div class="job-top"><div class="job-info"><p class="meta"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>납기 ${ymd(x.due_date)}${x.status !== 'completed' ? ` · ${dday(x.due_date).replace('오늘 마감', '오늘')}` : ''}</p><strong>${esc(x.title)}</strong><small>${specLine(x)}</small><small>의뢰인 ${esc(x.client || '소상공인')} · ${esc(x.region_sido)} ${esc(x.region_sigungu)}</small></div>${x.url ? `<img src="${esc(x.url)}" alt="${esc(x.title)} 디자인" loading="lazy">` : ''}</div>
+<div class="job-top"><div class="job-info"><p class="meta"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>납기 ${ymd(x.due_date)}${x.status !== 'completed' ? ` · ${dday(x.due_date).replace('오늘 마감', '오늘')}` : ''}</p><strong>${esc(x.title)}</strong><small>${specLine(x)}</small><small>의뢰인 ${esc(x.client || '소상공인')} · ${esc(x.region_sido)} ${esc(x.region_sigungu)}</small>${x.paid_at || x.tracking_no ? `<small>${x.paid_at ? '<b class="open">결제 완료</b>' : ''}${x.tracking_no ? `송장 ${esc(x.courier || '')} ${esc(x.tracking_no)}` : ''}</small>` : ''}</div>${x.url ? `<img src="${esc(x.url)}" alt="${esc(x.title)} 디자인" loading="lazy">` : ''}</div>
 <ol class="progress">${['업체 선택', '제작 중', '납품', '완료'].map((l, i) => `<li class="${i <= steps.indexOf(x.status) ? 'done' : ''}">${l}</li>`).join('')}</ol>
 ${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
 <div class="job-links"><button data-original="${esc(x.design_path)}">${icon('download')}원본 파일</button>${x.conv ? `<button data-chat="${x.conv}">${icon('chat')}채팅하기</button>` : ''}</div>
@@ -582,7 +631,7 @@ ${next[x.status] ? `<button class="primary full" data-advance="${x.id}" data-to=
 }
 
 // ---------- 페이지 등록, 이벤트 ----------
-const PAGES = REAL ? { admin: adminPage, dash: dashPage, market: marketPage, quote: quotePage, myquotes: myquotesPage, jobs: jobsPage, requests: requestsPage, newreq: newreqPage, request: requestPage, notis: notisPage, mypage: realMypage } : {};
+const PAGES = REAL ? { admin: adminPage, dash: dashPage, market: marketPage, quote: quotePage, myquotes: myquotesPage, jobs: jobsPage, requests: requestsPage, newreq: newreqPage, request: requestPage, pay: payPage, notis: notisPage, mypage: realMypage } : {};
 function navItems() {
   if (REAL && myRole === 'admin') return [['admin', 'user', '계정 관리']];
   if (REAL && myRole === 'printer') return [['dash', 'home', '대시보드'], ['market', 'search', '요청 찾기'], ['myquotes', 'folder', '보낸 견적'], ['chats', 'chat', '채팅'], ['mypage', 'user', '마이']];
@@ -617,7 +666,7 @@ function bindPrint() {
   $('#app').querySelectorAll('[data-accept]').forEach(b => b.onclick = () => modal({
     title: '이 견적을 수락할까요?', ok: '수락하기',
     body: `<p><b>${esc(b.dataset.shop)}</b> · 총 ${won(b.dataset.total)} · ${ymd(b.dataset.date)} 납품 예상</p><p class="help">수락하면 다른 견적은 자동으로 거절되고, 이 업체와 채팅이 열려요. 되돌릴 수 없어요.</p>`,
-    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); setTimeout(() => { reload('request-' + reqId); doneSheet('견적을 수락했어요', `${esc(b.dataset.shop)}와 채팅이 열렸어요. 규격과 배송을 맞춰보세요.`, '채팅 시작하기', () => { page = 'chat'; render(); scrollTo(0, 0) }) }) }
+    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); setTimeout(() => { reload('request-' + reqId); doneSheet('견적을 수락했어요', `${esc(b.dataset.shop)}와 채팅이 열렸어요. 결제하면 인쇄소에 알림이 가요.`, CFG.tossClientKey ? `${won(b.dataset.total)} 결제하기` : '채팅 시작하기', () => { if (CFG.tossClientKey) { payAmount = Number(b.dataset.total); page = 'pay' } else page = 'chat'; render(); scrollTo(0, 0) }) }) }
   }));
   $('#app').querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => modal({ title: '요청을 취소할까요?', ok: '요청 취소', danger: true, body: '<p class="help">받은 견적은 모두 거절 처리되고 되돌릴 수 없어요.</p>', onOk: async () => { await q(sb.rpc('cancel_request', { p_request: b.dataset.cancel })); toast('요청을 취소했어요.'); setTimeout(() => reload('request-' + reqId)) } }));
   $('#app').querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => { reload('request-' + reqId); doneSheet('제작이 완료됐어요', '거래가 끝났어요. 받은 견적의 지난 의뢰에서 다시 볼 수 있어요.', '확인') }) } }));
@@ -663,5 +712,16 @@ function bindPrint() {
     b.disabled = true;
     try { const d = await q(sb.storage.from('request-files').createSignedUrl(b.dataset.original, 300, { download: true })); location.href = d.signedUrl } catch (e) { toast(errMsg(e)) } finally { b.disabled = false }
   });
-  $('#app').querySelectorAll('[data-advance]').forEach(b => b.onclick = () => modal({ title: b.dataset.ask || '상태를 바꿀까요?', ok: '바꾸기', body: '<p class="help">소상공인에게 알림이 가요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.advance, p_status: b.dataset.to })); setTimeout(() => reload('jobs')) } }));
+  // 납품할 때는 송장번호를 같이 받는다. 비워 두면 예전처럼 상태만 바꾼다
+  $('#app').querySelectorAll('[data-advance]').forEach(b => b.onclick = () => modal({
+    title: b.dataset.ask || '상태를 바꿀까요?', ok: '바꾸기',
+    body: (b.dataset.to === 'delivered' ? `${fld('tr-courier', '택배사 (선택)', 'text', 'maxlength="20" placeholder="예: CJ대한통운"')}${fld('tr-no', '송장번호 (선택)', 'text', 'maxlength="30" inputmode="numeric" autocomplete="off"')}` : '') + '<p class="help">소상공인에게 알림이 가요.</p>',
+    onOk: async () => {
+      const no = $('#tr-no')?.value.trim();
+      if (no) await q(sb.rpc('set_tracking', { p_request: b.dataset.advance, p_courier: $('#tr-courier').value, p_no: no }));
+      await q(sb.rpc('advance_request', { p_request: b.dataset.advance, p_status: b.dataset.to })); setTimeout(() => reload('jobs'));
+    }
+  }));
+  $('#app').querySelectorAll('[data-pay]').forEach(b => b.onclick = () => { payAmount = Number(b.dataset.pay); page = 'pay'; render(); scrollTo(0, 0) });
+  if (page === 'pay') mountPay();
 }
