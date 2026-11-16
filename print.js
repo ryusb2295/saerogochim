@@ -55,11 +55,20 @@ let enteredKey = '';
 function useData(key, fn) {
   if (enteredKey !== key) { enteredKey = key; delete V[key] }
   if (!V[key]) {
-    V[key] = { loading: true };
-    fn().then(d => { V[key] = { data: d } }, e => { V[key] = { error: errMsg(e) } }).finally(() => { if (enteredKey === key) render() });
+    // 전에 본 내용을 먼저 보여주고 뒤에서 새로 받아온다. 달라졌을 때만 다시 그려 입력 중인 글이 덜 지워지게 한다
+    const old = seen[uid + key];
+    V[key] = old ? { data: JSON.parse(old) } : { loading: true };
+    fn().then(d => {
+      const s = JSON.stringify(d), same = s === old;
+      seen[uid + key] = s; V[key] = { data: d };
+      if (!same && enteredKey === key) render();
+    }, e => { V[key] = { error: errMsg(e) }; if (enteredKey === key) render() });
   }
   return V[key];
 }
+const seen = {};
+// 채팅 상대마다 다른 바탕색을 줘서 목록에서 구분되게 한다
+const avatar = name => { const n = name || '?'; return `<span class="avatar" style="background:hsl(${[...n].reduce((a, c) => a + c.codePointAt(0), 0) % 360} 45% 90%)">${esc(n.slice(0, 1))}</span>` };
 const reload = key => { delete V[key]; enteredKey = ''; render() };
 const skeleton = (n = 3) => `<div aria-busy="true" aria-label="불러오는 중">${'<div class="sk sk-card"></div>'.repeat(n)}</div>`;
 const errorBox = (msg, key) => `<div class="empty" role="alert"><h2>불러오지 못했어요</h2><p>${esc(msg)}</p><button class="secondary" data-reload="${esc(key)}">다시 시도</button></div>`;
@@ -139,7 +148,7 @@ function realAuthForm() {
     return `<h1>회원가입</h1><p class="sub">어떤 회원으로 가입할지 골라주세요.</p><div class="choices role-pick" role="radiogroup" aria-label="회원 유형">${[['owner', '소상공인', 'AI로 브랜드를 만들고 인쇄 견적을 받아요'], ['printer', '인쇄소', '제작 요청을 보고 견적을 보내요']].map(([v, l, d]) => `<button type="button" class="choice${signupRole === v ? ' selected' : ''}" role="radio" aria-checked="${signupRole === v}" data-signup-role="${v}"><strong>${l}</strong><small>${d}</small></button>`).join('')}</div>
 <form id="real-signup" novalidate>${fld('su-id', '아이디', 'text', 'data-rule="id" maxlength="20" autocomplete="username" autocapitalize="off" placeholder="영문 소문자, 숫자 4~20자"')}${fld('su-pw', '비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password" placeholder="영문+숫자 8자 이상"')}${fld('su-pw2', '비밀번호 확인', 'password', 'data-rule="pw" data-same="su-pw" maxlength="64" autocomplete="new-password"')}${fld('su-shop', owner ? '가게 이름' : '업체명', 'text', `data-rule="shop" maxlength="24" placeholder="${owner ? '예: 몽글빵집' : '예: 대구인쇄'}"`)}${owner ? '' : fld('su-biz', '사업자등록번호', 'text', 'data-rule="biz" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="숫자 10자리 (- 없이 적어도 돼요)"') + '<p class="help" style="margin:-6px 0 12px">운영자가 국세청에서 영업 중인 사업자인지 확인한 뒤 승인해요.</p>'}<label class="check"><input type="checkbox" id="su-agree" aria-describedby="su-agree-err">시연용 서비스라 입력한 정보가 해커톤 기간 동안 저장되는 것에 동의해요. (필수)</label><p class="field-error" id="su-agree-err" role="alert" hidden></p><p class="field-error" id="su-form-err" role="alert" hidden></p><button class="primary full" type="submit" style="margin-top:12px">가입하기</button></form><div class="auth-links"><span>이미 계정이 있나요?</span><button type="button" class="text-button" data-auth="login">로그인</button></div>`;
   }
-  return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><ol class="flow" aria-label="만드는 순서"><li>가게 정보 입력</li><li class="ai-step">AI 브랜드 분석</li><li>캐릭터·홍보물</li><li>인쇄 견적</li></ol><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>${QUICK_LOGIN ? `<div class="quick-login"><p>체험용 계정으로 바로 둘러보기</p><button type="button" class="quick-btn" data-quick="owner"><span class="q-ico">${icon('shop')}</span><span><strong>소상공인으로 둘러보기</strong><small>브랜드 만들기, 견적 비교, 채팅</small></span><span class="chev" aria-hidden="true">›</span></button><button type="button" class="quick-btn" data-quick="printer"><span class="q-ico dark">${icon('box')}</span><span><strong>인쇄소로 둘러보기</strong><small>요청 찾기, 견적 보내기, 의뢰 관리</small></span><span class="chev" aria-hidden="true">›</span></button><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
+  return `<h1>우리 가게만의 캐릭터를 만들어보세요</h1><p class="sub">AI로 브랜드를 만들고, 인쇄소 견적까지 한 번에 받아요.</p><form id="real-login" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인 ${icon('arrow')}</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button></div><p class="help" style="text-align:center">비밀번호를 잊으면 운영자에게 문의해주세요. (시연 기간)</p>${QUICK_LOGIN ? `<div class="quick-login"><p>체험용 계정으로 바로 둘러보기</p><button type="button" class="quick-btn" data-quick="owner"><span class="q-ico">${icon('shop')}</span><span><strong>소상공인으로 둘러보기</strong><small>브랜드 만들기, 견적 비교, 채팅</small></span><span class="chev" aria-hidden="true">›</span></button><button type="button" class="quick-btn" data-quick="printer"><span class="q-ico dark">${icon('box')}</span><span><strong>인쇄소로 둘러보기</strong><small>요청 찾기, 견적 보내기, 의뢰 관리</small></span><span class="chev" aria-hidden="true">›</span></button><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
 }
 function goHomeAfterLogin() { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; state = { ...initial(), name: myRole === 'owner' ? shop : '' }; step = 1; render(); scrollTo(0, 0) }
 function bindReal() {
@@ -247,10 +256,9 @@ function bindReal() {
   };
 }
 function realMypage() {
-  return `<section class="intro"><h1>마이페이지</h1><p>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''}</p></section>
-<div class="my-list"><div>아이디<small>${esc(user)}</small></div><div>회원 유형<small>${myRole === 'printer' ? '인쇄소' : '소상공인'}</small></div></div>
+  return `<section class="shop-hero">${avatar(shop)}<div><strong>${esc(shop)}</strong><small>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''} · ${esc(user)}</small></div></section>
 <div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form>${myRole === 'printer' && myShop ? `<button id="shop-addr">업체 주소<small>${myShop.address_detail ? esc(myShop.address_detail) : myShop.region_sigungu ? esc(`${myShop.region_sido || ''} ${myShop.region_sigungu}`.trim()) + ' · 다시 찾기 ›' : '주소 검색 ›'}</small></button>` : ''}</div>
-<div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}<button data-page="guide">이용 가이드<small>›</small></button></div>
+<div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}${myRole === 'owner' ? `<div>AI 캐릭터 생성<small>${Math.max(0, MOCK_LIMIT - used())} / ${MOCK_LIMIT}회 남음</small></div>` : ''}<button data-page="guide">이용 가이드<small>›</small></button></div>
 ${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
 }
@@ -309,7 +317,7 @@ const reqSt = (x, n) => x.status === 'open' && Date.parse(x.quote_deadline) <= D
 function reqCard(x) {
   const qs = (x.quotations || []).filter(q => q.status !== 'withdrawn'), names = qs.map(q => q.print_shops?.name || '?'), st = reqSt(x, qs.length);
   const tail = st === 'choose' ? '견적 마감, 받은 견적 중에서 업체를 골라주세요' : st === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? '업체와 제작을 진행하고 있어요' : '진행이 끝난 요청이에요';
-  return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[st]}">${REQ_ST[st][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
+  return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[st]}">${REQ_ST[st][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
 }
 function requestsPage() {
   const r = useData('requests', async () => {
@@ -485,7 +493,7 @@ ${d.fresh.length ? `<div class="h-scroll">${d.fresh.slice(0, 6).map(x => `<butto
 ${d.jobs.length ? `<div class="list">${d.jobs.slice(0, 3).map(x => `<button class="job-row" data-page="jobs"><div><strong>${esc(x.title)}</strong><small>납기 ${ymd(x.due_date)} · ${next[x.status]}</small></div>${chip(REQ_ST[x.status])}</button>`).join('')}</div>`
       : `<div class="go-card" style="cursor:default">${icon('box')}<div><strong>진행 중인 의뢰가 없어요</strong><small>견적이 수락되면 여기에서 제작 상태를 관리해요</small></div></div>`}
 <div class="section-head"><h2>최근 채팅</h2></div>
-${d.convs.length ? `<div class="list">${d.convs.slice(0, 2).map(c => `<button class="chat-row" data-chat="${c.id}"><span class="avatar">${esc((c.other_name || '?').slice(0, 1))}</span><div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>`
+${d.convs.length ? `<div class="list">${d.convs.slice(0, 2).map(c => `<button class="chat-row" data-chat="${c.id}">${avatar(c.other_name)}<div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>`
       : `<p class="help">견적이 수락되면 소상공인과 채팅할 수 있어요.</p>`}`;
   });
 }

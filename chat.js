@@ -4,7 +4,7 @@ let chatCh = null, chatConv = '', chatMsgs = [], chatInfo = null, chatLive = 'co
 
 function chatsPage() {
   const r = useData('chats', () => q(sb.rpc('my_conversations')));
-  return `<section class="intro"><h1>채팅</h1><p>견적을 수락한 업체와 대화해요.</p></section>${stateView(r, 'chats', d => d.length ? `<div class="list">${d.map(c => `<button class="chat-row" data-chat="${c.id}"><span class="avatar">${esc((c.other_name || '?').slice(0, 1))}</span><div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>` : emptyBox('아직 채팅이 없어요', myRole === 'printer' ? '견적이 수락되면 채팅이 열려요.' : '견적을 수락하면 그 업체와 채팅이 열려요.'))}`;
+  return `<section class="intro"><h1>채팅</h1><p>견적을 수락한 업체와 대화해요.</p></section>${stateView(r, 'chats', d => d.length ? `<div class="list">${d.map(c => `<button class="chat-row" data-chat="${c.id}">${avatar(c.other_name)}<div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>` : emptyBox('아직 채팅이 없어요', myRole === 'printer' ? '견적이 수락되면 채팅이 열려요.' : '견적을 수락하면 그 업체와 채팅이 열려요.'))}`;
 }
 const chatTime = t => { const d = new Date(t), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) };
 
