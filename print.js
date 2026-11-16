@@ -27,6 +27,11 @@ const FINISH = ['무광 코팅', '유광 코팅', '도무송 재단', '박'];
 const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', pay: '결제', chats: '채팅', chat: '채팅', notis: '알림' };
 const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.', biz_no_missing: '사업자등록번호가 없는 인쇄소예요.', nts_key_missing: '국세청 API 키가 아직 설정되지 않았어요.', nts_failed: '국세청 조회에 실패했어요. 잠시 뒤 다시 시도해주세요.' };
 
+// 후기: 11_reviews.sql을 아직 실행하지 않은 DB에서는 빈 목록으로 돌아간다
+const loadReviews = async (col, ids) => { if (!ids.length) return []; try { return await q(sb.from('reviews').select('*').in(col, ids).order('created_at', { ascending: false })) } catch { return [] } };
+const reviewer = x => `${esc(x.author || '익명')} 사장님`;   // author 칸이 없는 예전 후기는 익명
+const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+const rateLine = rs => rs.length ? `<span class="rate">★ ${(rs.reduce((s, x) => s + x.rating, 0) / rs.length).toFixed(1)} <small>후기 ${rs.length}개</small></span>` : '';
 const chip = ([label, cls]) => `<span class="st ${cls}">${label}</span>`;
 const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
 const ymd = d => new Date(d).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
@@ -211,7 +216,7 @@ function bindReal() {
     const m = rules.id(v); if (m) return setErr('su-id', m);
     try { setErr('su-id', await q(sb.rpc('username_available', { p_username: v })) ? '' : '이미 쓰고 있는 아이디예요.') } catch {}
   };
-  if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
+  if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} for (const k in V) delete V[k]; enteredKey = ''; uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
   if ($('#admin-logout')) $('#admin-logout').onclick = () => $('#logout').click();
   $('#app').querySelectorAll('[data-biz-check]').forEach(b => b.onclick = async () => {
     b.disabled = true; b.textContent = '확인 중…';
@@ -353,11 +358,11 @@ ${open.length ? `<h2 class="sec-label">견적 받는 중</h2>${open.map(reqCard)
 async function loadRequest(id) {
   const req = await q(sb.from('print_requests').select('*').eq('id', id).single());
   const [quotes, conv, prev] = await Promise.all([
-    q(sb.from('quotations').select('id,unit_price,quantity,total_price,shipping_fee,production_days,delivery_date,note,status,print_shops(name,region_sido,region_sigungu,items,intro)').eq('request_id', id)),
+    q(sb.from('quotations').select('id,shop_id,unit_price,quantity,total_price,shipping_fee,production_days,delivery_date,note,status,print_shops(name,region_sido,region_sigungu,items,intro)').eq('request_id', id)),
     q(sb.from('conversations').select('id').eq('request_id', id).maybeSingle()),
     sb.storage.from('request-previews').createSignedUrl(req.preview_path, 300)
   ]);
-  return { req, quotes, conv, preview: prev.data?.signedUrl };
+  return { req, quotes, conv, preview: prev.data?.signedUrl, reviews: await loadReviews('shop_id', [...new Set(quotes.map(x => x.shop_id))]) };
 }
 function watchQuotes(id) {
   if (quoteChannel?.topic === 'realtime:quotes-' + id) return;
@@ -368,7 +373,10 @@ function specLine(x) { return `${x.item === 'other' ? esc(x.item_other) : ITEM[x
 function requestPage() {
   watchQuotes(reqId);
   const r = useData('request-' + reqId, () => loadRequest(reqId));
-  return stateView(r, 'request-' + reqId, ({ req, quotes, conv, preview }) => {
+  return stateView(r, 'request-' + reqId, ({ req, quotes, conv, preview, reviews = [] }) => {
+    const mine = reviews.find(x => x.request_id === req.id);
+    const review = req.status !== 'completed' ? '' : mine ? `<div class="review-box"><strong>내가 남긴 후기</strong><p class="stars" aria-label="별점 ${mine.rating}점">${stars(mine.rating)}</p>${mine.body ? `<p>${esc(mine.body)}</p>` : ''}</div>`
+      : `<form class="review-box" id="review-form" novalidate><strong>거래는 어떠셨나요?</strong><small>후기는 다른 사장님이 인쇄소를 고를 때 보여요. 이름은 첫 글자만 보여요. (예: ${esc((shop || '사').slice(0, 1))}○○ 사장님)</small><div class="star-pick" role="radiogroup" aria-label="별점">${[1, 2, 3, 4, 5].map(n => `<button type="button" role="radio" aria-checked="false" aria-label="${n}점" data-star="${n}">★</button>`).join('')}</div><label for="review-body" class="sr-only">후기 내용</label><textarea id="review-body" maxlength="300" placeholder="인쇄 품질, 납기, 응대는 어땠나요? (선택)"></textarea><p class="field-error" role="alert" hidden></p><button class="primary full" type="submit">후기 남기기</button></form>`;
     const live = quotes.filter(x => x.status !== 'withdrawn');
     const sorted = [...live].sort(quoteSort === 'total' ? (a, b) => (a.total_price + a.shipping_fee) - (b.total_price + b.shipping_fee) : (a, b) => a.delivery_date.localeCompare(b.delivery_date));
     const steps = ['accepted', 'in_progress', 'delivered', 'completed'], at = steps.indexOf(req.status);
@@ -379,15 +387,16 @@ function requestPage() {
     const when = i => { const t = req[['accepted_at', 'started_at', 'delivered_at', 'completed_at'][i]] || (i === at && req.updated_at); return t ? ' · ' + ymd(t) : '' };
     const ship = req.tracking_no ? `<small class="track">${esc(req.courier || '택배')} ${esc(req.tracking_no)}</small>` : '';
     const picked = quotes.find(x => x.status === 'accepted'), due = picked ? picked.total_price + picked.shipping_fee : 0;
-    const pay = at < 0 || !picked ? '' : req.paid_at ? `<p class="paid">${icon('check')}결제 완료 · ${won(due)} · ${ymd(req.paid_at)} <small>테스트 결제</small></p>`
+    // 이미 끝난 의뢰에는 결제하라고 조르지 않는다
+    const pay = at < 0 || !picked || (at === 3 && !req.paid_at) ? '' : req.paid_at ? `<p class="paid">${icon('check')}결제 완료 · ${won(due)} · ${ymd(req.paid_at)} <small>테스트 결제</small></p>`
       : CFG.tossClientKey && 'paid_at' in req ? `<div class="pay-card"><strong>결제를 기다리고 있어요</strong><small>결제하면 인쇄소에 알림이 가요</small><button class="primary full" data-pay="${due}">${won(due)} 결제하기</button></div>` : '';
     return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button>
 <section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[reqSt(req, live.length)])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
-${at >= 0 ? `${pay}<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${when(i)}</small>` : i < at && when(i) ? `<small>${when(i).slice(3)}</small>` : ''}${i === 2 && i <= at ? ship : ''}</li>`).join('')}</ol><div class="actions">${conv ? `<button class="${pay.includes('data-pay') ? 'secondary' : 'primary'}" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
+${at >= 0 ? `${pay}<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${when(i)}</small>` : i < at && when(i) ? `<small>${when(i).slice(3)}</small>` : ''}${i === 2 && i <= at ? ship : ''}</li>`).join('')}</ol>${review}<div class="actions">${conv ? `<button class="${pay.includes('data-pay') || review.includes('<form') ? 'secondary' : 'primary'}" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
 <div class="section-head" style="margin-top:${at >= 0 ? 32 : 0}px"><h2>견적 ${live.length}개</h2>${live.length > 1 ? `<div class="seg">${[['total', '총액순'], ['date', '빠른 납기순']].map(([v, l]) => `<button class="${quoteSort === v ? 'on' : ''}" data-sort="${v}">${l}</button>`).join('')}</div>` : ''}</div>
-${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong>${tags(x)}<small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
+${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accepted' ? ' picked' : ''}"><header><div><strong>${esc(x.print_shops?.name || '인쇄소')}</strong>${rateLine(reviews.filter(v => v.shop_id === x.shop_id))}${tags(x)}<small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small></div>${x.status !== 'submitted' ? chip(Q_ST[x.status]) : ''}</header>
 <div class="nums"><div><small>총액 (배송비 포함)</small><b>${won(x.total_price + x.shipping_fee)}</b></div><div><small>배송비</small><b>${won(x.shipping_fee)}</b></div><div><small>납품 예상</small><b>${ymd(x.delivery_date)}</b></div></div>
-<p class="price-row">${won(x.unit_price)} × ${Number(x.quantity).toLocaleString()}개 = ${won(x.total_price)} · 제작 ${x.production_days}일</p>${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
+<p class="price-row">${won(x.unit_price)} × ${Number(x.quantity).toLocaleString()}개 = ${won(x.total_price)} · 제작 ${x.production_days}일</p>${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}${(v => v ? `<p class="quote-review">“${esc(v.body)}” <small>${reviewer(v)}</small></p>` : '')(reviews.find(v => v.shop_id === x.shop_id && v.body))}
 ${req.status === 'open' && x.status === 'submitted' ? `<button class="primary full" data-accept="${x.id}" data-shop="${esc(x.print_shops?.name || '')}" data-total="${x.total_price + x.shipping_fee}" data-date="${x.delivery_date}">이 견적 수락</button>` : ''}</article>`).join('')
         : reqSt(req, 0) === 'expired' ? emptyBox('견적 마감 전에 받은 견적이 없어요', '마감일을 넉넉히 잡아 다시 요청해 보세요.') : emptyBox(req.status === 'open' ? '견적을 기다리고 있어요' : '받은 견적이 없어요', req.status === 'open' ? '인쇄소가 견적을 보내면 알림으로 알려드려요.' : '')}
 ${req.status === 'open' ? `<button class="text-button danger-text" data-cancel="${req.id}">요청 취소</button>` : ''}`;
@@ -537,7 +546,7 @@ function dashPage() {
     fresh.forEach(x => { marketItems[x.id] = x });
     const signed = fresh.length ? (await sb.storage.from('request-previews').createSignedUrls(fresh.slice(0, 6).map(x => x.preview_path), 300)).data || [] : [];
     const decided = mine.filter(x => ['accepted', 'declined'].includes(x.status));
-    return { fresh, urls: Object.fromEntries(signed.map(x => [x.path, x.signedUrl])), mine, jobs, convs,
+    return { fresh, urls: Object.fromEntries(signed.map(x => [x.path, x.signedUrl])), mine, jobs, convs, reviews: myShop ? await loadReviews('shop_id', [myShop.id]) : [],
       decided: decided.length, rate: decided.length ? Math.round(decided.filter(x => x.status === 'accepted').length / decided.length * 100) : null };
   });
   const head = `<section class="shop-hero"><span class="avatar">${esc((shop || '?').slice(0, 1))}</span><div><strong>${esc(shop)}</strong><small>${myShop?.verified ? '<b class="ok">승인된 인쇄소</b>' : '<b class="wait">승인 대기 중</b>'}${V.dash?.data?.rate != null ? ` · 수락률 ${V.dash.data.rate}% (${V.dash.data.decided}건 중)` : ' · 새 요청에 견적을 보내 의뢰를 받아요'}</small></div></section>`;
@@ -552,7 +561,8 @@ function dashPage() {
     const todo = [['market', '새 요청', d.fresh.length, d.fresh.length ? `견적 마감이 가장 빠른 요청: ${dday(soonest)}` : '새 요청이 오면 알림으로 알려드려요'],
       ['myquotes', '답을 기다리는 견적', waitList.length, waitList.length ? `가장 오래 기다린 견적: ${daysAgo(oldest)} 보냄` : '보낸 견적에 답이 오면 알려드려요'],
       ['jobs', '진행 중인 의뢰', d.jobs.length, d.jobs.length ? jobHint : '견적이 수락되면 여기에서 제작을 관리해요']];
-    return `<div class="section-head"><h2>지금 할 일</h2></div><div class="todo">${todo.map(([p, l, n, hint]) => `<button data-page="${p}" class="${n ? '' : 'idle'}"><div><strong>${l} <em>${n}건</em></strong><small>${hint}</small></div><span class="chev" aria-hidden="true">›</span></button>`).join('')}</div>
+    const rv = d.reviews || [];
+    return `${rv.length ? `<div class="section-head"><h2>받은 후기</h2>${rateLine(rv)}</div><div class="list">${rv.slice(0, 3).map(x => `<div class="row-card review-row"><div><p class="stars" aria-label="별점 ${x.rating}점">${stars(x.rating)}</p>${x.body ? `<span>${esc(x.body)}</span>` : ''}</div><small>${reviewer(x)}<br>${ymd(x.created_at)}</small></div>`).join('')}</div>` : ''}<div class="section-head"><h2>지금 할 일</h2></div><div class="todo">${todo.map(([p, l, n, hint]) => `<button data-page="${p}" class="${n ? '' : 'idle'}"><div><strong>${l} <em>${n}건</em></strong><small>${hint}</small></div><span class="chev" aria-hidden="true">›</span></button>`).join('')}</div>
 <div class="section-head"><h2>새로 올라온 요청</h2>${d.fresh.length ? '<button class="text-button" data-page="market">전체 보기</button>' : ''}</div>
 ${d.fresh.length ? `<div class="h-scroll">${d.fresh.slice(0, 6).map(x => `<button class="mini-req" data-quote="${x.id}"><div class="thumb">${d.urls[x.preview_path] ? `<img src="${esc(d.urls[x.preview_path])}" alt="" loading="lazy">` : ''}<span class="dday">${dday(x.quote_deadline)}</span></div><strong>${esc(x.title)}</strong><small>${x.item === 'other' ? esc(x.item_other) : ITEM[x.item]} · ${Number(x.quantity).toLocaleString()}개</small><small>${esc(x.region_sido)} ${esc(x.region_sigungu)}</small></button>`).join('')}</div>`
       : `<div class="go-card" style="cursor:default">${icon('search')}<div><strong>지금은 새 요청이 없어요</strong><small>요청이 올라오면 알림으로 알려드려요</small></div></div>`}
@@ -661,6 +671,19 @@ function bindPrint() {
   $('#app').querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });
+  const rf = $('#review-form');
+  if (rf) {
+    // 별을 누를 때 화면을 다시 그리지 않아서 적던 후기가 지워지지 않는다
+    rf.querySelectorAll('[data-star]').forEach(b => b.onclick = () => { rf.dataset.star = b.dataset.star; rf.querySelectorAll('[data-star]').forEach(s => { const on = s.dataset.star <= b.dataset.star; s.classList.toggle('on', on); s.setAttribute('aria-checked', s === b) }) });
+    rf.onsubmit = async e => {
+      e.preventDefault();
+      const err = rf.querySelector('.field-error'), btn = rf.querySelector('[type=submit]');
+      if (!rf.dataset.star) { err.textContent = '별점을 골라주세요.'; err.hidden = false; return }
+      btn.disabled = true;
+      try { await q(sb.rpc('write_review', { p_request: reqId, p_rating: Number(rf.dataset.star), p_body: $('#review-body').value })); toast('후기를 남겼어요. 고마워요.'); reload('request-' + reqId) }
+      catch (e2) { err.textContent = errMsg(e2); err.hidden = false; btn.disabled = false }
+    };
+  }
   $('#app').querySelectorAll('[data-reqtab]').forEach(b => b.onclick = () => { reqTab = b.dataset.reqtab; render() });
   $('#app').querySelectorAll('[data-chat]').forEach(b => b.onclick = () => { convId = b.dataset.chat; page = 'chat'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-accept]').forEach(b => b.onclick = () => modal({
