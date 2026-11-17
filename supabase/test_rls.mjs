@@ -34,6 +34,7 @@ for (const f of ['01_schema.sql', '02_policies.sql', '03_functions.sql', '04_sto
 await db.exec(`create schema net; create table net.sent (url text, body jsonb);
 create function net.http_post(url text, body jsonb, headers jsonb) returns bigint language sql as $$ insert into net.sent values (url, body); select 1::bigint $$;`);
 await db.exec(sql('10_push.sql').replace('create extension if not exists pg_net;', ''));
+await db.exec(sql('12_chat_notify.sql'));
 
 let failed = 0;
 const ok = (cond, label) => { console.log((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) failed++; };
@@ -136,6 +137,9 @@ await fails(B, `insert into messages (conversation_id, sender_id, client_id, bod
   [conv, B], 'T12 같은 client_id 재전송은 중복 저장 안 됨');
 await fails(C, `insert into messages (conversation_id, sender_id, client_id, body) values ($1, $2, gen_random_uuid(), '끼어들기')`, [conv, C], 'T11 제3자 전송 불가');
 ok((await as(C, `select * from messages`)).rows.length === 0, 'T11 제3자 메시지 조회 불가');
+const chatNoti = (await as(B, `select title, ref_id from notifications where type = 'message'`)).rows;
+ok(chatNoti.length === 1 && chatNoti[0].title.endsWith(': 안녕하세요') && chatNoti[0].ref_id === req, '채팅이 오면 상대방에게 메시지 알림');
+ok((await as(A, `select title from notifications where type = 'message'`)).rows.map(r => r.title).join('|') === '비인쇄: 네 확인했어요', '인쇄소가 보내면 업체명으로 알림, 보낸 사람은 알림 안 받음');
 await fails(A, `insert into messages (conversation_id, sender_id, client_id, body) values ($1, $2, gen_random_uuid(), '사칭')`, [conv, B], '다른 사람 이름으로 전송 불가');
 let mc = await as(A, `select * from my_conversations()`);
 ok(mc.rows.length === 1 && Number(mc.rows[0].unread) === 1 && mc.rows[0].other_name === 'printer01', '채팅 목록: 상대 이름, 안 읽은 1개');

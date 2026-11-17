@@ -340,7 +340,7 @@ async function startNotis() {
     notiCount = count || 0;
     if (notiChannel) sb.removeChannel(notiChannel);
     notiChannel = sb.channel('notis-' + uid).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + uid }, p => {
-      notiCount++; toast(p.new.title); if (p.new.type === 'message') refreshChatUnread();
+      notiCount++; if (!(p.new.type === 'message' && page === 'chat')) toast(p.new.title); if (p.new.type === 'message') refreshChatUnread();   // 채팅방 안에서는 메시지마다 팝업 안 띄움
       if (myShop && p.new.type === 'status_changed' && !p.new.ref_id) myShop.verified = true;   // 관리자 승인 알림 (08_launch.sql)
       if (!modalOpen() && ['requests', 'request', 'dash', 'myquotes', 'jobs', 'notis', 'chats'].includes(page)) reload(enteredKey); else paintBell();
     }).subscribe();

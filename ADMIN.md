@@ -32,7 +32,7 @@
 
 최초 1회 설정:
 
-1. SQL Editor에서 [`supabase/10_push.sql`](supabase/10_push.sql)을 실행합니다. `pg_net` 확장을 켜고, 알림이 생길 때 `send-push` 함수를 부르는 트리거를 만듭니다.
+1. SQL Editor에서 [`supabase/10_push.sql`](supabase/10_push.sql)을 실행합니다. `pg_net` 확장을 켜고, 알림이 생길 때 `send-push` 함수를 부르는 트리거를 만듭니다. 이어서 [`supabase/12_chat_notify.sql`](supabase/12_chat_notify.sql)을 실행하면 채팅 메시지도 상대방에게 알림으로 갑니다.
 2. Edge Functions → Deploy a new function → Via Editor에서 이름을 `send-push`로 하고 [`supabase/functions/send-push/index.ts`](supabase/functions/send-push/index.ts) 내용을 `index.ts`에 붙여넣어 배포합니다. DB 트리거가 로그인 없이 부르므로 함수 Settings에서 **Verify JWT** 를 끕니다. 함수는 알림 id만 받고 서버에서 알림을 다시 읽어 한 번만 보내므로, 누가 직접 불러도 가짜 알림을 보낼 수 없습니다.
 3. Edge Functions → Secrets에 `.env.push` 파일의 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` 두 줄을 저장합니다. `.env.push`는 저장소에 올라가지 않으며, 공개 키는 `config.js`에도 들어 있습니다.
 
