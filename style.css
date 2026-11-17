@@ -124,7 +124,7 @@ input[type=password]:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(1
 .slogan-input{display:block;width:100%;margin:0 0 14px;border:1px solid var(--line);border-radius:var(--radius-element);background:var(--color-background-body);padding:12px 14px;font-size:17px;font-weight:700;color:var(--ink)}
 .range-end{font-size:13px;color:var(--muted);white-space:nowrap}.font-preview{height:110px;margin-top:12px;overflow:hidden;display:flex;justify-content:center;border:1px solid var(--line);border-radius:var(--radius-element);background:var(--color-background-body)}.font-preview img{display:block;width:min(100%,360px);height:auto;align-self:flex-start;transform:translateY(-60%)}
 .mini-label{font-size:12px;color:var(--color-text-gray);margin:0 0 6px}
-.rec-colors{display:flex;gap:10px;margin-bottom:14px}.rec-colors button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(0,0,0,.12);box-shadow:inset 0 0 0 1px #fff8;padding:0}.rec-colors button.selected{outline:2px solid var(--ink);outline-offset:3px}
+.rec-colors{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}.rec-colors button{flex:0 0 40px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(0,0,0,.12);box-shadow:inset 0 0 0 1px #fff8;padding:0}.rec-colors button.selected{outline:2px solid var(--ink);outline-offset:3px}
 .analysis .tags{display:flex;flex-wrap:wrap;gap:6px}.analysis .tags span{font-size:13px;background:var(--color-background-body);border-radius:var(--radius-inner);padding:4px 10px;color:#5f5650}
 .analysis-actions{display:flex;gap:16px;margin-top:12px}.analysis-loading{font-size:13px;color:var(--ai);margin:0 0 10px}
 .sec-title{font-size:16px;margin:0 0 10px}
@@ -355,7 +355,7 @@ form .help:last-of-type{margin-bottom:0}
 .brand-color-picker input[type=color]::-moz-color-swatch{border:1px solid #0002;border-radius:4px}
 .brand-color-code{flex:1 1 90px;max-width:132px}
 .brand-color-code label{display:block;margin:0 0 4px;font-size:12px}
-.brand-color-picker input[type=text]{width:100%;height:40px;padding:0 8px;font-family:monospace;font-size:16px}
+.brand-color-picker input[type=text]{width:100%;height:40px;padding:0 8px}
 .brand-color-picker input[aria-invalid=true]{border-color:var(--color-text-red, #a63c31)}
 .brand-color-picker .field-error{flex-basis:100%;margin:0}
 .color-options{flex-wrap:wrap}

@@ -36,12 +36,24 @@ function brandTheme(st=state){
   return {...base,ink:colors[0],accent:index<2?colors[index]:colors[1],bg:index>1?colors[index]:colors[3]};
 }
 const isPresetSelected=index=>!isHexColor(state.customColor)&&state.recommendedColor===null&&state.theme===index;
+const extraRecommendedColors=[
+  {name:'차분한 블루그레이',color:'#a5b7c7'},
+  {name:'부드러운 세이지',color:'#b3c1ab'},
+  {name:'은은한 라벤더 그레이',color:'#c6bdce'},
+  {name:'따뜻한 오트 베이지',color:'#dbccb5'}
+];
 function recommendedSwatches(){
   const colors=state.brand?.colors;
-  if(!Array.isArray(colors)||colors.length!==4||!colors.every(isHexColor))return '';
-  return `<div class="rec-colors" role="group" aria-label="추천 컬러">${colors.map((color,index)=>{
-    const selected=!isHexColor(state.customColor)&&state.recommendedColor===index;
-    return `<button type="button" data-rec-color="${index}" class="${selected?'selected':''}" style="background:${esc(color)}" aria-label="추천 색상 ${index+1} ${esc(color)} 적용" aria-pressed="${selected}" title="${esc(color)}"></button>`;
+  const suggestions=Array.isArray(colors)&&colors.length===4&&colors.every(isHexColor)?colors:[];
+  const swatches=suggestions.map((color,index)=>({name:'추천 색상 '+(index+1),color,index}));
+  swatches.push(...extraRecommendedColors.filter(({color})=>
+    !suggestions.some(suggestion=>suggestion.toLowerCase()===color)
+  ));
+  return `<div class="rec-colors" role="group" aria-label="추천 컬러">${swatches.map(({name,color,index})=>{
+    const extra=index===undefined;
+    const selected=extra?state.customColor===color:!isHexColor(state.customColor)&&state.recommendedColor===index;
+    const data=extra?`data-rec-hex="${color}"`:`data-rec-color="${index}"`;
+    return `<button type="button" ${data} class="${selected?'selected':''}" style="background:${esc(color)}" aria-label="${esc(name)} ${esc(color)} 적용" aria-pressed="${selected}" title="${esc(name)} ${esc(color)}"></button>`;
   }).join('')}</div>`;
 }
 function customColorPicker(){
@@ -61,15 +73,22 @@ function bindCustomColor(){
   function setColor(color){
     state.customColor=color.toLowerCase();
     state.recommendedColor=null;
-    $('#app').querySelectorAll('button[data-theme],button[data-rec-color]').forEach(button=>{
-      button.classList.remove('selected');
-      button.setAttribute('aria-pressed','false');
+    $('#app').querySelectorAll('button[data-theme],button[data-rec-color],button[data-rec-hex]').forEach(button=>{
+      const selected=button.dataset.recHex===state.customColor;
+      button.classList.toggle('selected',selected);
+      button.setAttribute('aria-pressed',String(selected));
     });
     code.removeAttribute('aria-invalid');
     error.hidden=true;
     saveDraft();
     refreshSticker();
   }
+  $('#app').querySelectorAll('button[data-rec-hex]').forEach(button=>button.onclick=()=>{
+    const color=button.dataset.recHex;
+    picker.value=color;
+    code.value=color.toUpperCase();
+    setColor(color);
+  });
   picker.oninput=picker.onchange=()=>{
     code.value=picker.value.toUpperCase();
     setColor(picker.value);
