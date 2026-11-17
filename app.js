@@ -54,7 +54,7 @@ function setSlogan(value){if(!state.brand)return;const previous=state.brand.slog
 const fontSizeLabel=n=>n<50?'작게':n<66?'보통':'크게';
 function ensureBrand(){const key=brandKey();if(state.brand?.key===key)return;applyBrand({...mockBrand(),src:'mock',key});analyzeAI()}
 async function analyzeAI(){if(brandLoading||!aiReady)return;brandLoading=true;const key=brandKey();if(page==='studio'&&step===2)render();
- try{const h=await (await fetch('/api/status')).json();const r=await fetch('/api/brand',{method:'POST',headers:{'Content-Type':'application/json','X-Gageon-Token':h.token,...(await authHeader())},body:JSON.stringify(buildBrandRequest())});const d=await r.json();if(!r.ok)throw Error(d.error);if(brandKey()===key)applyBrand({slogan:d.slogan,colors:d.colors,keywords:d.keywords,src:'ai',key})}
+ try{const d=await aiCall('brand',buildBrandRequest());if(brandKey()===key)applyBrand({slogan:d.slogan,colors:d.colors,keywords:d.keywords,src:'ai',key})}
  catch{toast('AI 분석을 받지 못해서 예시 분석을 보여드려요.')}finally{brandLoading=false;if(page==='studio'&&step===2)render()}}
 function analysisCard(){const b=state.brand;if(!b)return '';return `<div class="analysis"><div class="analysis-head"><strong>브랜드 분석 결과</strong><span class="ai-badge">${icon('spark')}${b.src==='ai'?'AI':'예시'}</span></div>${brandLoading?'<p class="analysis-loading" role="status">AI가 가게 정보를 분석하고 있어요…</p>':''}<label class="mini-label" for="brand-slogan">슬로건 · 직접 바꿀 수 있어요</label><input class="slogan-input" id="brand-slogan" type="text" maxlength="60" value="${esc(b.slogan)}"><p class="mini-label">추천 컬러 · 눌러서 적용해요</p>${recommendedSwatches()}<p class="mini-label">브랜드 키워드</p><div class="tags">${b.keywords.map(k=>`<span>#${esc(k)}</span>`).join('')}</div><div class="analysis-actions"><button type="button" class="text-button" id="use-slogan">스티커 문구로 쓰기</button>${aiReady?'<button type="button" class="text-button" id="reanalyze">다시 분석</button>':''}</div></div>`}
 function stickerSVG(s=state,mode='sticker'){
@@ -223,14 +223,8 @@ async function generateAI(){
  status.textContent='서버 연결을 확인하고 있어요…';
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),200000);
  try{
-  const healthResponse=await fetch('/api/status',{signal:controller.signal});
-  if(!healthResponse.ok)throw Error('Python 서버 주소에서 화면을 열어주세요.');
-  const health=await healthResponse.json();
-  if(!health.ready)throw Error('서버를 다시 실행하고 API 키를 입력해주세요.');
   status.textContent='캐릭터를 만들고 있어요. 잠시 기다려주세요. 완료 전 창을 닫지 마세요.';
-  const payload={...buildBrandRequest(),request_id:crypto.randomUUID()};
-  const response=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','X-Gageon-Token':health.token,...(await authHeader())},body:JSON.stringify(payload),signal:controller.signal});
-  const data=await response.json();if(!response.ok)throw Error(data.error||'생성에 실패했어요.');
+  const data=await aiCall('image',buildBrandRequest(),controller.signal);
   if(typeof data.image!=='string'||!data.image.startsWith('data:image/png;base64,'))throw Error('올바른 이미지를 받지 못했어요.');
   state.customImage=data.image;state.generated=true;state.id=null;render();toast('AI 캐릭터를 적용했어요.');
  }catch(error){status.textContent=error.name==='AbortError'?'응답 대기 시간이 초과됐어요. 서버에서 생성이 계속될 수 있으니 과금 내역을 확인한 뒤 다시 시도해주세요.':error.message||'서버 연결을 확인해주세요.';status.insertAdjacentHTML('beforeend',' <button type="button" class="text-button" id="retry-ai">다시 시도</button>');setTimeout(()=>{if($('#retry-ai'))$('#retry-ai').onclick=generateAI})}
@@ -251,7 +245,14 @@ async function mockGenerate(){
   state.customImage=svgUri(assets[type]);state.generated=true;state.id=null;try{localStorage.setItem(USAGE_KEY,String(used()+1))}catch{}}
  finally{generating=false;controls.forEach((c,i)=>c.disabled=previous[i])}
  render();toast('캐릭터를 적용했어요. (목업)')}
-async function checkAI(){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),3000);const r=await fetch('/api/status',{signal:c.signal});clearTimeout(t);const d=r.ok?await r.json():null;aiReady=!!(d&&d.ready)}catch{aiReady=false}if(aiReady&&page==='studio'&&step===2)render()}
+// 노트북 서버(python server.py)로 열었으면 /api로, 휴대폰이나 Vercel이면 Supabase 함수 ai(supabase/functions/ai)로 보낸다
+let localAI=false;
+async function checkAI(){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),3000);const r=await fetch('/api/status',{signal:c.signal});clearTimeout(t);const d=r.ok?await r.json():null;localAI=!!(d&&d.ready)}catch{localAI=false}aiReady=localAI||!!(REAL&&CFG.aiFunction);if(aiReady&&page==='studio'&&step===2)render()}
+async function aiCall(kind,brief,signal){
+ if(!localAI){const{data,error}=await sb.functions.invoke('ai',{body:{kind,brief}});if(error){let m='';try{m=(await error.context.json()).error}catch{}throw Error(m||'AI 요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.')}return data}
+ const health=await (await fetch('/api/status',{signal})).json();if(!health.ready)throw Error('서버를 다시 실행하고 API 키를 입력해주세요.');
+ const r=await fetch(kind==='image'?'/api/generate':'/api/brand',{method:'POST',headers:{'Content-Type':'application/json','X-Gageon-Token':health.token,...(await authHeader())},body:JSON.stringify(kind==='image'?{...brief,request_id:crypto.randomUUID()}:brief),signal});
+ const d=await r.json();if(!r.ok)throw Error(d.error||'생성에 실패했어요.');return d}
 // 소상공인시장진흥공단 상가(상권)정보로 만든 경산시 가게 목록 (scripts/build_stores.py)
 async function loadStores(){try{const r=await fetch('data/gyeongsan-stores.json');if(!r.ok)return;stores=await r.json();catCount=stores.cats.map(()=>0);stores.rows.forEach(x=>catCount[x[1]]++);if($('#dong'))$('#dong').innerHTML=dongOptions();if(page==='studio'&&step===2)render()}catch{}}
 function dongOptions(){return `<option value="">선택 안 함</option>${stores?[...stores.dongs].sort((a,b)=>a.localeCompare(b,'ko')).map(d=>`<option ${state.dong===d?'selected':''}>${esc(d)}</option>`).join(''):''}`}

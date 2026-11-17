@@ -6,5 +6,7 @@ window.GAGEON_CONFIG = {
   supabaseUrl: 'https://fthcyxhmgqqxtltyombf.supabase.co',
   supabaseKey: 'sb_publishable_OSadgrkSIjhtYZx_jfQR3w_H_2EVbFT',
   // 웹 푸시 공개 키 (짝이 되는 비공개 키는 Supabase Secrets에만 있음)
-  vapidPublicKey: 'BEkKgC9BmjMW81hsxrBjScz3DLuFzhynFqU8rJ0OL5_unZsiv8LzV6d6HyrKMEG6J6VUKWKn6KV8Y9X5VnUU-Hs'
+  vapidPublicKey: 'BEkKgC9BmjMW81hsxrBjScz3DLuFzhynFqU8rJ0OL5_unZsiv8LzV6d6HyrKMEG6J6VUKWKn6KV8Y9X5VnUU-Hs',
+  // true면 휴대폰, Vercel에서도 Supabase 함수 ai(supabase/functions/ai)로 실제 AI 생성. 함수 배포 전에는 false로 둔다
+  aiFunction: true
 };
