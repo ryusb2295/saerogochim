@@ -323,3 +323,39 @@ form .help:last-of-type{margin-bottom:0}
 /* 예시 캐릭터 표시 (app.js exampleChar) */
 .preview-stage{position:relative}
 .example-tag{position:absolute;top:12px;left:12px;padding:4px 10px;border-radius:99px;background:#fff;color:var(--color-text-gray);font-size:12px;font-weight:600;box-shadow:0 1px 3px rgba(54,49,45,.15)}
+
+/* 추천색 옆에서 네이티브 색상표와 정확한 HEX 값으로 직접 선택한다. */
+.brand-color-picker{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  gap:8px 10px;
+  margin:0 0 14px;
+}
+.brand-color-visual{
+  display:inline-flex;
+  align-items:center;
+  flex-shrink:0;
+  gap:7px;
+  min-height:40px;
+  font-size:13px;
+  cursor:pointer;
+}
+.brand-color-picker input[type=color]{
+  width:40px;
+  height:40px;
+  padding:3px;
+  border:1px solid var(--line, #d8dadb);
+  border-radius:8px;
+  background:#fff;
+  cursor:pointer;
+}
+.brand-color-picker input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.brand-color-picker input[type=color]::-webkit-color-swatch{border:1px solid #0002;border-radius:4px}
+.brand-color-picker input[type=color]::-moz-color-swatch{border:1px solid #0002;border-radius:4px}
+.brand-color-code{flex:1 1 90px;max-width:132px}
+.brand-color-code label{display:block;margin:0 0 4px;font-size:12px}
+.brand-color-picker input[type=text]{width:100%;height:40px;padding:0 8px;font-family:monospace;font-size:16px}
+.brand-color-picker input[aria-invalid=true]{border-color:var(--color-text-red, #a63c31)}
+.brand-color-picker .field-error{flex-basis:100%;margin:0}
+.color-options{flex-wrap:wrap}
