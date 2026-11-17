@@ -60,6 +60,7 @@ AI는 부를 때마다 돈이 나감. 그래서 실제 생성은 노트북에서
 - 휴대폰 홈 화면에 앱처럼 설치 가능(PWA). 인터넷 끊기면 안내 띠 뜸.
 - 폰 푸시 알림: 앱 닫아 둬도 새 견적, 채팅, 진행 상황, 결제, 후기가 배너로 옴. 마이 → 폰 알림 받기로 켬. 아이폰은 홈 화면에 설치한 앱에서만 됨(iOS 16.4 이상).
 - 삭제 같은 되돌릴 수 없는 버튼은 확인 창 한 번 거침.
+- AI 캐릭터는 시디과가 직접 그린 그림체 4개(`assets/styles`)를 참고 이미지로 같이 보내서 그림체를 맞춤. 분위기에 따라 화풍이 정해짐(귀엽고 친근한 → 오리, 고급스럽고 차분한 → 파스텔, 재미있고 개성 있는 → 상품 캐릭터). 쥐 선화 화풍은 테스트용.
 - OpenAI, Gemini 그림을 이름 가리고 비교하는 스크립트 있음(`scripts/compare_images.py`).
 - main에 올리면 팀 디스코드로 알림 감.
 
@@ -199,6 +200,14 @@ python server.py
 ```powershell
 python -m unittest -v test_server.py
 ```
+
+화풍별로 그림 뽑아서 비교하기 (가게 3곳 × 화풍 4개 = 12장, 요금 나감):
+
+```powershell
+python scripts/style_test.py
+```
+
+결과는 `compare/styles-시각/index.html`에 나옴. 화풍을 바꾸려면 `server.py`의 `STYLES`, `MOOD_STYLE` 수정.
 
 ## 쓴 기술
 

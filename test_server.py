@@ -113,4 +113,15 @@ class ServerTests(unittest.TestCase):
         with patch.object(server.urllib.request,'urlopen',return_value=resp), patch.object(server,'generate',return_value={'image':'data:image/png;base64,x'}):
             self.assertEqual(self.request(dict(BRIEF,request_id='test-12345'),Authorization='Bearer token')[0],200)
 
+    def test_generate_sends_style_references(self):
+        png=server.base64.b64encode(b'\x89PNG\r\n\x1a\nxx').decode()
+        resp=Mock();resp.read.return_value=json.dumps({'data':[{'b64_json':png}]}).encode();resp.__enter__=Mock(return_value=resp);resp.__exit__=Mock(return_value=False)
+        with patch.object(server.urllib.request,'urlopen',return_value=resp) as op:
+            out=server.generate(dict(BRIEF,mood='재미있고 개성 있는'))
+        req=op.call_args[0][0]
+        self.assertEqual((out['style'],req.full_url),('object','https://api.openai.com/v1/images/edits'))
+        self.assertEqual(req.data.count(b'name="image[]"'),2)
+        self.assertIn(b'filename="object_1.png"',req.data)
+        self.assertIn(b'Do NOT copy the reference characters',req.data)
+
 if __name__=='__main__':unittest.main()
