@@ -1,6 +1,6 @@
 // 가게온 실제 서비스 연결: Supabase 로그인, 제작 요청, 견적, 수락, 알림.
 // config.js에 Supabase 값이 있고 supabase-js가 불러와졌으면 실제 모드, 아니면(또는 ?mock=1) 기존 브라우저 목업 모드.
-// index.html의 전역(state, page, render, toast, esc, icon, $ 등)을 함께 쓴다. 설계: docs/PRINT_PLATFORM.md
+// app.js의 전역(state, page, render, toast, esc, icon, $ 등)을 함께 쓴다. 설계: docs/PRINT_PLATFORM.md
 const CFG = window.GAGEON_CONFIG || {};
 const REAL = !!(CFG.supabaseUrl && CFG.supabaseKey && window.supabase && !/[?&]mock=1/.test(location.search));
 const sb = REAL ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
