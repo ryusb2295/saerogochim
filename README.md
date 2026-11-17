@@ -142,7 +142,10 @@ sequenceDiagram
 **폴더 구조**
 
 ```text
-index.html        화면 전체 (캐릭터 만들기, 마이페이지 등)
+index.html        껍데기 (파일 불러오기만 함)
+app.js            화면 로직 (캐릭터 만들기, 마이페이지 등)
+style.css         화면 스타일
+assets.js         예시 캐릭터 그림 (SVG)
 print.js          인쇄 요청, 견적, 결제, 진행 상황, 관리자
 chat.js           1:1 채팅
 config.js         Supabase 주소 (공개해도 되는 값만)
