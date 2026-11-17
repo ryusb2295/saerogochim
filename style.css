@@ -320,3 +320,6 @@ form .help:last-of-type{margin-bottom:0}
 .char-wait.big svg{width:48px;height:48px}
 .char-wait small{color:var(--color-text-gray);font-size:13px}
 @media(max-width:400px){.char-wait{height:78px}}
+/* 예시 캐릭터 표시 (app.js exampleChar) */
+.preview-stage{position:relative}
+.example-tag{position:absolute;top:12px;left:12px;padding:4px 10px;border-radius:99px;background:#fff;color:var(--color-text-gray);font-size:12px;font-weight:600;box-shadow:0 1px 3px rgba(54,49,45,.15)}
