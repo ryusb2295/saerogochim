@@ -2,6 +2,7 @@
 
 사용법 (저장소 폴더에서):
     python scripts/style_test.py                  # 예시 가게 3곳 x 화풍 4개 x 1장 = 12장
+    python scripts/style_test.py --shops 1        # 가게 1곳 x 화풍 4개 = 4장
     python scripts/style_test.py briefs.json -n 2 --styles duck,object
 
 키는 OPENAI_API_KEY 환경변수나 실행 중 입력으로 받고 파일에 저장하지 않는다.
@@ -42,9 +43,11 @@ def main():
     parser.add_argument('briefs', nargs='?', help='가게 정보 JSON 파일 (없으면 예시 3곳)')
     parser.add_argument('-n', type=int, default=1, help='칸마다 뽑을 장수 (기본 1)')
     parser.add_argument('--styles', default=','.join(server.STYLES), help='쉼표로 구분 (기본: 전부)')
+    parser.add_argument('--shops', type=int, default=0, help='앞에서부터 이 수만큼 가게만 씀 (기본: 전부)')
     args = parser.parse_args()
     styles = [s for s in args.styles.split(',') if s in server.STYLES]
     briefs = [server.validate(b) for b in (json.loads(Path(args.briefs).read_text(encoding='utf-8')) if args.briefs else SAMPLE_BRIEFS)]
+    briefs = briefs[:args.shops] if args.shops > 0 else briefs
     if not styles:
         sys.exit(f'화풍 이름을 확인해주세요: {", ".join(server.STYLES)}')
 
