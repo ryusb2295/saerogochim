@@ -58,8 +58,6 @@ AI는 부를 때마다 돈이 나감. 그래서 실제 생성은 노트북에서
 
 ## 할 것 (우선순위 순)
 
-시연 코앞이라 시연에 영향 있는 것부터.
-
 **1. AI 생성 실제로 돌려 보기 (제일 급함)**
 
 - 코드는 다 있는데 진짜 유료 API로 돌려 본 적 없음.
@@ -187,3 +185,7 @@ python -m unittest -v test_server.py
 - [SERVER.md](SERVER.md): AI 서버 켜는 법, 한계
 - [ADMIN.md](ADMIN.md): 관리자 계정, 인쇄소 승인, 국세청 확인, 푸시 알림 설정
 - [PROTOTYPE.md](PROTOTYPE.md): 프로토타입 범위
+- [docs/PRD.md](docs/PRD.md): 제품 요구사항 정의서 (화면 명세, AI 생성 흐름, 데이터 모델)
+- [docs/PRINT_PLATFORM.md](docs/PRINT_PLATFORM.md): 인쇄 매칭 기능 설계서
+
+`docs/`는 11월 13일에 쓴 초기 설계 문서라 지금 코드와 다를 수 있음.
