@@ -4,12 +4,12 @@
   "meta": {
     "title": "가게온 서비스 구조도",
     "locale": "ko",
-    "output": ".archify/architecture-gageon-system-20261117-112150/gageon-architecture.html",
+    "output": ".archify/architecture-gageon-system-20261117-174422/gageon-architecture.html",
     "quality_profile": "showcase",
     "repository": {
       "url": "https://github.com/ryusb2295/saerogochim.git",
       "provider": "github",
-      "revision": "ae175a4da79d93fb1b534ee51048f26cd1e9fefc"
+      "revision": "822b2b54929c4cfe5054cd1d2a75b7733dd0c1a7"
     }
   },
   "components": [
@@ -73,11 +73,11 @@
       "sources": [
         {
           "path": "index.html",
-          "line": 227
+          "line": 2
         },
         {
-          "path": "index.html",
-          "line": 499
+          "path": "app.js",
+          "line": 1
         },
         {
           "path": "print.js",
@@ -161,8 +161,8 @@
           "end_line": 13
         },
         {
-          "path": "supabase/11_reviews.sql",
-          "line": 5
+          "path": "supabase/10_push.sql",
+          "line": 39
         }
       ]
     },
@@ -275,8 +275,8 @@
     {
       "id": "edge",
       "type": "backend",
-      "label": "Edge Function",
-      "sublabel": "verify-biz · 사업자 확인",
+      "label": "Edge Functions",
+      "sublabel": "verify-biz · send-push",
       "pos": [
         780,
         85
@@ -293,6 +293,10 @@
         {
           "path": "supabase/functions/verify-biz/index.ts",
           "line": 34
+        },
+        {
+          "path": "supabase/functions/send-push/index.ts",
+          "line": 32
         }
       ]
     },
@@ -353,6 +357,26 @@
         {
           "path": "print.js",
           "line": 118
+        }
+      ]
+    },
+    {
+      "id": "webpush",
+      "type": "external",
+      "label": "Apple · Google 푸시 서버",
+      "sublabel": "폰에 배너 알림 전달",
+      "pos": [
+        1030,
+        475
+      ],
+      "size": [
+        170,
+        68
+      ],
+      "sources": [
+        {
+          "path": "supabase/functions/send-push/index.ts",
+          "line": 32
         }
       ]
     }
@@ -443,6 +467,16 @@
       "from": "browser",
       "to": "kakao",
       "label": "주소 검색"
+    },
+    {
+      "from": "db",
+      "to": "edge",
+      "label": "알림 생기면 send-push 호출"
+    },
+    {
+      "from": "edge",
+      "to": "webpush",
+      "label": "웹 푸시 전송"
     }
   ],
   "cards": [
@@ -467,7 +501,15 @@
       "title": "AI 실행 범위",
       "items": [
         "Python 서버는 127.0.0.1 개발용이며 Vercel에 배포되지 않았습니다.",
-        "토스 결제는 테스트 모드이고 웹 푸시는 아직 배포 전입니다."
+        "토스 결제는 테스트 모드입니다."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "폰 알림",
+      "items": [
+        "알림이 생기면 DB가 send-push를 불러 등록된 폰으로 배너를 보냅니다.",
+        "채팅, 견적, 진행 상황, 결제, 후기가 알림 대상입니다."
       ]
     }
   ]
