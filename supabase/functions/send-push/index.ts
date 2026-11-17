@@ -37,7 +37,8 @@ Deno.serve(async req => {
       }
     }
     return json({ sent });
-  } catch {
+  } catch (e) {
+    console.error('send-push failed:', e);   // Edge Functions > send-push > Logs 에서 원인 확인
     return json({ error: 'push_failed' }, 500);
   }
 });
