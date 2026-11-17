@@ -33,6 +33,7 @@ STATIC = {'/manifest.json': 'application/manifest+json', '/sw.js': 'text/javascr
           '/chat.js': 'text/javascript; charset=utf-8', '/app.js': 'text/javascript; charset=utf-8',
           '/assets.js': 'text/javascript; charset=utf-8', '/style.css': 'text/css; charset=utf-8',
           '/vendor/astryx-theme-neutral.css': 'text/css; charset=utf-8'}
+STATIC.update({f'/assets/styles/{p.name}': 'image/png' for p in (ROOT / 'assets' / 'styles').glob('*.png')})   # 그림체 고르기 카드
 # Supabase 로그인 사용자만 AI를 쓰게 하고 하루 횟수를 센다. 비어 있으면(테스트, 오프라인 목업) 예전처럼 동작
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
 SUPABASE_KEY = os.environ.get('SUPABASE_PUBLISHABLE_KEY', '')
@@ -95,6 +96,11 @@ def validate(data):
         result[key] = value.strip()
     if not result['name'] or not result['industry']:
         raise ValueError('가게 이름과 업종을 입력해주세요.')
+    style = data.get('style') or ''   # 사장님이 고른 화풍. 비우면 분위기로 정함 (style_of)
+    if style and style not in STYLES:
+        raise ValueError('화풍을 다시 골라주세요.')
+    if style:
+        result['style'] = style
     return result
 
 
@@ -108,6 +114,15 @@ STYLES = {
                ['pastel_1.png', 'pastel_2.png']),
     'line': ('black and white line art only, thin expressive ink lines, long exaggerated proportions, '
              'comic gag expressions, no color fill', ['line_1.png', 'line_2.png']),
+    # 두 번째 시디과 학생 그림
+    'flat': ('flat vector illustration with almost no outlines, solid color shapes, bold blue and skin tones, '
+             'oversized simple hands, clean app-illustration look', ['flat_1.png', 'flat_2.png']),
+    'crayon': ('soft crayon and paper-grain texture, warm orange and pink gradients, gentle colored-pencil lines, '
+               'rosy cheeks, cozy hand-drawn feel', ['crayon_1.png', 'crayon_2.png']),
+    'doodle': ('loose thin hand-drawn doodle lines, simple pale fill colors, droopy wrinkled comic face, '
+               'deadpan gag expressions', ['doodle_1.png', 'doodle_2.png']),
+    'airbrush': ('bold black outline with soft airbrushed gray shading, bright pink accents, '
+                 'exaggerated comic expressions', ['airbrush_1.png', 'airbrush_2.png']),
 }
 # shortcut: 분위기 3개에 화풍을 임시로 연결. 시디과가 scripts/style_test.py 결과를 보고 바꾸면 된다
 MOOD_STYLE = {'귀엽고 친근한': 'duck', '고급스럽고 차분한': 'pastel', '재미있고 개성 있는': 'object'}

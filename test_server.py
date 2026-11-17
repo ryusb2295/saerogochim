@@ -131,4 +131,10 @@ class ServerTests(unittest.TestCase):
         self.assertIn(b'filename="object_1.png"',req.data)
         self.assertIn(b'Do NOT copy the reference characters',req.data)
 
+    def test_chosen_style_used_and_checked(self):
+        self.assertEqual(server.style_of(server.validate(dict(BRIEF,style='crayon'))),'crayon')
+        self.assertNotIn('style',server.validate(dict(BRIEF,style='')))
+        with self.assertRaises(ValueError):server.validate(dict(BRIEF,style='../etc'))
+        self.assertIn('/assets/styles/airbrush_2.png',server.STATIC)
+
 if __name__=='__main__':unittest.main()

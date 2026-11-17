@@ -359,3 +359,10 @@ form .help:last-of-type{margin-bottom:0}
 .brand-color-picker input[aria-invalid=true]{border-color:var(--color-text-red, #a63c31)}
 .brand-color-picker .field-error{flex-basis:100%;margin:0}
 .color-options{flex-wrap:wrap}
+/* 그림체 고르기 (질문 마지막, AI 켜진 계정만) */
+.style-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.style-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border:2px solid var(--line);border-radius:var(--radius-element);background:#fff;font-size:13px;font-weight:600;color:var(--color-text-primary,#36312d);cursor:pointer}
+.style-card img,.style-card .style-auto{width:100%;aspect-ratio:1;object-fit:contain;border-radius:8px;background:#f6f3ee}
+.style-card .style-auto{display:grid;place-items:center;color:var(--ai)}
+.style-card .style-auto svg{width:34px;height:34px}
+.style-card.selected{border-color:var(--ai);box-shadow:0 0 0 3px #f6ddd3}
