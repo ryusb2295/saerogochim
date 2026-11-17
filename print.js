@@ -136,7 +136,7 @@ async function loadMe() {
   const p = await q(sb.from('profiles').select('role,display_name').eq('id', u.id).single());
   uid = u.id; myRole = p.role; user = u.user_metadata?.username || ''; shop = p.display_name;
   if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified,region_sido,region_sigungu').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
-  if (myRole !== 'admin') startNotis();
+  if (myRole !== 'admin') { startNotis(); checkPush() }
   if (myRole === 'owner') await cloudBrand.load();
   return true;
 }
@@ -156,7 +156,7 @@ const cloudBrand = {
 };
 window.cloudBrand = cloudBrand;
 async function restoreSession() {
-  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; await payReturn(); return } } catch {}
+  try { const { data } = await sb.auth.getSession(); if (data.session && await loadMe()) { page = myRole === 'admin' ? 'admin' : myRole === 'printer' ? 'dash' : 'home'; if (myRole === 'owner') state.name = shop; const go = new URLSearchParams(location.search).get('go'); if (PUSH_PAGES.includes(go)) { page = go; history.replaceState(null, '', location.pathname) } await payReturn(); return } } catch {}
   page = 'start';
 }
 function realAuthForm() {
@@ -216,7 +216,7 @@ function bindReal() {
     const m = rules.id(v); if (m) return setErr('su-id', m);
     try { setErr('su-id', await q(sb.rpc('username_available', { p_username: v })) ? '' : '이미 쓰고 있는 아이디예요.') } catch {}
   };
-  if ($('#logout')) $('#logout').onclick = async () => { stopChannels(); try { await sb.auth.signOut() } catch {} for (const k in V) delete V[k]; enteredKey = ''; uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
+  if ($('#logout')) $('#logout').onclick = async () => { await disablePush(true); stopChannels(); try { await sb.auth.signOut() } catch {} for (const k in V) delete V[k]; enteredKey = ''; uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
   if ($('#admin-logout')) $('#admin-logout').onclick = () => $('#logout').click();
   $('#app').querySelectorAll('[data-biz-check]').forEach(b => b.onclick = async () => {
     b.disabled = true; b.textContent = '확인 중…';
@@ -276,7 +276,7 @@ function realMypage() {
   return `<section class="shop-hero">${avatar(shop)}<div><strong>${esc(shop)}</strong><small>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''} · ${esc(user)}</small></div></section>
 <div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form>${myRole === 'printer' && myShop ? `<button id="shop-addr">업체 주소<small>${myShop.address_detail ? esc(myShop.address_detail) : myShop.region_sigungu ? esc(`${myShop.region_sido || ''} ${myShop.region_sigungu}`.trim()) + ' · 다시 찾기 ›' : '주소 검색 ›'}</small></button>` : ''}</div>
 <div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}${myRole === 'owner' ? `<div>AI 캐릭터 생성<small>${Math.max(0, MOCK_LIMIT - used())} / ${MOCK_LIMIT}회 남음</small></div>` : ''}<button data-page="guide">이용 가이드<small>›</small></button></div>
-${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
+${pushRow()}${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
 }
 
@@ -296,6 +296,42 @@ function adminPage() {
   };
   return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 확인하고, 인쇄소를 승인하거나 탈퇴 처리해요. 승인된 인쇄소만 견적을 보낼 수 있어요.</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
 }
+
+// ---------- 웹 푸시 (앱을 닫아 둬도 폰 알림) ----------
+// 서버 쪽: supabase/10_push.sql, supabase/functions/send-push
+const PUSH_PAGES = ['notis', 'chats'];
+let pushOn = false;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && !!CFG.vapidPublicKey;
+const iosBrowser = () => /iPhone|iPad|iPod/.test(navigator.userAgent) && !matchMedia('(display-mode: standalone)').matches;
+const b64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)), ch => ch.charCodeAt(0));
+async function pushSub() { try { return await (await navigator.serviceWorker.ready).pushManager.getSubscription() } catch { return null } }
+// 이 기기 구독이 지금 계정 것으로 등록돼 있는지 (다른 계정이 쓰던 기기면 꺼진 것으로 본다)
+async function checkPush() {
+  if (!pushSupported()) return;
+  const s = await pushSub();
+  try { pushOn = !!s && Notification.permission === 'granted' && (await q(sb.from('push_subscriptions').select('id').eq('endpoint', s.endpoint))).length > 0 } catch { pushOn = false }
+  if (page === 'mypage') render();
+}
+function pushRow() {
+  const why = !pushSupported() ? '이 브라우저는 지원하지 않아요' : iosBrowser() ? '아이폰은 홈 화면에 추가한 앱에서 켤 수 있어요' : Notification.permission === 'denied' ? '브라우저 설정에서 알림이 차단돼 있어요' : '';
+  return `<div class="my-list"><button id="push-toggle"${why ? ' disabled' : ''} aria-pressed="${pushOn}">폰 알림 받기<small>${why || (pushOn ? '켜짐 ›' : '꺼짐 ›')}</small></button></div><p class="help" style="margin-top:-6px">앱을 닫아 둬도 새 견적, 채팅, 진행 상황을 폰 알림으로 알려드려요.</p>`;
+}
+async function enablePush() {
+  if (await Notification.requestPermission() !== 'granted') return toast('알림을 허용해야 받을 수 있어요.');
+  const reg = await navigator.serviceWorker.ready;
+  const s = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(CFG.vapidPublicKey) });
+  const j = s.toJSON();
+  await q(sb.rpc('register_push', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth }));
+  pushOn = true; toast('폰 알림을 켰어요.');
+}
+// 로그아웃할 때도 부른다: 이 기기로 이전 계정의 알림이 가지 않게 서버 등록부터 지운다
+async function disablePush(quiet) {
+  if (!pushSupported()) return;
+  const s = await pushSub(); if (!s) return;
+  try { await q(sb.from('push_subscriptions').delete().eq('endpoint', s.endpoint)); await s.unsubscribe() } catch (e) { if (!quiet) throw e }
+  pushOn = false; if (!quiet) toast('폰 알림을 껐어요.');
+}
+if (REAL && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (uid && PUSH_PAGES.includes(e.data?.go)) { page = e.data.go; render(); scrollTo(0, 0) } });
 
 // ---------- 알림 ----------
 async function startNotis() {
@@ -668,6 +704,11 @@ function bindPrint() {
   $('#app').querySelectorAll('[data-reload]').forEach(b => b.onclick = () => reload(b.dataset.reload));
   $('#app').querySelectorAll('[data-more]').forEach(b => b.onclick = () => { if (b.dataset.more === 'market') marketLimit += 20; else reqLimit += 20; reload(enteredKey) });
   if ($('#to-request')) $('#to-request').onclick = () => { if (!REAL) return toast('실제 계정으로 로그인하면 견적을 받을 수 있어요.'); syncForm?.(); page = 'newreq'; render(); scrollTo(0, 0) };
+  if ($('#push-toggle')) $('#push-toggle').onclick = async e => {
+    const b = e.currentTarget; b.disabled = true;
+    try { pushOn ? await disablePush() : await enablePush() } catch (err) { toast(err?.name === 'NotAllowedError' ? '알림을 허용해야 받을 수 있어요.' : errMsg(err)) }
+    render();
+  };
   $('#app').querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });

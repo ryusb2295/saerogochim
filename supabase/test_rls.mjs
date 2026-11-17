@@ -30,6 +30,10 @@ alter default privileges in schema public grant all on sequences to anon, authen
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
 for (const f of ['01_schema.sql', '02_policies.sql', '03_functions.sql', '04_storage_realtime.sql', '06_printer_lists.sql', '07_admin.sql', '08_launch.sql', '09_bizno.sql']) await db.exec(sql(f));
+// pg_net 흉내: 보낸 요청을 표에 쌓아 두고 확인한다
+await db.exec(`create schema net; create table net.sent (url text, body jsonb);
+create function net.http_post(url text, body jsonb, headers jsonb) returns bigint language sql as $$ insert into net.sent values (url, body); select 1::bigint $$;`);
+await db.exec(sql('10_push.sql').replace('create extension if not exists pg_net;', ''));
 
 let failed = 0;
 const ok = (cond, label) => { console.log((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) failed++; };
@@ -180,6 +184,21 @@ ok((await as(ADM, `select biz_no from admin_accounts() where id = $1`, [E])).row
 await fails(A, `select biz_no from print_shops`, [], '다른 회원은 사업자등록번호 조회 불가');
 await fails(E, `update print_shops set biz_status = '01' where owner_id = $1`, [E], '인쇄소가 국세청 상태를 스스로 바꿀 수 없음');
 await fails(E, `update print_shops set biz_no = '1111111111' where owner_id = $1`, [E], '가입 뒤 사업자등록번호 직접 변경 불가');
+
+// 웹 푸시 (10_push.sql)
+const EP = 'https://fcm.googleapis.com/fcm/send/abc';
+await as(A, `select register_push($1, 'p', 'a')`, [EP]);
+await as(C, `select register_push($1, 'p2', 'a2')`, [EP]);
+ok((await db.query(`select user_id from push_subscriptions where endpoint = $1`, [EP])).rows.map(r => r.user_id).join() === C, '같은 기기를 다른 계정이 등록하면 그 계정으로 옮김');
+ok((await as(A, `select * from push_subscriptions`)).rows.length === 0, '남의 푸시 구독 조회 불가');
+await fails(A, `insert into push_subscriptions (endpoint, p256dh, auth) values ('https://x', 'p', 'a')`, [], '구독은 함수로만 등록');
+await fails(null, `select register_push('https://y', 'p', 'a')`, [], '로그인 안 하면 등록 불가');
+const before = (await db.query(`select count(*)::int n from net.sent`)).rows[0].n;
+await db.query(`select notify($1, 'message', null, '새 메시지')`, [C]);
+const sent = (await db.query(`select url, body from net.sent`)).rows;
+ok(sent.length === before + 1 && sent.at(-1).url.endsWith('/functions/v1/send-push') && Number.isInteger(sent.at(-1).body.id), '알림이 생기면 send-push에 id만 보냄');
+await as(C, `delete from push_subscriptions where endpoint = $1`, [EP]);
+ok((await db.query(`select count(*)::int n from push_subscriptions`)).rows[0].n === 0, '로그아웃 때 내 구독 삭제');
 
 console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');
 process.exit(failed ? 1 : 0);

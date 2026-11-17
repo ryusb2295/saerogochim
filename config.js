@@ -4,5 +4,7 @@
 window.GAGEON_CONFIG = {
   tossClientKey: 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm',
   supabaseUrl: 'https://fthcyxhmgqqxtltyombf.supabase.co',
-  supabaseKey: 'sb_publishable_OSadgrkSIjhtYZx_jfQR3w_H_2EVbFT'
+  supabaseKey: 'sb_publishable_OSadgrkSIjhtYZx_jfQR3w_H_2EVbFT',
+  // 웹 푸시 공개 키 (짝이 되는 비공개 키는 Supabase Secrets에만 있음)
+  vapidPublicKey: 'BEkKgC9BmjMW81hsxrBjScz3DLuFzhynFqU8rJ0OL5_unZsiv8LzV6d6HyrKMEG6J6VUKWKn6KV8Y9X5VnUU-Hs'
 };

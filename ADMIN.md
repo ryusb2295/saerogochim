@@ -26,6 +26,16 @@
 3. Supabase Dashboard → Edge Functions → **Deploy a new function** → Via Editor에서 이름을 `verify-biz`로 하고 [`supabase/functions/verify-biz/index.ts`](supabase/functions/verify-biz/index.ts) 내용을 붙여넣어 배포합니다. 함수가 관리자 여부를 직접 확인하므로 함수 설정의 **Verify JWT** 는 꺼도 됩니다.
 4. Edge Functions → Secrets에서 `NTS_SERVICE_KEY` 이름으로 1번의 인증키를 저장합니다. 이 키는 저장소나 채팅에 올리지 않습니다.
 
+## 웹 푸시 (폰 알림)
+
+회원이 마이페이지에서 **폰 알림 받기**를 켜면, 앱을 닫아 둬도 새 견적, 채팅, 진행 상황이 폰 알림으로 옵니다. 아이폰은 사파리에서 **홈 화면에 추가**한 앱에서만 켤 수 있습니다.
+
+최초 1회 설정:
+
+1. SQL Editor에서 [`supabase/10_push.sql`](supabase/10_push.sql)을 실행합니다. `pg_net` 확장을 켜고, 알림이 생길 때 `send-push` 함수를 부르는 트리거를 만듭니다.
+2. Edge Functions → Deploy a new function → Via Editor에서 이름을 `send-push`로 하고 [`supabase/functions/send-push/index.ts`](supabase/functions/send-push/index.ts) 내용을 `index.ts`에 붙여넣어 배포합니다. DB 트리거가 로그인 없이 부르므로 함수 Settings에서 **Verify JWT** 를 끕니다. 함수는 알림 id만 받고 서버에서 알림을 다시 읽어 한 번만 보내므로, 누가 직접 불러도 가짜 알림을 보낼 수 없습니다.
+3. Edge Functions → Secrets에 `.env.push` 파일의 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` 두 줄을 저장합니다. `.env.push`는 저장소에 올라가지 않으며, 공개 키는 `config.js`에도 들어 있습니다.
+
 ## 탈퇴 처리
 
 관리자 화면의 **탈퇴** 버튼은 해당 회원의 브랜드·요청 파일을 Storage API로 삭제한 다음, 데이터베이스에서 계정과 관련 요청·견적·채팅을 삭제합니다. 인쇄소가 수락한 의뢰는 견적 대기 또는 마감 상태로 돌아갑니다. 삭제된 계정은 다시 로그인할 수 없지만 이미 발급된 액세스 토큰은 만료될 때까지 유효할 수 있습니다.

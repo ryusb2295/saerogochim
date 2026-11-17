@@ -33,3 +33,24 @@ self.addEventListener('fetch', event => {
       .catch(() => caches.match(request).then(hit => hit || caches.match('./index.html')))
   );
 });
+
+// 웹 푸시: 서버(supabase/functions/send-push)가 { title, body, tag, page }를 보낸다
+self.addEventListener('push', event => {
+  let d = {};
+  try { d = event.data.json(); } catch {}
+  event.waitUntil(self.registration.showNotification(d.title || '가게온', {
+    body: d.body || '새 알림이 있어요', icon: './icons/icon-192.png', badge: './icons/icon-192.png',
+    tag: d.tag, renotify: !!d.tag, data: { page: d.page || 'notis' }
+  }));
+});
+
+// 알림을 누르면 열린 앱 창으로 가서 해당 화면을 띄우고, 없으면 새로 연다
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const page = event.notification.data?.page || 'notis';
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const win = list.find(c => c.url.startsWith(self.registration.scope));
+    if (win) { win.postMessage({ go: page }); return win.focus(); }
+    return clients.openWindow(self.registration.scope + '?go=' + page);
+  }));
+});
