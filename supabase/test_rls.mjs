@@ -35,6 +35,7 @@ await db.exec(`create schema net; create table net.sent (url text, body jsonb);
 create function net.http_post(url text, body jsonb, headers jsonb) returns bigint language sql as $$ insert into net.sent values (url, body); select 1::bigint $$;`);
 await db.exec(sql('10_push.sql').replace('create extension if not exists pg_net;', ''));
 await db.exec(sql('12_chat_notify.sql'));
+await db.exec(sql('13_ai_access.sql'));
 
 let failed = 0;
 const ok = (cond, label) => { console.log((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) failed++; };
@@ -155,7 +156,12 @@ await as(B, `select advance_request($1, 'delivered')`, [req]);
 await as(A, `select advance_request($1, 'completed')`, [req]);
 ok((await db.query(`select status from print_requests where id = $1`, [req])).rows[0].status === 'completed', '진행: 제작 중 → 납품 → 완료');
 
-// AI 횟수
+// AI 횟수 (13_ai_access.sql: 기본은 꺼짐, 관리자만 켬)
+await fails(A, `select consume_ai('image', 3)`, [], 'AI 꺼진 계정은 생성 불가', 'ai_disabled');
+await fails(A, `update profiles set ai_enabled = true where id = $1`, [A], '본인이 AI 사용을 직접 켤 수 없음');
+ok((await as(A, `select my_ai_enabled() v`)).rows[0].v === false, '내 AI 사용 여부: 꺼짐');
+await db.query(`update profiles set ai_enabled = true where id = $1`, [A]);
+ok((await as(A, `select my_ai_enabled() v`)).rows[0].v === true, '내 AI 사용 여부: 켜짐');
 for (let i = 0; i < 3; i++) await as(A, `select consume_ai('image', 3)`);
 await fails(A, `select consume_ai('image', 3)`, [], 'AI 하루 한도 초과 차단', 'ai_limit');
 await fails(A, `insert into ai_usage (user_id, kind, used) values ($1, 'image', -100)`, [A], 'AI 사용량 직접 조작 불가');
@@ -172,6 +178,11 @@ await as(ADM, `select admin_set_verified($1, true)`, [D]);
 ok((await db.query(`select verified from print_shops where owner_id = $1`, [D])).rows[0].verified === true, '관리자가 인쇄소 승인');
 ok((await db.query(`select count(*)::int n from notifications where user_id = $1 and title like '인쇄소 승인%'`, [D])).rows[0].n === 1, '승인되면 인쇄소에 알림');
 await fails(ADM, `select admin_set_verified($1, true)`, [A], '소상공인은 승인 대상 아님', 'account_unavailable');
+await fails(A, `select admin_set_ai($1, true)`, [B], '일반 회원은 AI 켜기 불가', 'forbidden');
+await as(ADM, `select admin_set_ai($1, true)`, [B]);
+ok((await as(ADM, `select ai_enabled from admin_accounts() where id = $1`, [B])).rows[0].ai_enabled === true, '관리자가 AI 켜고 목록에서 확인');
+await as(ADM, `select admin_set_ai($1, false)`, [B]);
+await fails(B, `select consume_ai('brand', 30)`, [], '관리자가 끄면 다시 생성 불가', 'ai_disabled');
 const B1 = '22222222-2222-2222-2222-222222222222';
 const upsertBrand = name => as(A, `insert into brands (id, owner_id, name, data) values ($1, $2, $3, '{}') on conflict (id) do update set name = excluded.name, data = excluded.data`, [B1, A, name]);
 await upsertBrand('한우랑'); await upsertBrand('한우랑2');

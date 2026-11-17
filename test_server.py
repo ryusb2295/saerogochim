@@ -107,6 +107,13 @@ class ServerTests(unittest.TestCase):
             code,result=self.request(dict(BRIEF,request_id='test-12345'),Authorization='Bearer token')
             self.assertEqual(code,429);generate.assert_not_called()
 
+    def test_ai_disabled_account_blocked(self):
+        server.SUPABASE_URL='https://example.supabase.co'
+        err=server.urllib.error.HTTPError('u',400,'bad',{},io.BytesIO(b'{"message":"ai_disabled"}'))
+        with patch.object(server.urllib.request,'urlopen',side_effect=err), patch.object(server,'generate') as generate:
+            code,result=self.request(dict(BRIEF,request_id='test-12345'),Authorization='Bearer token')
+            self.assertEqual(code,403);self.assertIn('관리자',result['error']);generate.assert_not_called()
+
     def test_quota_ok_then_generate(self):
         server.SUPABASE_URL='https://example.supabase.co'
         resp=Mock();resp.read.return_value=b'4';resp.__enter__=Mock(return_value=resp);resp.__exit__=Mock(return_value=False)

@@ -12,6 +12,7 @@ const PUBLIC_DEMO = { id: 'demo', pw: 'demo1234' };
 const QUICK_LOGIN = true;
 const QUICK = { owner: PUBLIC_DEMO, printer: { id: 'demoprint', pw: 'demo1234' } };
 let myRole = 'owner', uid = '', myShop = null, notiCount = 0, chatUnread = 0, notiChannel = null, quoteChannel = null;
+let aiAllowed = false;   // 관리자가 켜 준 계정만 실제 AI 생성 (13_ai_access.sql). 꺼져 있으면 예시 캐릭터로 동작
 let reqId = '', convId = '', signupRole = 'owner', marketFilter = '', marketItems = {}, quoteSort = 'total';
 let reqDraft = { item: 'sticker', quantity: 500, width: 50, height: 50, unit: 'mm', material: '아트지', finishing: [], region_sido: '대구', region_sigungu: '', note: '', title: '', item_other: '' };
 let uploadFile = null;
@@ -137,6 +138,8 @@ async function loadMe() {
   uid = u.id; myRole = p.role; user = u.user_metadata?.username || ''; shop = p.display_name;
   if (myRole === 'printer') { myShop = await q(sb.from('print_shops').select('id,name,verified,region_sido,region_sigungu').eq('owner_id', u.id).maybeSingle()); shop = myShop?.name || shop }
   if (myRole !== 'admin') { startNotis(); checkPush() }
+  try { aiAllowed = !!(await q(sb.rpc('my_ai_enabled'))) } catch { aiAllowed = false }
+  if (typeof refreshAI === 'function') refreshAI();
   if (myRole === 'owner') await cloudBrand.load();
   return true;
 }
@@ -216,7 +219,7 @@ function bindReal() {
     const m = rules.id(v); if (m) return setErr('su-id', m);
     try { setErr('su-id', await q(sb.rpc('username_available', { p_username: v })) ? '' : '이미 쓰고 있는 아이디예요.') } catch {}
   };
-  if ($('#logout')) $('#logout').onclick = async () => { await disablePush(true); stopChannels(); try { await sb.auth.signOut() } catch {} for (const k in V) delete V[k]; enteredKey = ''; uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
+  if ($('#logout')) $('#logout').onclick = async () => { await disablePush(true); aiAllowed = false; stopChannels(); try { await sb.auth.signOut() } catch {} for (const k in V) delete V[k]; enteredKey = ''; uid = ''; myRole = 'owner'; myShop = null; notiCount = 0; chatUnread = 0; signOut(); render() };
   if ($('#admin-logout')) $('#admin-logout').onclick = () => $('#logout').click();
   $('#app').querySelectorAll('[data-biz-check]').forEach(b => b.onclick = async () => {
     b.disabled = true; b.textContent = '확인 중…';
@@ -227,6 +230,10 @@ function bindReal() {
   $('#app').querySelectorAll('[data-admin-verify]').forEach(b => b.onclick = async () => {
     const on = b.dataset.on === 'true'; b.disabled = true;
     try { await q(sb.rpc('admin_set_verified', { p_user: b.dataset.adminVerify, p_verified: on })); toast(`${b.dataset.username} ${on ? '인쇄소를 승인했어요.' : '인쇄소 승인을 취소했어요.'}`); reload('admin-accounts') } catch (e) { toast(errMsg(e)); b.disabled = false }
+  });
+  $('#app').querySelectorAll('[data-admin-ai]').forEach(b => b.onclick = async () => {
+    const on = b.dataset.on === 'true'; b.disabled = true;
+    try { await q(sb.rpc('admin_set_ai', { p_user: b.dataset.adminAi, p_on: on })); toast(`${b.dataset.username} AI 생성을 ${on ? '켰어요' : '껐어요'}.`); reload('admin-accounts') } catch (e) { toast(errMsg(e)); b.disabled = false }
   });
   $('#app').querySelectorAll('[data-admin-delete]').forEach(b => b.onclick = () => {
     const name = b.dataset.username, id = b.dataset.adminDelete;
@@ -292,9 +299,9 @@ function adminPage() {
   const r = useData('admin-accounts', () => q(sb.rpc('admin_accounts')));
   const group = (rows, role, title) => {
     const accounts = rows.filter(x => x.role === role);
-    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''}</small>${role === 'printer' ? bizLine(x) : ''}</div><span class="admin-actions">${role === 'printer' ? `<button class="${x.verified ? 'secondary' : 'primary'}" data-admin-verify="${esc(x.id)}" data-on="${!x.verified}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} ${x.verified ? '승인 취소' : '승인'}">${x.verified ? '승인 취소' : '승인'}</button>` : ''}<button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></span></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
+    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''} · AI ${x.ai_enabled ? '켜짐' : '꺼짐'}</small>${role === 'printer' ? bizLine(x) : ''}</div><span class="admin-actions"><button class="${x.ai_enabled ? 'secondary' : 'primary'}" data-admin-ai="${esc(x.id)}" data-on="${!x.ai_enabled}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} AI ${x.ai_enabled ? '끄기' : '켜기'}">AI ${x.ai_enabled ? '끄기' : '켜기'}</button>${role === 'printer' ? `<button class="${x.verified ? 'secondary' : 'primary'}" data-admin-verify="${esc(x.id)}" data-on="${!x.verified}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} ${x.verified ? '승인 취소' : '승인'}">${x.verified ? '승인 취소' : '승인'}</button>` : ''}<button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></span></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
   };
-  return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 확인하고, 인쇄소를 승인하거나 탈퇴 처리해요. 승인된 인쇄소만 견적을 보낼 수 있어요.</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
+  return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 확인하고, 인쇄소를 승인하거나 탈퇴 처리해요. 승인된 인쇄소만 견적을 보낼 수 있어요. AI 생성은 켜 준 계정만 쓸 수 있어요(요금이 나가요).</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
 }
 
 // ---------- 웹 푸시 (앱을 닫아 둬도 폰 알림) ----------

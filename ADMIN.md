@@ -36,6 +36,18 @@
 2. Edge Functions → Deploy a new function → Via Editor에서 이름을 `send-push`로 하고 [`supabase/functions/send-push/index.ts`](supabase/functions/send-push/index.ts) 내용을 `index.ts`에 붙여넣어 배포합니다. DB 트리거가 로그인 없이 부르므로 함수 Settings에서 **Verify JWT** 를 끕니다. 함수는 알림 id만 받고 서버에서 알림을 다시 읽어 한 번만 보내므로, 누가 직접 불러도 가짜 알림을 보낼 수 없습니다.
 3. Edge Functions → Secrets에 `.env.push` 파일의 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` 두 줄을 저장합니다. `.env.push`는 저장소에 올라가지 않으며, 공개 키는 `config.js`에도 들어 있습니다.
 
+## AI 생성 (휴대폰 포함)
+
+휴대폰, Vercel 사이트에서 "AI로 새 캐릭터 만들기"를 누르면 Supabase 함수 `ai`가 OpenAI를 부릅니다. 요금이 나가서 **관리자가 켜 준 계정만** 실제 생성되고, 나머지 계정은 예시 캐릭터(목업)로 동작합니다. 새 계정은 기본으로 꺼져 있습니다.
+
+최초 1회 설정:
+
+1. SQL Editor에서 [`supabase/13_ai_access.sql`](supabase/13_ai_access.sql)을 실행합니다. 계정마다 AI 사용 여부 칸을 만들고, 꺼진 계정은 AI 요청을 막습니다.
+2. Edge Functions → Deploy a new function → Via Editor에서 이름을 `ai`로 하고 [`supabase/functions/ai/index.ts`](supabase/functions/ai/index.ts) 내용을 붙여넣어 배포합니다. 함수 Settings에서 **Verify JWT** 를 끕니다. 로그인 확인과 사용 횟수는 함수 안에서 DB 함수 `consume_ai`가 맡습니다.
+3. Edge Functions → Secrets에 `OPENAI_API_KEY` 이름으로 OpenAI API 키를 저장합니다. 이 키는 저장소나 채팅에 올리지 않습니다.
+
+사용: 관리자 화면 계정 목록에서 **AI 켜기 / AI 끄기**를 누릅니다. 켠 계정도 하루 그림 5장, 문구 30번까지만 됩니다.
+
 ## 탈퇴 처리
 
 관리자 화면의 **탈퇴** 버튼은 해당 회원의 브랜드·요청 파일을 Storage API로 삭제한 다음, 데이터베이스에서 계정과 관련 요청·견적·채팅을 삭제합니다. 인쇄소가 수락한 의뢰는 견적 대기 또는 마감 상태로 돌아갑니다. 삭제된 계정은 다시 로그인할 수 없지만 이미 발급된 액세스 토큰은 만료될 때까지 유효할 수 있습니다.

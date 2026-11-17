@@ -106,7 +106,9 @@ Deno.serve(async req => {
     const { error } = await db.rpc('consume_ai', { p_kind: kind, p_limit: LIMIT[kind] });
     if (error) return error.message.includes('ai_limit')
       ? json({ error: `오늘 AI 사용 횟수(${LIMIT[kind]}회)를 다 썼어요. 내일 다시 이용해주세요.` }, 429)
-      : json({ error: '로그인 후 이용해주세요.' }, 401);
+      : error.message.includes('ai_disabled')
+        ? json({ error: 'AI 생성은 관리자가 켜 준 계정만 쓸 수 있어요.' }, 403)   // 13_ai_access.sql
+        : json({ error: '로그인 후 이용해주세요.' }, 401);
     return json(kind === 'image' ? await image(brief, key) : await brand(brief, key));
   } catch (e) {
     console.error('ai failed:', e);   // Edge Functions > ai > Logs 에서 원인 확인

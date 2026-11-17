@@ -61,6 +61,8 @@ def consume_quota(auth_header, kind):
         body = error.read(2048).decode('utf-8', 'replace')
         if 'ai_limit' in body:
             raise QuotaError(429, f'오늘 AI 사용 횟수({DAILY_LIMIT[kind]}회)를 다 썼어요. 내일 다시 이용해주세요.')
+        if 'ai_disabled' in body:   # 13_ai_access.sql: 관리자가 켜 준 계정만
+            raise QuotaError(403, 'AI 생성은 관리자가 켜 준 계정만 쓸 수 있어요.')
         if error.code in (401, 403) or 'forbidden' in body or 'JWT' in body:
             raise QuotaError(401, '로그인이 만료됐어요. 다시 로그인해주세요.')
         raise QuotaError(503, '사용량을 확인하지 못했어요. 잠시 후 다시 시도해주세요.')

@@ -247,7 +247,9 @@ async function mockGenerate(){
  render();toast('캐릭터를 적용했어요. (목업)')}
 // 노트북 서버(python server.py)로 열었으면 /api로, 휴대폰이나 Vercel이면 Supabase 함수 ai(supabase/functions/ai)로 보낸다
 let localAI=false;
-async function checkAI(){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),3000);const r=await fetch('/api/status',{signal:c.signal});clearTimeout(t);const d=r.ok?await r.json():null;localAI=!!(d&&d.ready)}catch{localAI=false}aiReady=localAI||!!(REAL&&CFG.aiFunction);if(aiReady&&page==='studio'&&step===2)render()}
+async function checkAI(){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),3000);const r=await fetch('/api/status',{signal:c.signal});clearTimeout(t);const d=r.ok?await r.json():null;localAI=!!(d&&d.ready)}catch{localAI=false}refreshAI()}
+// 로그인한 앱에서는 관리자가 AI를 켜 준 계정(aiAllowed, print.js)만 실제 생성. 아니면 예시 캐릭터(목업)
+function refreshAI(){const was=aiReady;aiReady=REAL?(localAI||!!CFG.aiFunction)&&aiAllowed:localAI;if(was!==aiReady&&page==='studio'&&step===2)render()}
 async function aiCall(kind,brief,signal){
  if(!localAI){const{data,error}=await sb.functions.invoke('ai',{body:{kind,brief}});if(error){let m='';try{m=(await error.context.json()).error}catch{}throw Error(m||'AI 요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.')}return data}
  const health=await (await fetch('/api/status',{signal})).json();if(!health.ready)throw Error('서버를 다시 실행하고 API 키를 입력해주세요.');
