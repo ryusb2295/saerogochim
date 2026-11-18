@@ -125,7 +125,8 @@ STYLES = {
                  'exaggerated comic expressions', ['airbrush_1.png', 'airbrush_2.png']),
 }
 # shortcut: 분위기 3개에 화풍을 임시로 연결. 시디과가 scripts/style_test.py 결과를 보고 바꾸면 된다
-MOOD_STYLE = {'귀엽고 친근한': 'duck', '고급스럽고 차분한': 'pastel', '재미있고 개성 있는': 'object'}
+MOOD_STYLE = {'귀엽고 친근한': 'duck', '따뜻하고 정겨운': 'crayon', '깔끔하고 모던한': 'flat', '고급스럽고 차분한': 'pastel',
+              '재미있고 개성 있는': 'object', '힙하고 트렌디한': 'airbrush'}
 
 
 def style_of(brief):

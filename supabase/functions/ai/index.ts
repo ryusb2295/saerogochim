@@ -15,7 +15,7 @@ const STYLES: Record<string, [string, string[]]> = {
   doodle: ['loose thin hand-drawn doodle lines, simple pale fill colors, droopy wrinkled comic face, deadpan gag expressions', ['doodle_1.png', 'doodle_2.png']],
   airbrush: ['bold black outline with soft airbrushed gray shading, bright pink accents, exaggerated comic expressions', ['airbrush_1.png', 'airbrush_2.png']],
 };
-const MOOD_STYLE: Record<string, string> = { '귀엽고 친근한': 'duck', '고급스럽고 차분한': 'pastel', '재미있고 개성 있는': 'object' };
+const MOOD_STYLE: Record<string, string> = { '귀엽고 친근한': 'duck', '따뜻하고 정겨운': 'crayon', '깔끔하고 모던한': 'flat', '고급스럽고 차분한': 'pastel', '재미있고 개성 있는': 'object', '힙하고 트렌디한': 'airbrush' };
 const LIMIT = { image: Number(Deno.env.get('AI_DAILY_IMAGE') ?? 5), brand: Number(Deno.env.get('AI_DAILY_BRAND') ?? 30) };
 const IMAGE_MODEL = Deno.env.get('OPENAI_IMAGE_MODEL') ?? 'gpt-image-2.5-flare';
 const TEXT_MODEL = Deno.env.get('OPENAI_TEXT_MODEL') ?? 'gpt-4.1-mini';
