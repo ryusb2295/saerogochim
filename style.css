@@ -382,3 +382,24 @@ form .help:last-of-type{margin-bottom:0}
 .card-choice.selected{border-color:var(--ai);background:#fff5f1;box-shadow:0 0 0 3px #f6ddd3}
 .an-progress{width:100%;max-width:360px;margin:16px auto 8px}
 .an-progress .gen-bar i{transition:none}
+/* 분석 화면: 원형 링 + 단계 체크리스트 (app.js analyzing) */
+.analyzing.an2{display:flex;flex-direction:column;align-items:center;text-align:center;padding:48px 16px 32px;background:none;border:0;box-shadow:none}
+.an-ring{position:relative;width:148px;height:148px}
+.an-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.an-track{fill:none;stroke:#ebe6e1;stroke-width:6}
+.an-fill{fill:none;stroke:var(--ai);stroke-width:6;stroke-linecap:round}
+.an-core{position:absolute;inset:16px;border-radius:50%;background:var(--ai);display:grid;place-items:center;color:#fff}
+.an-core svg{width:44px;height:44px;stroke:#fff}
+.an-pct{margin-top:10px;font-size:15px;color:var(--ai);font-variant-numeric:tabular-nums}
+.an-wait{margin:22px 0 6px;font-size:15px;color:var(--color-text-gray)}
+.an2 h2{margin:0 0 28px;font-size:23px;line-height:1.35;word-break:keep-all}
+.an-list{list-style:none;margin:0;padding:0;display:grid;gap:16px;text-align:left}
+.an-list li{display:flex;align-items:center;gap:12px;font-size:16px;color:#aaa39c;transition:color .2s}
+.an-list li i{position:relative;flex:none;width:26px;height:26px;border-radius:50%;border:3px solid #e2ddd8;box-sizing:border-box}
+.an-list li.active{color:var(--color-text-primary,#36312d)}
+.an-list li.active i{border-top-color:var(--ai);animation:an-spin .8s linear infinite}
+.an-list li.done{color:var(--color-text-primary,#36312d)}
+.an-list li.done i{background:var(--ai);border-color:var(--ai)}
+.an-list li.done i:after{content:'';position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.analyzing.an2 .an-note{display:block;margin:26px 0 0;color:var(--color-text-gray)}
+@keyframes an-spin{to{transform:rotate(360deg)}}
