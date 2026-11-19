@@ -73,6 +73,12 @@ async function login(name, password) {
   });
 }
 
+// 앱에서 직접 만든 시연 요청(scripts/showcase_rename2.sql로 이름 바꿈). 새로 만들지는 않고 --repair-previews 때 그림만 바꾼다
+const repairOnly = [
+  { asset: 'bamcham-bag.png', title: '밤참떡볶이 포장 쇼핑백' },
+  { asset: 'dalbit-sticker.png', title: '달빛분식 원형 스티커' },
+  { asset: 'kkum-label.png', title: '꿈나라 떡볶이 포장 상자 스티커' }
+];
 const apply = process.argv.includes('--apply');
 const repairPreviews = process.argv.includes('--repair-previews');
 if (!apply && !repairPreviews) {
@@ -86,7 +92,7 @@ const ownerId = owner.user.id;
 const current = await api(`/rest/v1/print_requests?select=id,title,status,preview_path,design_path&owner_id=eq.${ownerId}`, { token: ownerToken });
 const requests = new Map(current.map(row => [row.title, row]));
 
-for (const example of examples) {
+for (const example of repairPreviews ? [...examples, ...repairOnly] : examples) {
   if (requests.has(example.title)) {
     if (repairPreviews) {
       const path = requests.get(example.title).preview_path;
@@ -118,7 +124,7 @@ for (const example of examples) {
     console.log(`유지: ${example.title}`);
     continue;
   }
-  if (!apply) continue;
+  if (!apply || !example.item) continue;   // repairOnly는 새로 만들지 않음
   const id = randomUUID();
   const image = await readFile(join(root, 'assets', 'demo', example.asset));
   const preview = await readFile(join(root, 'assets', 'demo', 'previews', example.asset));
