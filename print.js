@@ -357,7 +357,7 @@ async function startNotis() {
 // 하단 메뉴 채팅 탭의 안 읽은 메시지 수. 알림 종처럼 앱이 켜질 때 세고, 새 메시지 알림이나 읽음 처리 때 다시 센다
 async function refreshChatUnread() { try { const d = await q(sb.rpc('my_conversations')); chatUnread = (d || []).reduce((s, c) => s + Number(c.unread || 0), 0); paintNav() } catch {} }
 function paintNav() { document.querySelectorAll('nav [data-page="chats"]').forEach(b => { let i = b.querySelector('.nav-badge'); if (!chatUnread) { if (i) i.remove(); return } if (!i) { i = document.createElement('i'); i.className = 'nav-badge'; b.appendChild(i) } i.textContent = chatUnread > 99 ? '99+' : chatUnread }) }
-function paintBell() { const b = $('#bell-count'); if (b) { b.textContent = notiCount > 99 ? '99+' : notiCount; b.hidden = !notiCount } }
+function paintBell() { const b = $('#bell-count'); if (b) { b.hidden = !notiCount; b.closest('.bell')?.setAttribute('aria-label', notiCount ? `알림 ${notiCount}개 안 읽음` : '알림') } }
 function stopChannels() { [notiChannel, quoteChannel].forEach(c => c && sb.removeChannel(c)); notiChannel = quoteChannel = null; if (window.leaveChat) leaveChat() }
 const NOTI_GO = { quote_received: n => ['request', n.ref_id], quote_accepted: () => ['chats'], quote_declined: () => ['myquotes'], status_changed: n => myRole === 'owner' ? ['request', n.ref_id] : ['jobs'], message: () => ['chats'] };
 function notisPage() {
@@ -704,7 +704,7 @@ function appBar() {
 // 메뉴에 없는 하위 화면은 속한 메뉴 칸을 켜 둔다 (수락된 의뢰 → 대시보드 등)
 const NAV_PARENT = { jobs: 'dash', quote: 'market', request: 'requests', newreq: 'requests', chat: 'chats', studio: 'home', notis: 'mypage', guide: 'mypage' };
 const navTab = () => { const p = NAV_PARENT[page] || page; return p === 'requests' && !REAL ? 'home' : p };
-function bellButton() { return REAL ? `<button class="bell" data-page="notis" aria-label="알림">${icon('bell')}<i id="bell-count" ${notiCount ? '' : 'hidden'}>${notiCount}</i></button>` : '' }
+function bellButton() { return REAL ? `<button class="bell" data-page="notis" aria-label="${notiCount ? `알림 ${notiCount}개 안 읽음` : '알림'}">${icon('bell')}<i id="bell-count" class="dot" ${notiCount ? '' : 'hidden'}></i></button>` : '' }
 function bindPrint() {
   if (REAL) bindReal();
   if (page !== 'request' && quoteChannel) { sb.removeChannel(quoteChannel); quoteChannel = null }
