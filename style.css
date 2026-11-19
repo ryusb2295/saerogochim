@@ -720,3 +720,4 @@ html.chat-open,html.chat-open body{overflow:hidden;overscroll-behavior:none}
 .cand{width:56px;height:56px;padding:3px;border:1.5px solid #ececec;border-radius:12px;background:#fff;cursor:pointer}
 .cand img{width:100%;height:100%;object-fit:contain}
 .cand.on{border-color:#00c673;box-shadow:0 0 0 2px #e9f9f1}
+#industry-chips[hidden]{display:none}
