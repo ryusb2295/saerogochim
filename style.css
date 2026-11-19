@@ -644,3 +644,32 @@ html.chat-open,html.chat-open body{overflow:hidden;overscroll-behavior:none}
 .quick-row .quick-btn .q-ico{width:34px;height:34px}
 .quick-row .quick-btn strong{font-size:15px}
 .quick-login>.help{margin:8px 0 0;font-size:12px}
+
+/* 로그인, 회원가입: KREAM처럼 로고는 위 가운데, 체험 버튼(가입 화면은 로그인 링크)은 맨 아래 */
+.start{display:block;min-height:100dvh;padding:0 20px}
+.start .panel{max-width:400px;margin:0 auto}
+.start-body{display:flex;flex-direction:column;min-height:100dvh;padding:calc(8vh + env(safe-area-inset-top)) 0 calc(16px + env(safe-area-inset-bottom))}
+.start .logo{align-self:center;margin:0 0 8px}
+.start .logo .wordmark{height:36px}
+.start-tag{text-align:center;margin:0 0 7vh;font-size:13px;color:#9d9d9d}
+.login-compact .field{margin:0 0 16px}
+.login-compact .field>label{position:static;width:auto;height:auto;clip:auto;overflow:visible;display:block;margin:0 0 6px;font-size:13px;font-weight:600;color:#353535}
+.login-compact .primary{margin-top:6px}
+.start .auth-links{justify-content:center;align-items:center;gap:12px;margin:16px 0 0}
+.start .auth-links .text-button{text-decoration:none;color:#555;font-size:13px}
+.start .auth-links span:not(.link-bar){font-size:13px;color:#9d9d9d}
+.link-bar{width:1px;height:12px;background:#d9d9d9}
+.start-bottom{margin-top:auto!important;padding-top:20px}
+.start .quick-login{border-top:0;margin-top:auto;padding-top:24px}
+.start .quick-login>p:first-child{text-align:center;font-size:13px;font-weight:500;color:#9d9d9d;margin-bottom:10px}
+.start .quick-login>.help{text-align:center;font-size:11px}
+/* 회원가입 한 화면에 */
+.start-title{font-size:20px;font-weight:700;margin:2vh 0 14px;text-align:center}
+.start .role-pick{margin-bottom:12px}
+.start .role-pick .choice{min-height:46px;align-items:center;justify-content:center;flex-direction:row;padding:0 12px;border-radius:12px}
+.signup-compact .field{margin:0 0 8px}
+.signup-compact .field>label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.signup-compact input[type=text],.signup-compact input[type=password]{min-height:50px}
+.signup-compact .check{font-size:12px;line-height:1.5;margin:4px 0 10px;color:#777}
+.start:has(#real-signup) .start-tag{display:none}
+.start:has(#real-signup) .start-body{padding-top:calc(4vh + env(safe-area-inset-top))}
