@@ -137,4 +137,11 @@ class ServerTests(unittest.TestCase):
         with self.assertRaises(ValueError):server.validate(dict(BRIEF,style='../etc'))
         self.assertIn('/assets/styles/airbrush_2.png',server.STATIC)
 
+    def test_new_questions_and_multi_mood(self):
+        b=server.validate(dict(BRIEF,mood='화려한, 귀여운',colors='그린, 블랙',keywords='야식',service=''))
+        self.assertEqual(server.style_of(b),'airbrush')
+        self.assertEqual(b['colors'],'그린, 블랙');self.assertNotIn('service',b)
+        self.assertIn('그린, 블랙',server.prompt_for(b))
+        with self.assertRaises(ValueError):server.validate(dict(BRIEF,keywords='가'*61))
+
 if __name__=='__main__':unittest.main()
