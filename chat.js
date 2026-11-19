@@ -120,6 +120,23 @@ async function sendMsg(m) {
     if (data) addMsg(data); else { m.pending = false; paintChat() }
   } catch { m.pending = false; m.failed = true; paintChat() }
 }
+// 채팅방은 카톡처럼 메시지 목록만 스크롤하고 입력칸은 아래에 고정한다.
+// 보이는 화면 높이(visualViewport: 키보드가 올라오면 줄어듦)에 맞춰 채팅 상자 높이를 정하고, 그동안 페이지 스크롤은 막는다
+function fitChat() {
+  const w = document.querySelector('.chat-wrap');
+  document.documentElement.classList.toggle('chat-open', !!w);
+  if (!w) return;
+  const vv = window.visualViewport, h = vv ? vv.height : innerHeight, off = vv ? vv.offsetTop : 0;
+  const keyboard = innerHeight - h > 120;
+  const nav = keyboard ? 0 : (document.querySelector('.bottomnav')?.offsetHeight || 0);
+  if (scrollY) scrollTo(0, 0);
+  const top = w.getBoundingClientRect().top;
+  const log = document.getElementById('chat-log'), atBottom = log && log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  w.style.height = Math.max(220, off + h - top - nav - 8) + 'px';
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+if (window.visualViewport) { visualViewport.addEventListener('resize', fitChat); visualViewport.addEventListener('scroll', fitChat) }
+addEventListener('resize', fitChat);
 function bindChatForm() {
   const f = $('#chat-form'), t = $('#chat-text'); if (!f) return;
   f.onsubmit = e => {
