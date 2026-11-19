@@ -360,13 +360,41 @@ function paintNav() { document.querySelectorAll('nav [data-page="chats"]').forEa
 function paintBell() { const b = $('#bell-count'); if (b) { b.hidden = !notiCount; b.closest('.bell')?.setAttribute('aria-label', notiCount ? `알림 ${notiCount}개 안 읽음` : '알림') } }
 function stopChannels() { [notiChannel, quoteChannel].forEach(c => c && sb.removeChannel(c)); notiChannel = quoteChannel = null; if (window.leaveChat) leaveChat() }
 const NOTI_GO = { quote_received: n => ['request', n.ref_id], quote_accepted: () => ['chats'], quote_declined: () => ['myquotes'], status_changed: n => myRole === 'owner' ? ['request', n.ref_id] : ['jobs'], message: () => ['chats'] };
+// 알림 한 줄을 종류별 아이콘, 굵은 제목(무슨 일), 작은 설명(어떤 요청)으로 나눈다. DB에 저장된 문장을 풀어서 만든다
+function notiView(n) {
+  const m = /^"([^"]+)"\s*(.*)$/.exec(n.title || ''), name = m ? m[1] : '', rest = m ? m[2] : n.title || '';
+  if (n.type === 'quote_received') return ['doc', 'new', '새 견적이 도착했어요', name];
+  if (n.type === 'quote_accepted') return ['check', 'ok', '견적이 수락됐어요', name ? `${name} · 채팅을 시작해 보세요` : ''];
+  if (n.type === 'quote_declined') return ['x', 'off', '다른 업체로 정해졌어요', name];
+  if (n.type === 'message') { const i = (n.title || '').indexOf(': '); return ['chat', 'chat', i > 0 ? `${n.title.slice(0, i)}님의 새 메시지` : '새 메시지', i > 0 ? n.title.slice(i + 2) : n.title] }
+  if (/상태: 제작 중/.test(rest)) return ['hammer', 'work', '제작이 시작됐어요', name];
+  if (/상태: 납품 완료/.test(rest)) return ['box', 'work', '납품이 완료됐어요', name];
+  if (/상태: 완료/.test(rest)) return ['check', 'ok', '거래가 끝났어요', name];
+  if (/결제가 완료/.test(rest)) return ['card', 'ok', '결제가 완료됐어요', name];
+  const star = /별점 (\d)점/.exec(rest);
+  if (/후기가 등록/.test(rest)) return ['star', 'star', '새 후기가 등록됐어요', [name, star ? `★ ${star[1]}점` : ''].filter(Boolean).join(' · ')];
+  if (/인쇄소 승인/.test(n.title || '')) return ['shield', 'ok', '인쇄소 승인이 끝났어요', '이제 견적을 보낼 수 있어요'];
+  return ['bell', 'new', name || n.title, name ? rest : ''];
+}
+// 방금, N분 전, N시간 전, 어제, M월 D일
+function ago(iso) {
+  const t = new Date(iso), s = (Date.now() - t) / 1000, day = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  if (s < 60) return '방금'; if (s < 3600) return `${Math.floor(s / 60)}분 전`;
+  const days = Math.round((day(new Date()) - day(t)) / 864e5);
+  if (days === 0) return `${Math.floor(s / 3600)}시간 전`; if (days === 1) return '어제';
+  return `${t.getMonth() + 1}월 ${t.getDate()}일`;
+}
+function notiGroup(iso) { const t = new Date(iso), n = new Date(), d = Math.round((new Date(n.getFullYear(), n.getMonth(), n.getDate()) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 864e5); return d <= 0 ? '오늘' : d === 1 ? '어제' : d < 7 ? '이번 주' : '이전' }
 function notisPage() {
   const r = useData('notis', async () => {
     const d = await q(sb.from('notifications').select('id,type,ref_id,title,read_at,created_at').order('id', { ascending: false }).limit(50));
     if (d.some(n => !n.read_at)) { await q(sb.from('notifications').update({ read_at: new Date().toISOString() }).is('read_at', null)); notiCount = 0 }
-    return d;
+    return d;   // 받아 온 목록에는 read_at이 그대로 남아 있어서, 이번에 연 화면에서는 안 읽었던 알림이 표시된다
   });
-  return `<section class="intro"><h1>알림</h1><p>최근 50개까지 보여줘요.</p></section>${stateView(r, 'notis', d => d.length ? `<div class="list">${d.map(n => `<button class="row-card${n.read_at ? '' : ' unread'}" data-noti="${n.id}"><span>${esc(n.title)}</span><small>${ymd(n.created_at)}</small></button>`).join('')}</div>` : emptyBox('새 알림이 없어요', '견적이 오거나 메시지가 오면 여기에 알려드려요.', `<button class="secondary" data-page="${myRole === 'printer' ? 'dash' : 'home'}">홈으로 가기</button>`, 'bell'))}`;
+  const item = n => { const [ic, tone, head, sub] = notiView(n), unread = !n.read_at;
+    return `<button class="noti-item${unread ? ' unread' : ''}" data-noti="${n.id}"><span class="noti-ic tone-${tone}">${icon(ic)}</span><span class="noti-body"><strong>${esc(head)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</span><span class="noti-side"><time datetime="${esc(n.created_at)}">${ago(n.created_at)}</time>${unread ? '<i class="dot" aria-label="안 읽음"></i>' : ''}</span></button>` };
+  const groups = d => { const out = []; d.forEach(n => { const g = notiGroup(n.created_at); (out.at(-1)?.[0] === g ? out.at(-1)[1] : (out.push([g, []]), out.at(-1)[1])).push(n) }); return out };
+  return `<section class="intro"><h1>알림</h1></section>${stateView(r, 'notis', d => d.length ? `${groups(d).map(([g, list]) => `<section class="noti-group"><h2 class="noti-day">${g}</h2><div class="noti-list">${list.map(item).join('')}</div></section>`).join('')}<p class="noti-foot">최근 알림 50개까지 보여줘요.</p>` : emptyBox('새 알림이 없어요', '견적이 오거나 메시지가 오면 여기에 알려드려요.', `<button class="secondary" data-page="${myRole === 'printer' ? 'dash' : 'home'}">홈으로 가기</button>`, 'bell'))}`;
 }
 
 // ---------- 소상공인: 받은 견적 목록, 견적 비교, 제작 요청 ----------

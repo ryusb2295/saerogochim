@@ -468,3 +468,25 @@ body.modal-open{overflow:hidden}
 .empty-card small{display:block;margin-top:4px;color:var(--color-text-gray);word-break:keep-all}
 .empty-card button{margin-top:6px;min-width:160px}
 .ask-q textarea{min-height:calc(1.5em + 32px)}
+/* 알림 목록: 종류별 아이콘, 두 줄, 상대 시간, 날짜 묶음 (print.js notisPage) */
+.noti-group{margin-bottom:20px}
+.noti-day{margin:0 4px 8px;font-size:14px;font-weight:700;color:var(--color-text-gray)}
+.noti-list{display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line);border-radius:var(--radius-container);background:#fff}
+.noti-item{display:flex;align-items:center;gap:12px;width:100%;padding:14px 14px 14px 16px;border:0;border-bottom:1px solid #f1ede9;background:none;text-align:left;cursor:pointer}
+.noti-item:last-child{border-bottom:0}
+.noti-item.unread{background:#fff7f3}
+.noti-ic{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%}
+.noti-ic .icon{width:20px;height:20px;margin:0}
+.tone-new{background:#fde9e1;color:var(--ai)}
+.tone-ok{background:#e6f4ea;color:#2e7d4f}
+.tone-work{background:#eef0fb;color:#4a5bb8}
+.tone-chat{background:#e9f3fb;color:#2f76b3}
+.tone-star{background:#fdf3d8;color:#b98407}
+.tone-off{background:#f1efed;color:#8a847f}
+.noti-body{flex:1;min-width:0}
+.noti-body strong{display:block;font-size:15px;color:var(--color-text-primary,#36312d)}
+.noti-body small{display:block;margin-top:2px;font-size:13px;color:var(--color-text-gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.noti-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.noti-side time{font-size:12px;color:#a19b96}
+.noti-side .dot{width:8px;height:8px;border-radius:50%;background:var(--ai)}
+.noti-foot{margin:4px 0 0;text-align:center;font-size:12px;color:#a19b96}
