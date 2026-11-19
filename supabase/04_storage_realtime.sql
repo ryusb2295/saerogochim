@@ -1,4 +1,4 @@
--- 가게온: 파일 저장소 버킷과 접근 권한, 실시간 구독 대상. 설계: docs/PRINT_PLATFORM.md 2.7, 2.9
+-- 가게온: 파일 저장소 버킷과 접근 권한, 실시간 구독 대상.
 -- 경로 첫 폴더는 항상 업로드한 사용자 id. 모든 버킷은 비공개이고 서명 URL로만 내려받는다.
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values

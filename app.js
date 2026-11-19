@@ -207,7 +207,7 @@ return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"
 function logo(){return `<button class="logo" data-page="home" aria-label="가게온 홈"><span class="logo-mark">${icon('shop')}</span>가게온<small>·</small></button>`}
 function nav(cls){return `<nav class="${cls}" aria-label="주요 메뉴">${navItems().map(([p,i,l])=>`<button data-page="${p}" class="${navTab()===p?'active':''}" ${navTab()===p?'aria-current="page"':''}>${icon(i)}<span>${l}</span>${p==='chats'&&typeof chatUnread!=='undefined'&&chatUnread?`<i class="nav-badge">${chatUnread>99?'99+':chatUnread}</i>`:''}</button>`).join('')}</nav>`}
 // 체험용 계정: 아이디·비밀번호·복구 코드를 이 브라우저에만 저장한다. 원문 대신 PBKDF2 해시만 둔다.
-// shortcut: 다른 기기·브라우저에서는 로그인 안 됨, 출시 때 Supabase Auth + 서버 복구 코드 API로 교체 (docs/PRD.md 10장)
+// 이 브라우저에만 저장되는 로컬 계정이라 다른 기기에서는 로그인 안 됨. 출시 때 Supabase Auth로 바꿀 것
 const USERS_KEY='gageon-users-v1',SESSION_KEY='gageon-session-v1';
 let user='',auth='login',pendingCode='',codeReturn='home';
 // 시연용 체험 계정. 로그인 폼에 미리 채워 두고, 없으면 첫 실행 때 만든다 (브라우저 저장 목업이라 공개돼도 됨)

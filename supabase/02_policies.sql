@@ -1,4 +1,4 @@
--- 가게온: 접근 권한 (RLS). 설계: docs/PRINT_PLATFORM.md 2.7
+-- 가게온: 접근 권한 (RLS).
 -- 원칙: 여기 적힌 것 외에는 전부 거부. 상태를 바꾸는 쓰기는 03_functions.sql의 함수로만.
 
 alter table public.profiles enable row level security;

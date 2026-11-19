@@ -1,6 +1,6 @@
 // 휴대폰, Vercel 화면에서 AI를 쓰게 하는 서버 함수. OpenAI 키는 Supabase Secrets(OPENAI_API_KEY)에만 둔다.
 // 화면이 { kind: 'image' | 'brand', brief } 를 보내면 로그인한 사람의 하루 횟수(consume_ai)를 줄이고 OpenAI를 부른다.
-// shortcut: 프롬프트와 화풍 목록은 server.py(노트북용)와 같은 내용을 옮겨 둔 것. 한쪽을 고치면 다른 쪽도 같이 고친다.
+// 프롬프트와 화풍 목록은 server.py(노트북용)와 같은 내용. 한쪽을 고치면 다른 쪽도 같이 고친다.
 import { createClient } from 'npm:@supabase/supabase-js@2.110.0';
 
 const ASSETS = 'https://saerogochim.vercel.app/assets/styles/';   // 시디과 참고 그림 (assets/styles)

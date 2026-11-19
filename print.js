@@ -1,6 +1,6 @@
 // 가게온 실제 서비스 연결: Supabase 로그인, 제작 요청, 견적, 수락, 알림.
 // config.js에 Supabase 값이 있고 supabase-js가 불러와졌으면 실제 모드, 아니면(또는 ?mock=1) 기존 브라우저 목업 모드.
-// app.js의 전역(state, page, render, toast, esc, icon, $ 등)을 함께 쓴다. 설계: docs/PRINT_PLATFORM.md
+// app.js의 전역(state, page, render, toast, esc, icon, $ 등)을 함께 쓴다.
 const CFG = window.GAGEON_CONFIG || {};
 const REAL = !!(CFG.supabaseUrl && CFG.supabaseKey && window.supabase && !/[?&]mock=1/.test(location.search));
 const sb = REAL ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
@@ -447,7 +447,7 @@ ${req.status === 'open' ? `<button class="text-button danger-text" data-cancel="
 }
 
 // ---------- 결제 (토스페이먼츠 테스트) ----------
-// shortcut: 토스 승인 API를 부르지 않고 결제창에서 돌아오면 결제 완료로 적는다. 시연용이고,
+// 시연용: 토스 승인 API를 부르지 않고 결제창에서 돌아오면 결제 완료로 적는다.
 //           실제 돈을 받으려면 Edge Function에서 시크릿 키로 승인한 뒤 mark_paid를 부르게 바꾼다
 let payAmount = 0, payWidgets = null;
 function payPage() {

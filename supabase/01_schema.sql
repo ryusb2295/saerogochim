@@ -1,5 +1,5 @@
 -- 가게온 인쇄 견적 매칭: 테이블
--- Supabase SQL Editor에서 01 → 02 → 03 → 04 순서로 실행한다. 설계: docs/PRINT_PLATFORM.md 2.6
+-- Supabase SQL Editor에서 01 → 02 → 03 → 04 순서로 실행한다.
 
 create table public.profiles (
   id uuid primary key references auth.users on delete cascade,

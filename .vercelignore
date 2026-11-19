@@ -5,5 +5,3 @@ scripts/
 server.py
 test_*.py
 *.md
-architecture.html
-architecture-source.json

@@ -1,4 +1,4 @@
--- 가게온: 상태를 바꾸는 함수와 트리거. 설계: docs/PRINT_PLATFORM.md 2.8~2.10
+-- 가게온: 상태를 바꾸는 함수와 트리거.
 -- 함수는 security definer라 RLS를 건너뛰므로, 각 함수 첫머리에서 호출자 권한을 직접 확인한다.
 
 -- 가입: auth.users가 생기면 metadata의 username/role/display_name으로 profiles를 만든다. 인쇄소면 업체도 같이

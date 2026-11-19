@@ -1,5 +1,5 @@
 // 가게온 1:1 채팅: Supabase Realtime으로 새 메시지를 받고, 보낼 때는 client_id로 재시도 중복을 막는다.
-// 채팅방은 견적 수락 때 DB 함수가 만들고, 읽기/쓰기는 RLS가 두 참여자로 제한한다. 설계: docs/PRINT_PLATFORM.md 2.9
+// 채팅방은 견적 수락 때 DB 함수가 만들고, 읽기/쓰기는 RLS가 두 참여자로 제한한다.
 let chatCh = null, chatConv = '', chatMsgs = [], chatInfo = null, chatLive = 'connecting', chatAll = false, chatHadError = false;
 
 function chatsPage() {
