@@ -448,3 +448,6 @@ body.modal-open{overflow:hidden}
 /* 홈 띠배너 */
 .strip-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:0 0 12px;padding:13px 16px;border:0;border-radius:var(--radius-element);background:#fff1ea;color:var(--ai);font-size:14px;font-weight:600;text-align:left;cursor:pointer}
 .strip-banner .icon{width:18px;height:18px;margin:0}
+/* 질문 마지막 "자랑" 칸: 두 줄로 시작해서 글 길이만큼 늘어남, 손잡이 없음 */
+.ask-q textarea{resize:none;min-height:0;overflow:hidden;line-height:1.5}
+.ask-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:var(--color-text-gray)}
