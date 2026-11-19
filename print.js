@@ -470,10 +470,12 @@ async function mountPay() {
     go.disabled = false;
     const back = location.origin + location.pathname + '?req=' + reqId + '&pay=';
     go.onclick = async () => {
+      if (go.disabled) return;
+      go.disabled = true;   // 두 번 눌러 결제가 두 번 되지 않게. 결제창을 닫거나 실패하면 다시 풀어 준다
       err.hidden = true;
       // 주문번호는 영문, 숫자, -, _ 6~64자. 다시 시도해도 겹치지 않게 시각을 붙인다
       try { await payWidgets.requestPayment({ orderId: `g-${reqId}-${Date.now().toString(36)}`, orderName: V['request-' + reqId]?.data?.req?.title || '가게온 인쇄 의뢰', successUrl: back + 'ok', failUrl: back + 'fail' }) }
-      catch (e) { err.textContent = e?.message || '결제를 시작하지 못했어요.'; err.hidden = false }
+      catch (e) { err.textContent = e?.message || '결제를 시작하지 못했어요.'; err.hidden = false; go.disabled = false }
     };
   } catch (e) { box.innerHTML = ''; err.textContent = e?.message || '결제창을 불러오지 못했어요. 연결을 확인하고 다시 시도해주세요.'; err.hidden = false }
 }

@@ -410,3 +410,10 @@ form .help:last-of-type{margin-bottom:0}
 .gen-modal .an-note{display:block;margin-top:26px;font-size:13px;color:var(--color-text-gray)}
 body.modal-open{overflow:hidden}
 @keyframes gen-in{from{opacity:0}to{opacity:1}}
+/* 오류 안내 화면 (app.js showCrash) */
+.crash{display:flex;flex-direction:column;align-items:center;text-align:center;padding:96px 24px}
+.crash-art{display:grid;place-items:center;width:84px;height:84px;margin-bottom:20px;border-radius:50%;background:#f6ece8;color:var(--ai)}
+.crash-art svg{width:40px;height:40px}
+.crash h1{margin:0 0 8px;font-size:22px}
+.crash p{margin:0 0 24px;color:var(--color-text-gray);word-break:keep-all}
+.crash .primary{min-width:180px}
