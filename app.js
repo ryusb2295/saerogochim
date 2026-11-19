@@ -415,7 +415,9 @@ $('#app').querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const r=reco
 $('#app').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{const id=b.dataset.delete,all=records(),idx=all.findIndex(r=>r.id===id);if(idx<0)return;const rec=all[idx];try{localStorage.setItem(KEY,JSON.stringify(all.filter(r=>r.id!==id)))}catch{return toast('삭제하지 못했어요. 브라우저 저장 설정을 확인해주세요.')}render();snackbar(`${rec.name||'브랜드'} 브랜드를 삭제했어요.`,'되돌리기',()=>{const now=records();now.splice(Math.min(idx,now.length),0,rec);try{localStorage.setItem(KEY,JSON.stringify(now))}catch{}render()},()=>{if(REAL)cloudBrand.remove(id)})});
 }
 async function upload(e){const file=e.target.files[0];if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2*1024*1024){uploadError('2MB 이하 PNG, JPG, WebP 파일만 올릴 수 있어요.');e.target.value='';return}uploadError('');try{const bmp=await createImageBitmap(file);const c=document.createElement('canvas');const ratio=Math.min(1,640/Math.max(bmp.width,bmp.height));c.width=bmp.width*ratio;c.height=bmp.height*ratio;c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);state.customImage=c.toDataURL('image/png');state.generated=false;bmp.close();render();toast('내 캐릭터를 적용했어요.')}catch{uploadError('이 그림을 열 수 없어요. 다른 파일을 골라 주세요.')}}
-function save(){try{let rs=records();if(!/^[0-9a-f-]{36}$/.test(state.id||''))state.id=globalThis.crypto?.randomUUID?.()||'brand-'+Date.now()+'-'+Math.random().toString(36).slice(2);const r={...state,savedAt:Date.now()};const idx=rs.findIndex(x=>x.id===r.id);if(idx>=0)rs[idx]=r;else rs.unshift(r);if(rs.length>12){toast('최대 12개까지 저장할 수 있어요. 기존 브랜드를 정리해주세요.');return}localStorage.setItem(KEY,JSON.stringify(rs));if(REAL)cloudBrand.save(r);toast('내 브랜드에 저장했어요.')}catch{toast('저장 공간이 부족하거나 저장이 차단됐어요. PNG를 다운로드해주세요.')}}
+function save(){try{let rs=records();if(!/^[0-9a-f-]{36}$/.test(state.id||''))state.id=globalThis.crypto?.randomUUID?.()||'brand-'+Date.now()+'-'+Math.random().toString(36).slice(2);const r={...state,savedAt:Date.now()};const idx=rs.findIndex(x=>x.id===r.id);if(idx>=0)rs[idx]=r;else rs.unshift(r);if(rs.length>12){toast('최대 12개까지 저장할 수 있어요. 기존 브랜드를 정리해주세요.');return}let local=true;const write=()=>localStorage.setItem(KEY,JSON.stringify(rs));try{write()}catch{try{localStorage.removeItem(DRAFT_KEY);write()}catch{local=false}}   // 꽉 차면 만들던 초안을 비우고 한 번 더
+ if(REAL)cloudBrand.save(r);   // 기기 저장이 안 돼도 계정에는 저장
+ toast(local?'내 브랜드에 저장했어요.':REAL?'계정에 저장했어요. 이 기기 저장 공간이 부족해요.':'저장 공간이 부족해요. PNG를 다운로드해주세요.')}catch{toast('저장하지 못했어요. PNG를 다운로드해주세요.')}}
 // 포장 미리보기(CSS로 그린 쇼핑백·상자)를 파일로도 받을 수 있게 같은 모양을 SVG로 다시 그린다
 // 포장 미리보기: 정면, 플랫(그라데이션, 기울기 없음), 연회색 배경. 시디과 포장재 그림이 오면 이 그림만 바꾸면 된다
 function packSVG(st=state){const s=svgUri(stickerSVG(st)),kind=['box','cup'].includes(st.mockup)?st.mockup:'bag';
@@ -452,6 +454,9 @@ function aiWaiting(){return aiReady&&!state.customImage}
 // 캐릭터 후보: 만들 때마다 최대 4개까지 쌓고 눌러서 고른다 (Figma '캐릭터를 생성했어요'). 이미지가 커서 저장(초안)에는 넣지 않음
 let candidates=[];
 function addCandidate(u){candidates=[...candidates.filter(x=>x!==u),u].slice(-4)}
+// AI 그림(1024px PNG, 글자로 약 2MB)을 512px로 줄인다. 아이폰 사파리 저장 공간이 사이트당 약 5MB라 그대로면 1~2개만 저장돼도 꽉 참.
+// 스티커 안 캐릭터는 460px 정도로 그려져서 화질 차이는 거의 없음
+async function shrinkImage(uri,max=512){try{const img=new Image();img.src=uri;await img.decode();if(Math.max(img.width,img.height)<=max)return uri;const k=max/Math.max(img.width,img.height),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/png')}catch{return uri}}
 function exampleChar(){return !state.customImage||(state.generated&&!aiReady)}
 // AI 캐릭터 만드는 동안 화면 전체를 덮는 로딩 창 (분석 화면과 같은 원형 링 + 단계 체크리스트)
 const GEN_STEPS=[[0,'가게 특징을 읽고 있어요'],[20,'시디과 그림체를 맞추고 있어요'],[45,'캐릭터를 그리고 있어요'],[80,'마무리하고 있어요']];
@@ -471,7 +476,7 @@ async function generateAI(){
   const data=await aiCall('image',buildBrandRequest(),controller.signal);
   if(typeof data.image!=='string'||!data.image.startsWith('data:image/png;base64,'))throw Error('올바른 이미지를 받지 못했어요.');
   genPct=100;paintGen();await new Promise(r=>setTimeout(r,600));
-  state.customImage=data.image;state.generated=true;state.id=null;addCandidate(data.image);toast('AI 캐릭터를 적용했어요.');
+  state.customImage=await shrinkImage(data.image);state.generated=true;state.id=null;addCandidate(state.customImage);toast('AI 캐릭터를 적용했어요.');
  }catch(error){genError=error.name==='AbortError'?'응답 대기 시간이 초과됐어요. 서버에서 생성이 계속될 수 있으니 과금 내역을 확인한 뒤 다시 시도해주세요.':error.message||'서버 연결을 확인해주세요.';toast('캐릭터를 만들지 못했어요.')}
  finally{clearInterval(tick);clearTimeout(timer);generating=false;closeGenModal();if(page==='studio')render()}
 }
