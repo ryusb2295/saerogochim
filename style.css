@@ -517,9 +517,4 @@ body.modal-open{overflow:hidden}
 .help-ex span:before{content:'“'}.help-ex span:after{content:'”'}
 .help-ex b{font-size:14px;font-weight:600}
 .help-ex b:before{content:'→ ';color:var(--orange)}
-.help-table{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 12px}
-.help-table th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
-.help-table td{padding:9px 8px;border-bottom:1px solid var(--line)}
-.help-table tr.now td{background:#fbefe9;font-weight:700}
-.help-table em{font-style:normal;font-size:11px;color:#fff;background:var(--orange);border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px}
 .help-sheet .primary.full{margin-top:4px;min-height:48px}

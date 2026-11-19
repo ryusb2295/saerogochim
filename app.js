@@ -391,13 +391,10 @@ function snackbar(msg,action,onAction,onTimeout){document.querySelector('.snackb
 addEventListener('pagehide',()=>document.querySelector('.snackbar')?.dispatchEvent(new Event('flush')));
 // 글 길이에 맞춰 textarea 높이를 늘린다
 // 질문 옆 ? 버튼: 고른 답이 AI에 어떻게 쓰이는지 바텀시트로 설명한다 (폰은 아래에서, PC는 가운데 아래)
-// 분위기 → 그림체 연결은 server.py, supabase/functions/ai/index.ts의 MOOD_STYLE과 같게 유지
-const MOOD_STYLE={'귀엽고 친근한':'duck','따뜻하고 정겨운':'crayon','깔끔하고 모던한':'flat','고급스럽고 차분한':'pastel','재미있고 개성 있는':'object','힙하고 트렌디한':'airbrush'};
 function helpBody(k){
  if(k==='mood')return ['분위기는 이렇게 쓰여요','<p>고른 분위기는 세 군데에 들어가요.</p><ul><li><b>캐릭터 표정과 자세</b>: 귀엽게, 차분하게처럼 느낌을 맞춰요.</li><li><b>추천 색과 슬로건</b>: 분위기에 어울리는 색 4개와 말투로 만들어요.</li><li><b>그림체</b>: 다음에 그림체를 ‘알아서’로 두면 분위기에 맞는 그림체를 골라요.</li></ul>'];
  if(k==='feature')return ['가게 자랑은 이렇게 쓰여요','<p>적은 내용에서 캐릭터가 들고 있을 소품을 한두 개 골라 그려요. 슬로건과 키워드에도 들어가요.</p><ul class="help-ex"><li><span>갓 구운 소금빵이 대표 메뉴</span><b>소금빵을 든 캐릭터</b></li><li><span>30년 된 동네 방앗간</span><b>떡 소품, 정겨운 표정</b></li><li><span>강아지 동반 가능한 카페</span><b>강아지와 함께 있는 캐릭터</b></li></ul><p class="help">메뉴 이름, 재료, 가게 이야기처럼 눈에 보이는 걸 적으면 잘 맞아요. 비워 둬도 업종을 보고 만들어요.</p>'];
- const name=v=>STYLE_CARDS.find(x=>x[0]===v)?.[1]||v;
- return ['‘알아서 골라 주세요’를 고르면',`<p>앞에서 고른 <b>분위기</b>에 맞춰 그림체를 정해요. 가게 이름, 업종, 자랑은 어떤 그림체를 골라도 똑같이 캐릭터에 들어가요.</p><table class="help-table"><thead><tr><th>분위기</th><th>그림체</th></tr></thead><tbody>${Object.entries(MOOD_STYLE).map(([m,v])=>`<tr${state.mood===m?' class="now"':''}><td>${esc(m)}${state.mood===m?' <em>지금</em>':''}</td><td>${esc(name(v))}</td></tr>`).join('')}</tbody></table><p class="help">그림체 카드를 직접 고르면 그 그림을 참고해서 그려요. 그림 속 캐릭터를 따라 그리지는 않고, 우리 가게에 맞는 캐릭터를 새로 만들어요.</p>`];
+ return ['‘알아서 골라 주세요’를 고르면','<p>앞에서 고른 분위기에 어울리는 그림체를 골라서 그려요. 가게 이름, 업종, 자랑은 어떤 그림체를 골라도 똑같이 캐릭터에 들어가요.</p><p class="help">그림체 카드를 직접 고르면 그 그림을 참고해서 그려요. 그림 속 캐릭터를 따라 그리지는 않고, 우리 가게에 맞는 캐릭터를 새로 만들어요.</p>'];
 }
 function helpSheet(k){const[title,body]=helpBody(k),prev=document.activeElement,el=document.createElement('div');el.className='modal-back';
  el.innerHTML=`<div class="modal help-sheet" role="dialog" aria-modal="true" aria-labelledby="help-title"><div class="help-head"><h2 id="help-title">${title}</h2><button type="button" class="text-button" data-x>닫기</button></div>${body}<button type="button" class="primary full" data-x>알겠어요</button></div>`;
