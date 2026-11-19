@@ -681,3 +681,6 @@ html.chat-open,html.chat-open body{overflow:hidden;overscroll-behavior:none}
 .start:has(#real-signup) .start-body{padding-top:calc(2vh + env(safe-area-inset-top))}
 .signup-compact .field{margin:0 0 8px}
 .signup-compact input[type=text],.signup-compact input[type=password]{min-height:44px}
+
+/* 포장 미리보기 (packSVG 그림) */
+.pack-preview{display:block;width:100%;height:auto;border-radius:16px;margin-top:18px}
