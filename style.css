@@ -673,3 +673,11 @@ html.chat-open,html.chat-open body{overflow:hidden;overscroll-behavior:none}
 .signup-compact .check{font-size:12px;line-height:1.5;margin:4px 0 10px;color:#777}
 .start:has(#real-signup) .start-tag{display:none}
 .start:has(#real-signup) .start-body{padding-top:calc(4vh + env(safe-area-inset-top))}
+/* 회원가입도 입력칸 위 이름표 보이게 (로그인과 같은 모양) */
+.signup-compact .field{margin:0 0 10px}
+.signup-compact .field>label{position:static;width:auto;height:auto;clip:auto;overflow:visible;white-space:normal;display:block;margin:0 0 5px;font-size:13px;font-weight:600;color:#353535}
+.signup-compact input[type=text],.signup-compact input[type=password]{min-height:46px}
+.start-title{margin:1vh 0 12px}
+.start:has(#real-signup) .start-body{padding-top:calc(2vh + env(safe-area-inset-top))}
+.signup-compact .field{margin:0 0 8px}
+.signup-compact input[type=text],.signup-compact input[type=password]{min-height:44px}
