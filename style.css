@@ -500,3 +500,26 @@ body.modal-open{overflow:hidden}
 .dong-list small{color:var(--muted);font-size:13px;white-space:nowrap}
 .dong-list li.dong-none{cursor:default;color:var(--muted);font-size:14px}
 .dong-list li.dong-none:hover{background:none}
+
+/* 질문 옆 ? 도움말 버튼과 바텀시트 */
+.help-q{position:relative;display:inline-grid;place-items:center;width:22px;height:22px;margin-left:8px;padding:0;vertical-align:3px;border:1.5px solid #c9c4bf;border-radius:50%;background:none;color:#8f8a85;font-size:13px;font-weight:800;line-height:1}
+.help-q:after{content:'';position:absolute;inset:-11px}
+.help-q:hover{border-color:var(--ink);color:var(--ink)}
+.help-sheet{max-height:85vh;overflow:auto}
+.help-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+.help-head h2{margin:0}
+.help-sheet p{font-size:15px;margin:0 0 12px;color:var(--ink)}
+.help-sheet p.help{font-size:13px;color:var(--muted)}
+.help-sheet ul{margin:0 0 14px;padding-left:18px;font-size:14px;line-height:1.7}
+.help-sheet ul.help-ex{list-style:none;padding:0;display:grid;gap:8px}
+.help-ex li{display:flex;flex-direction:column;padding:10px 12px;border-radius:var(--radius-inner);background:#f5f2ef}
+.help-ex span{font-size:13px;color:var(--muted)}
+.help-ex span:before{content:'“'}.help-ex span:after{content:'”'}
+.help-ex b{font-size:14px;font-weight:600}
+.help-ex b:before{content:'→ ';color:var(--orange)}
+.help-table{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 12px}
+.help-table th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+.help-table td{padding:9px 8px;border-bottom:1px solid var(--line)}
+.help-table tr.now td{background:#fbefe9;font-weight:700}
+.help-table em{font-style:normal;font-size:11px;color:#fff;background:var(--orange);border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px}
+.help-sheet .primary.full{margin-top:4px;min-height:48px}
