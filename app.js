@@ -209,15 +209,16 @@ function stickerSVG(s=state,mode='sticker'){
 const t=brandTheme(s),type=typeOf(s);
 const raw=s.customImage||svgUri(assets[type]||''),size=mode==='sns'?1080:800,scale=size/800;
 const outer=s.shape==='circle'?`<circle cx="400" cy="400" r="390" fill="white"/><circle cx="400" cy="400" r="372" fill="${t.bg}" stroke="${t.accent}" stroke-width="2" stroke-dasharray="4 8"/>`:`<rect x="10" y="10" width="780" height="780" rx="60" fill="white"/><rect x="28" y="28" width="744" height="744" rx="47" fill="${t.bg}" stroke="${t.accent}" stroke-width="2" stroke-dasharray="4 8"/>`;
-const nameSize=Math.min(Number(s.fontSize)||58,620/Math.max(s.name.length,1)),f=fontOf(s),face=fontFace(f,(s.name||'우리 가게')+s.message+s.industry),name=esc(s.name||'우리 가게'),weight=face?400:800;
+const nameSize=Math.min(Number(s.fontSize)||58,620/Math.max(s.name.length,1)),f=fontOf(s),face=fontFace(f,(s.name||'')+s.message+s.industry),name=esc(s.name||''),weight=face?400:800;
 const bg=mode==='sns'?`<rect width="800" height="800" fill="${t.bg}"/><circle cx="400" cy="355" r="270" fill="white" opacity=".45"/>`:outer,open=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 800 800">${bg}${face}`,txt=`fill="${t.ink}" ${fontAttr(face&&f)} text-anchor="middle"`;
 // 배치: 문구를 /로 나누면 큰 글씨 배치에서 작은 줄 / 큰 글씨 / 작은 줄로 쓴다
 const parts=String(s.message||'').split('/').map(x=>x.trim()).filter(Boolean),line=parts.join(' ');
-if(s.layout==='char')return `${open}<image href="${esc(raw)}" x="110" y="110" width="580" height="580"/></svg>`;
-if(s.layout==='arc'){const top=Math.min(64,820/Math.max(line.length,1)),bot=Math.min(52,560/Math.max((s.name||'우리 가게').length,1));
+// 이름도 문구도 비우면 기본 배치는 캐릭터만 크게
+if(s.layout==='char'||((s.layout||'basic')==='basic'&&!(s.name||'').trim()&&!line))return `${open}<image href="${esc(raw)}" x="110" y="110" width="580" height="580"/></svg>`;
+if(s.layout==='arc'){const top=Math.min(64,820/Math.max(line.length,1)),bot=Math.min(52,560/Math.max((s.name||'').length,1));
  return `${open}<defs><path id="arc-top" d="M 120 410 A 280 280 0 0 1 680 410"/><path id="arc-bot" d="M 150 420 A 250 250 0 0 0 650 420"/></defs><image href="${esc(raw)}" x="185" y="150" width="430" height="405"/><g ${txt} font-weight="${weight}"><text font-size="${top}"><textPath href="#arc-top" startOffset="50%">${esc(line)}</textPath></text><text font-size="${bot}" dy="${bot*.8}"><textPath href="#arc-bot" startOffset="50%">${name}</textPath></text></g></svg>`}
 if(s.layout==='big'){// 3줄 이상: 작은 줄 / 큰 글씨 / 작은 줄, 1~2줄: 전부 큰 글씨
- const three=parts.length>=3,small1=three?parts[0]:'',small2=three?parts.slice(2).join(' '):'',bigs=three?[parts[1]]:parts.length?parts:[s.name||'우리 가게'];
+ const three=parts.length>=3,small1=three?parts[0]:'',small2=three?parts.slice(2).join(' '):'',bigs=three?[parts[1]]:parts.length?parts:[s.name||''];
  const lines=bigs.flatMap(x=>wrapText(x,6,3)),bs=Math.min(200,600/Math.max(...lines.map(l=>l.length),1),300/lines.length),mid=330-(lines.length-1)*bs*.55,sm=x=>Math.min(50,480/Math.max(x.length,1));
  return `${open}<g ${txt} font-weight="${weight}">${small1?`<text x="400" y="${mid-bs*.75}" font-size="${sm(small1)}">${esc(small1)}</text>`:''}${lines.map((l,i)=>`<text x="400" y="${mid+bs*.35+i*bs*1.08}" font-size="${bs}">${esc(l)}</text>`).join('')}${small2?`<text x="400" y="${mid+bs*.35+(lines.length-1)*bs*1.08+sm(small2)*1.5}" font-size="${sm(small2)}" fill="${t.accent}">${esc(small2)}</text>`:''}</g><image href="${esc(raw)}" x="270" y="500" width="260" height="245"/><text x="400" y="108" ${txt} font-size="${Math.min(30,300/Math.max((s.name||'').length,1))}" opacity=".75">${name}</text></svg>`}
 if(s.layout==='band'){const clip=s.shape==='circle'?'<circle cx="400" cy="400" r="372"/>':'<rect x="28" y="28" width="744" height="744" rx="47"/>',lines=wrapText(line,9,3),fs=Math.min(68,560/Math.max(...lines.map(l=>l.length),1));
