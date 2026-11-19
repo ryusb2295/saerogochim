@@ -490,3 +490,13 @@ body.modal-open{overflow:hidden}
 .noti-side time{font-size:12px;color:#a19b96}
 .noti-side .dot{width:8px;height:8px;border-radius:50%;background:var(--ai)}
 .noti-foot{margin:4px 0 0;text-align:center;font-size:12px;color:#a19b96}
+
+/* 동네 검색 자동완성 목록 */
+.dong-field{position:relative}
+.dong-list{position:absolute;left:0;right:0;z-index:20;margin:6px 0 0;padding:6px;list-style:none;background:var(--color-background-card);border:1px solid var(--line);border-radius:var(--radius-element);box-shadow:0 12px 32px #2b241d1f;max-height:300px;overflow:auto}
+.dong-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border-radius:var(--radius-inner);cursor:pointer;font-size:16px}
+.dong-list li b{font-weight:600}
+.dong-list li[aria-selected=true],.dong-list li:hover{background:#f1edea}
+.dong-list small{color:var(--muted);font-size:13px;white-space:nowrap}
+.dong-list li.dong-none{cursor:default;color:var(--muted);font-size:14px}
+.dong-list li.dong-none:hover{background:none}
