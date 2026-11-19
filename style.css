@@ -602,3 +602,9 @@ input::placeholder,textarea::placeholder{color:#cbcbcb}
 /* 그리드 칸이 가로 스크롤 칩 때문에 화면보다 넓어지지 않게 */
 .layout>*{min-width:0}
 .layout-choices .choice{border-radius:12px;padding:8px 2px}
+
+/* 가게온 글자 로고 (Figma 워드마크) */
+.wordmark{display:block;height:26px;width:auto}
+.start .logo .wordmark{height:32px}
+.app-title.brand{display:flex;align-items:center}
+.start-hero img{padding:12px;box-sizing:border-box;background:#fff}
