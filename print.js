@@ -80,7 +80,7 @@ const avatar = name => { const n = name || '?'; return `<span class="avatar" sty
 const reload = key => { delete V[key]; enteredKey = ''; render() };
 const skeleton = (n = 3) => `<div aria-busy="true" aria-label="불러오는 중">${'<div class="sk sk-card"></div>'.repeat(n)}</div>`;
 const errorBox = (msg, key) => `<div class="empty" role="alert"><h2>불러오지 못했어요</h2><p>${esc(msg)}</p><button class="secondary" data-reload="${esc(key)}">다시 시도</button></div>`;
-const emptyBox = (title, sub, btn = '') => `<div class="empty-card">${icon('box')}<div><strong>${title}</strong><small>${sub}</small></div>${btn}</div>`;
+const emptyBox = (title, sub, btn = '', ic = 'box') => `<div class="empty-card">${icon(ic)}<div><strong>${title}</strong><small>${sub}</small></div>${btn}</div>`;
 function stateView(r, key, body) { return r.loading ? skeleton() : r.error ? errorBox(r.error, key) : body(r.data) }
 
 function modal({ title, body, ok, danger = false, onOk }) {
@@ -366,7 +366,7 @@ function notisPage() {
     if (d.some(n => !n.read_at)) { await q(sb.from('notifications').update({ read_at: new Date().toISOString() }).is('read_at', null)); notiCount = 0 }
     return d;
   });
-  return `<section class="intro"><h1>알림</h1><p>최근 50개까지 보여줘요.</p></section>${stateView(r, 'notis', d => d.length ? `<div class="list">${d.map(n => `<button class="row-card${n.read_at ? '' : ' unread'}" data-noti="${n.id}"><span>${esc(n.title)}</span><small>${ymd(n.created_at)}</small></button>`).join('')}</div>` : emptyBox('새 알림이 없어요', '견적이 오거나 메시지가 오면 여기에 알려드려요.'))}`;
+  return `<section class="intro"><h1>알림</h1><p>최근 50개까지 보여줘요.</p></section>${stateView(r, 'notis', d => d.length ? `<div class="list">${d.map(n => `<button class="row-card${n.read_at ? '' : ' unread'}" data-noti="${n.id}"><span>${esc(n.title)}</span><small>${ymd(n.created_at)}</small></button>`).join('')}</div>` : emptyBox('새 알림이 없어요', '견적이 오거나 메시지가 오면 여기에 알려드려요.', `<button class="secondary" data-page="${myRole === 'printer' ? 'dash' : 'home'}">홈으로 가기</button>`, 'bell'))}`;
 }
 
 // ---------- 소상공인: 받은 견적 목록, 견적 비교, 제작 요청 ----------
@@ -441,7 +441,7 @@ ${live.length ? sorted.map(x => `<article class="quote-card${x.status === 'accep
 <div class="nums"><div><small>총액 (배송비 포함)</small><b>${won(x.total_price + x.shipping_fee)}</b></div><div><small>배송비</small><b>${won(x.shipping_fee)}</b></div><div><small>납품 예상</small><b>${ymd(x.delivery_date)}</b></div></div>
 <p class="price-row">${won(x.unit_price)} × ${Number(x.quantity).toLocaleString()}개 = ${won(x.total_price)} · 제작 ${x.production_days}일</p>${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}${(v => v ? `<p class="quote-review">“${esc(v.body)}” <small>${reviewer(v)}</small></p>` : '')(reviews.find(v => v.shop_id === x.shop_id && v.body))}
 ${req.status === 'open' && x.status === 'submitted' ? `<button class="primary full" data-accept="${x.id}" data-shop="${esc(x.print_shops?.name || '')}" data-total="${x.total_price + x.shipping_fee}" data-date="${x.delivery_date}">이 견적 수락</button>` : ''}</article>`).join('')
-        : reqSt(req, 0) === 'expired' ? emptyBox('견적 마감 전에 받은 견적이 없어요', '마감일을 넉넉히 잡아 다시 요청해 보세요.') : emptyBox(req.status === 'open' ? '견적을 기다리고 있어요' : '받은 견적이 없어요', req.status === 'open' ? '인쇄소가 견적을 보내면 알림으로 알려드려요.' : '')}
+        : reqSt(req, 0) === 'expired' ? emptyBox('견적 마감 전에 받은 견적이 없어요', '마감일을 넉넉히 잡아 다시 요청해 보세요.') : emptyBox(req.status === 'open' ? '견적을 기다리고 있어요' : '받은 견적이 없어요', req.status === 'open' ? '인쇄소가 견적을 보내면 알림으로 알려드려요.' : '', '', 'bell')}
 ${req.status === 'open' ? `<button class="text-button danger-text" data-cancel="${req.id}">요청 취소</button>` : ''}`;
   });
 }
@@ -595,7 +595,7 @@ function dashPage() {
       decided: decided.length, rate: decided.length ? Math.round(decided.filter(x => x.status === 'accepted').length / decided.length * 100) : null };
   });
   const head = `<section class="shop-hero"><span class="avatar">${esc((shop || '?').slice(0, 1))}</span><div><strong>${esc(shop)}</strong><small>${myShop?.verified ? '<b class="ok">승인된 인쇄소</b>' : '<b class="wait">승인 대기 중</b>'}${V.dash?.data?.rate != null ? ` · 수락률 ${V.dash.data.rate}% (${V.dash.data.decided}건 중)` : ' · 새 요청에 견적을 보내 의뢰를 받아요'}</small></div></section>`;
-  if (!myShop?.verified) return head + emptyBox('운영자 승인을 기다리고 있어요', '승인되면 소상공인의 제작 요청을 보고 견적을 보낼 수 있어요.');
+  if (!myShop?.verified) return head + emptyBox('운영자 승인을 기다리고 있어요', '승인되면 소상공인의 제작 요청을 보고 견적을 보낼 수 있어요.', '', 'info');
   const next = { accepted: '제작 시작하기', in_progress: '납품 완료 알리기', delivered: '소상공인 확인 대기' };
   return head + stateView(r, 'dash', d => {
     const waitList = d.mine.filter(x => x.status === 'submitted');
@@ -630,7 +630,7 @@ function marketPage() {
     return { rows, urls: Object.fromEntries(signed.map(s => [s.path, s.signedUrl])) };
   });
   return `<section class="intro"><h1>요청 찾기</h1><p>견적 마감이 가까운 순서예요.</p></section><div class="chip-row">${[['', '전체'], ...Object.entries(ITEM)].map(([v, l]) => `<button class="choice${marketFilter === v ? ' selected' : ''}" data-market="${v}" aria-pressed="${marketFilter === v}">${l}</button>`).join('')}</div>
-${!myShop?.verified ? emptyBox('승인 대기 중이에요', '운영자가 업체를 확인하면 요청을 볼 수 있어요.') : stateView(r, key, ({ rows, urls }) => rows.length ? `<div class="grid-cards">${rows.slice(0, marketLimit).map(x => `<button class="market-card" data-quote="${x.id}"><div class="thumb">${urls[x.preview_path] ? `<img src="${esc(urls[x.preview_path])}" alt="" loading="lazy">` : ''}${x.my_quote_status ? `<span class="st st-acc">견적 보냄</span>` : ''}</div><strong>${esc(x.title)}</strong><small>${x.item === 'other' ? esc(x.item_other) : ITEM[x.item]} · ${Number(x.quantity).toLocaleString()}개</small><small>${esc(x.region_sido)} ${esc(x.region_sigungu)} · 마감 ${ymd(x.quote_deadline)}</small></button>`).join('')}</div>${rows.length > marketLimit ? '<button class="secondary full" data-more="market">더 보기</button>' : ''}` : emptyBox('지금 열린 요청이 없어요', '새 요청이 올라오면 알림으로 알려드려요.'))}`;
+${!myShop?.verified ? emptyBox('승인 대기 중이에요', '운영자가 업체를 확인하면 요청을 볼 수 있어요.', '', 'info') : stateView(r, key, ({ rows, urls }) => rows.length ? `<div class="grid-cards">${rows.slice(0, marketLimit).map(x => `<button class="market-card" data-quote="${x.id}"><div class="thumb">${urls[x.preview_path] ? `<img src="${esc(urls[x.preview_path])}" alt="" loading="lazy">` : ''}${x.my_quote_status ? `<span class="st st-acc">견적 보냄</span>` : ''}</div><strong>${esc(x.title)}</strong><small>${x.item === 'other' ? esc(x.item_other) : ITEM[x.item]} · ${Number(x.quantity).toLocaleString()}개</small><small>${esc(x.region_sido)} ${esc(x.region_sigungu)} · 마감 ${ymd(x.quote_deadline)}</small></button>`).join('')}</div>${rows.length > marketLimit ? '<button class="secondary full" data-more="market">더 보기</button>' : ''}` : emptyBox('지금 열린 요청이 없어요', '새 요청이 올라오면 알림으로 알려드려요.', '', 'search'))}`;
 }
 function quotePage() {
   const r = useData('quote-' + reqId, async () => {

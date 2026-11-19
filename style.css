@@ -445,9 +445,26 @@ body.modal-open{overflow:hidden}
 /* 알림 종: 숫자 대신 닷 */
 .bell i.dot{top:8px;right:8px;min-width:0;width:8px;height:8px;padding:0;border:2px solid #fff;border-radius:50%;box-sizing:content-box}
 
-/* 홈 띠배너 */
-.strip-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:0 0 12px;padding:13px 16px;border:0;border-radius:var(--radius-element);background:#fff1ea;color:var(--ai);font-size:14px;font-weight:600;text-align:left;cursor:pointer}
-.strip-banner .icon{width:18px;height:18px;margin:0}
 /* 질문 마지막 "자랑" 칸: 두 줄로 시작해서 글 길이만큼 늘어남, 손잡이 없음 */
 .ask-q textarea{resize:none;min-height:0;overflow:hidden;line-height:1.5}
 .ask-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:var(--color-text-gray)}
+/* 입력칸 안 버튼: 비밀번호 보기, 지우기 (app.js enhanceInputs) */
+.input-wrap{position:relative;display:block}
+.input-wrap input{padding-right:48px}
+.input-act{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;background:none;color:#8f8a85;cursor:pointer}
+.input-act .icon{width:20px;height:20px;margin:0}
+.input-act.clear .icon{width:14px;height:14px;padding:3px;border-radius:50%;background:#c9c4bf;color:#fff;stroke-width:3;box-sizing:content-box}
+.input-act[hidden]{display:none}
+
+/* 업종 추천 칩 */
+.suggest-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.suggest-chips button{padding:8px 14px;border:1px solid #e4e1de;border-radius:99px;background:#fff;color:#5b5550;font-size:14px;cursor:pointer}
+.suggest-chips button:active{background:#f4efeb}
+
+/* 빈 상태: 가운데 정렬, 아이콘 + 제목 + 설명 + 다음 행동 버튼 */
+.empty-card{flex-direction:column;justify-content:center;text-align:center;gap:10px;padding:36px 20px}
+.empty-card .icon{width:28px;height:28px;padding:14px;border-radius:50%;background:#f6efea;color:var(--ai);box-sizing:content-box;margin:0}
+.empty-card div{min-width:0;flex:none}
+.empty-card small{display:block;margin-top:4px;color:var(--color-text-gray);word-break:keep-all}
+.empty-card button{margin-top:6px;min-width:160px}
+.ask-q textarea{min-height:calc(1.5em + 32px)}
