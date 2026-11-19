@@ -500,6 +500,9 @@ function marketCard(){if(!stores)return '';const c=matchCat(state.industry),inDo
  const twins=stores.rows.filter(x=>x[2]===state.name.trim()).length,hit=words.find(w=>state.name.includes(w.w));
  const tip=twins?`‘${esc(state.name)}’${batchim(state.name.trim())?'과':'와'} 같은 이름의 가게가 경산시에 ${twins}곳 있어요. 캐릭터를 크게 넣어 우리 가게만의 얼굴을 만들어보세요.`:hit?`이름에 들어간 ‘${esc(hit.w)}’${batchim(hit.w)?'은':'는'} 주변에서 흔한 말이에요. 캐릭터와 색으로 개성을 살려보세요.`:'주변에서 많이 쓰는 말과 겹치지 않아 기억에 잘 남는 이름이에요.';
  return `<div class="market"><div class="market-head">우리 동네 같은 업종</div><p class="market-big">${near.length?`${esc(place)}에 <b>${esc(stores.cats[c][2])}</b> 가게 <b>${near.length.toLocaleString()}곳</b>`:`${esc(place)}에는 아직 <b>${esc(stores.cats[c][2])}</b> 가게가 없어요`}</p><ul>${state.dong?`<li>경산시 전체로는 ${same.length.toLocaleString()}곳이에요.</li>`:'<li>가게 위치를 고르면 동네 기준으로 보여드려요.</li>'}${words.length?`<li>${state.dong&&pool===near?'이 동네':'경산시'} 같은 업종 이름에 자주 쓰인 말: ${words.map(w=>`<b>${esc(w.w)}</b> ${w.n}곳`).join(' · ')}</li>`:''}<li>${tip}</li></ul>${src}</div>`}
+// 아이폰 사파리는 viewport 설정을 무시해서 두 손가락 확대 제스처를 직접 막는다
+['gesturestart','gesturechange'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 async function init(){checkAI();loadStores();try{if(window.GAGEON_ASSETS){assets=window.GAGEON_ASSETS}else{await Promise.all([...EX_ART,'shop'].map(async n=>{const r=await fetch('assets/'+n+'.svg');if(!r.ok)throw Error(n);assets[n]=await r.text()}))}seedSamples();await seedDemo();if(REAL){await restoreSession()}else{try{const id=localStorage.getItem(SESSION_KEY)||'';if(users()[id])signIn(id)}catch{}page=user?'home':'start'}state.name=shop;render()}catch(e){console.error(e);showCrash()}}
 addEventListener('pagehide',saveDraft);
 // 입력이 멈추고 1초 뒤 임시 저장, AI 생성 중에는 창을 닫기 전에 한 번 묻는다

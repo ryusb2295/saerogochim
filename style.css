@@ -524,8 +524,8 @@ body.modal-open{overflow:hidden}
 @keyframes tl-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-accent) 45%,transparent)}70%,100%{box-shadow:0 0 0 9px color-mix(in srgb,var(--color-accent) 0%,transparent)}}
 @media (prefers-reduced-motion:reduce){.timeline li.now:before{animation:none}}
 
-/* 폰에서 두 번 탭하면 확대되는 것 막기 (두 손가락 확대는 그대로) */
-html{touch-action:manipulation}
+/* 앱처럼: 두 번 탭, 두 손가락 확대 막기 (스크롤만 허용). 아이폰 핀치는 app.js의 gesturestart에서 막음 */
+html{touch-action:pan-x pan-y}
 
 /* 스티커 배치 5개: 폰에서 한 줄에 다 들어가게 */
 .layout-choices{grid-auto-flow:row;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
