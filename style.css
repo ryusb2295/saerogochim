@@ -608,3 +608,19 @@ input::placeholder,textarea::placeholder{color:#cbcbcb}
 .start .logo .wordmark{height:32px}
 .app-title.brand{display:flex;align-items:center}
 .start-hero img{padding:12px;box-sizing:border-box;background:#fff}
+
+/* 분석 중 픽셀 시바와 움직이는 김 */
+.an-core.shiba{background:#fff;box-shadow:inset 0 0 0 1px #ececec}
+.shiba-art{position:relative;display:block;width:86%}
+.shiba-art img{display:block;width:100%;height:auto}
+.steam{position:absolute;left:66%;top:29%;width:11%;height:22%;overflow:visible;fill:#2b2b2b}
+.steam g{opacity:0;animation:steam 1.8s ease-in-out infinite}
+.steam g:nth-child(2){animation-delay:.7s}
+@keyframes steam{0%{opacity:0;transform:translateY(4px)}35%{opacity:1}100%{opacity:0;transform:translateY(-7px)}}
+@media (prefers-reduced-motion:reduce){.steam g{animation:none;opacity:.8}}
+
+/* 분석 카드 안 작은 버튼 (스티커 문구로 쓰기, 다시 분석) */
+.chip-btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border:1px solid #d9d9d9;border-radius:999px;background:#fff;color:#353535;font-size:14px;font-weight:600;cursor:pointer}
+.chip-btn .icon{width:16px;height:16px}
+.chip-btn:active{background:#f5f5f5}
+.analysis-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
