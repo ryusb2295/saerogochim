@@ -518,3 +518,8 @@ body.modal-open{overflow:hidden}
 .help-ex b{font-size:14px;font-weight:600}
 .help-ex b:before{content:'→ ';color:var(--orange)}
 .help-sheet .primary.full{margin-top:4px;min-height:48px}
+
+/* 진행 중인 단계: 점 바깥으로 링이 퍼지는 펄스 (완료 단계는 제외, 움직임 줄이기 설정이면 끔) */
+.timeline li.now:not(:last-child):before{animation:tl-pulse 1.8s ease-out infinite}
+@keyframes tl-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-accent) 45%,transparent)}70%,100%{box-shadow:0 0 0 9px color-mix(in srgb,var(--color-accent) 0%,transparent)}}
+@media (prefers-reduced-motion:reduce){.timeline li.now:before{animation:none}}
