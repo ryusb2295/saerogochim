@@ -523,3 +523,6 @@ body.modal-open{overflow:hidden}
 .timeline li.now:not(:last-child):before{animation:tl-pulse 1.8s ease-out infinite}
 @keyframes tl-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-accent) 45%,transparent)}70%,100%{box-shadow:0 0 0 9px color-mix(in srgb,var(--color-accent) 0%,transparent)}}
 @media (prefers-reduced-motion:reduce){.timeline li.now:before{animation:none}}
+
+/* 폰에서 두 번 탭하면 확대되는 것 막기 (두 손가락 확대는 그대로) */
+html{touch-action:manipulation}
