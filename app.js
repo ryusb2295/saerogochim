@@ -202,8 +202,8 @@ async function analyzeAI(){if(brandLoading||!aiReady)return;brandLoading=true;co
 function analysisCard(){const b=state.brand;if(!b)return '';return `<div class="analysis"><div class="analysis-head"><strong>브랜드 분석 결과</strong><span class="ai-badge">${b.src==='ai'?'AI':'예시'}</span></div>${brandLoading?'<p class="analysis-loading" role="status">AI가 가게 정보를 분석하고 있어요…</p>':''}<label class="mini-label" for="brand-slogan">슬로건 · 직접 바꿀 수 있어요</label><input class="slogan-input" id="brand-slogan" type="text" maxlength="60" value="${esc(b.slogan)}"><p class="mini-label">추천 컬러 · 눌러서 적용해요</p>${recommendedSwatches()}${customColorPicker()}<p class="mini-label">브랜드 키워드</p><div class="tags">${b.keywords.map(k=>`<span>#${esc(k)}</span>`).join('')}</div><div class="analysis-actions"><button type="button" class="text-button" id="use-slogan">스티커 문구로 쓰기</button>${aiReady?'<button type="button" class="text-button" id="reanalyze">다시 분석</button>':''}</div></div>`}
 // 스티커 배치와 자주 쓰는 배달 스티커 문구. 문구를 고르면 어울리는 배치도 같이 바꾼다
 // 리뷰·배달 스티커 배치는 문구가 길면 글자가 작아져서 18자(공백, / 빼고)까지만
-const MSG_MAX=18,msgLen=m=>String(m||'').replace(/[\s/]/g,'').length,shortLayout=s=>(s.layout||'basic')!=='basic';
-const LAYOUTS=[['basic','기본'],['arc','둥근 글씨'],['big','큰 글씨'],['band','띠']];
+const MSG_MAX=18,msgLen=m=>String(m||'').replace(/[\s/]/g,'').length,shortLayout=s=>!['basic','char'].includes(s.layout||'basic');
+const LAYOUTS=[['char','캐릭터만'],['basic','기본'],['arc','둥근 글씨'],['big','큰 글씨'],['band','띠']];
 const PHRASES=[['소중한 주문 / 감사합니다','big'],['이것은 / 뇌물 / 답례는 리뷰♥','big'],['덤','big'],['사장님 몰래 드리는 / 서비스 / 맛있게 드세요','big'],['주문해 주셔서 감사합니다','arc'],['오늘도 찾아 주셔서 감사합니다','band'],['맛있게 드세요!','basic']];
 function stickerSVG(s=state,mode='sticker'){
 const t=brandTheme(s),type=typeOf(s);
@@ -213,6 +213,7 @@ const nameSize=Math.min(Number(s.fontSize)||58,620/Math.max(s.name.length,1)),f=
 const bg=mode==='sns'?`<rect width="800" height="800" fill="${t.bg}"/><circle cx="400" cy="355" r="270" fill="white" opacity=".45"/>`:outer,open=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 800 800">${bg}${face}`,txt=`fill="${t.ink}" ${fontAttr(face&&f)} text-anchor="middle"`;
 // 배치: 문구를 /로 나누면 큰 글씨 배치에서 작은 줄 / 큰 글씨 / 작은 줄로 쓴다
 const parts=String(s.message||'').split('/').map(x=>x.trim()).filter(Boolean),line=parts.join(' ');
+if(s.layout==='char')return `${open}<image href="${esc(raw)}" x="110" y="110" width="580" height="580"/></svg>`;
 if(s.layout==='arc'){const top=Math.min(64,820/Math.max(line.length,1)),bot=Math.min(52,560/Math.max((s.name||'우리 가게').length,1));
  return `${open}<defs><path id="arc-top" d="M 120 410 A 280 280 0 0 1 680 410"/><path id="arc-bot" d="M 150 420 A 250 250 0 0 0 650 420"/></defs><image href="${esc(raw)}" x="185" y="150" width="430" height="405"/><g ${txt} font-weight="${weight}"><text font-size="${top}"><textPath href="#arc-top" startOffset="50%">${esc(line)}</textPath></text><text font-size="${bot}" dy="${bot*.8}"><textPath href="#arc-bot" startOffset="50%">${name}</textPath></text></g></svg>`}
 if(s.layout==='big'){// 3줄 이상: 작은 줄 / 큰 글씨 / 작은 줄, 1~2줄: 전부 큰 글씨

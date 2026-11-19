@@ -526,3 +526,7 @@ body.modal-open{overflow:hidden}
 
 /* 폰에서 두 번 탭하면 확대되는 것 막기 (두 손가락 확대는 그대로) */
 html{touch-action:manipulation}
+
+/* 스티커 배치 5개: 폰에서 한 줄에 다 들어가게 */
+.layout-choices{grid-auto-flow:row;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.layout-choices .choice{padding:8px 4px;font-size:12px}
