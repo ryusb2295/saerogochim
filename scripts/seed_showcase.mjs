@@ -16,41 +16,41 @@ if (!url || !key) throw new Error('config.js의 공개 Supabase 설정을 읽지
 const day = offset => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
 const examples = [
   {
-    asset: 'coffee-roastery.png', title: '달빛 로스터리 원두 스티커', item: 'sticker', quantity: 1000,
+    asset: 'dalbit-sticker.png', title: '달빛분식 포장 스티커', item: 'sticker', quantity: 1000,
     width: 60, height: 60, material: '유포지', finishing: ['무광 코팅', '도무송 재단'],
     region_sido: '경북', region_sigungu: '경산시',
-    note: '원두 봉투에 붙일 원형 스티커예요. 잉크 색과 재단선을 맞춰 주세요.',
+    note: '떡볶이 포장 용기 뚜껑에 붙일 원형 스티커예요. 국물이 묻어도 번지지 않으면 좋겠어요.',
     quote: { unit: 115, shipping: 3500, days: 5, note: '무광 코팅과 원형 도무송을 포함한 가격입니다.' },
     target: 'open'
   },
   {
-    asset: 'bakery-bag.png', title: '모락빵집 포장 쇼핑백', item: 'shopping_bag', quantity: 500,
+    asset: 'bamcham-bag.png', title: '밤참떡볶이 배달 봉투', item: 'shopping_bag', quantity: 500,
     width: 260, height: 300, material: '크라프트지', finishing: [],
     region_sido: '대구', region_sigungu: '달서구',
-    note: '빵 두세 개가 들어갈 크기예요. 손잡이는 종이끈으로 제작하고 싶어요.',
+    note: '배달 용기 두세 개가 들어갈 크기예요. 손잡이는 종이끈으로 제작하고 싶어요.',
     quote: { unit: 590, shipping: 6000, days: 9, note: '크라프트지와 종이끈 손잡이 제작을 포함합니다.' },
     target: 'accepted'
   },
   {
-    asset: 'florist-wrap.png', title: '꽃담 플라워 꽃다발 포장지', item: 'wrapping', quantity: 1500,
+    asset: 'huruk-wrap.png', title: '후루룩 국물떡볶이 포장지', item: 'wrapping', quantity: 1500,
     width: 500, height: 700, material: '아트지', finishing: ['무광 코팅'],
     region_sido: '대구', region_sigungu: '수성구',
-    note: '꽃다발 포장에 쓸 부드러운 종이를 찾고 있어요. 접었을 때 잉크가 갈라지지 않으면 좋겠어요.',
+    note: '튀김을 싸는 종이로 쓸 거예요. 기름이 배어도 잉크가 번지지 않으면 좋겠어요.',
     quote: null, target: 'open'
   },
   {
-    asset: 'soap-label.png', title: '푸른숲 수제비누 라벨', item: 'sticker', quantity: 800,
+    asset: 'kkum-label.png', title: '꿈나라 떡볶이 용기 라벨', item: 'sticker', quantity: 800,
     width: 80, height: 50, material: '유포지', finishing: ['무광 코팅'],
     region_sido: '대구', region_sigungu: '중구',
-    note: '욕실에서 쓰는 제품이라 물에 강한 라벨이 필요해요. 작은 글씨도 선명하게 인쇄해 주세요.',
+    note: '포장 용기 옆면에 붙일 라벨이에요. 냉장 보관해도 떨어지지 않게 해 주세요.',
     quote: { unit: 160, shipping: 4000, days: 6, note: '방수 유포지와 무광 코팅으로 제작합니다.' },
     target: 'in_progress'
   },
   {
-    asset: 'pet-treats.png', title: '꼬리별 반려견 간식 스티커', item: 'sticker', quantity: 1200,
+    asset: 'dalbit-coupon.png', title: '달빛분식 단골 쿠폰 스티커', item: 'sticker', quantity: 1200,
     width: 70, height: 70, material: '아트지', finishing: ['도무송 재단'],
     region_sido: '경북', region_sigungu: '경산시',
-    note: '간식 지퍼백 앞면에 붙일 스티커예요. 색감이 따뜻하게 나오면 좋겠습니다.',
+    note: '쿠폰 도장 칸에 붙일 작은 스티커예요. 색감이 따뜻하게 나오면 좋겠습니다.',
     quote: { unit: 95, shipping: 3500, days: 4, note: '지퍼백에 붙이기 좋은 점착지로 제작합니다.' },
     target: 'open'
   }
@@ -83,7 +83,7 @@ if (!apply && !repairPreviews) {
 const owner = await login('demo', process.env.DEMO_OWNER_PASSWORD || 'demo1234');
 const ownerToken = owner.access_token;
 const ownerId = owner.user.id;
-const current = await api(`/rest/v1/print_requests?select=id,title,status,preview_path&owner_id=eq.${ownerId}`, { token: ownerToken });
+const current = await api(`/rest/v1/print_requests?select=id,title,status,preview_path,design_path&owner_id=eq.${ownerId}`, { token: ownerToken });
 const requests = new Map(current.map(row => [row.title, row]));
 
 for (const example of examples) {
@@ -106,6 +106,14 @@ for (const example of examples) {
         throw error;
       }
       console.log(`워터마크 미리보기 교체: ${example.title}`);
+      const design = requests.get(example.title).design_path;
+      if (design) {
+        try {
+          await api('/storage/v1/object/request-files', { method: 'DELETE', token: ownerToken, body: { prefixes: [design] } });
+          await api(`/storage/v1/object/request-files/${design}`, { method: 'POST', token: ownerToken, body: await readFile(join(root, 'assets', 'demo', example.asset)), type: 'image/png' });
+          console.log(`원본 디자인 교체: ${example.title}`);
+        } catch (error) { console.warn(`원본 디자인은 못 바꿨어요 (${example.title}): ${error.message}`) }
+      }
     }
     console.log(`유지: ${example.title}`);
     continue;
