@@ -26,7 +26,7 @@ AI는 부를 때마다 요금이 나가서 관리자가 켜 준 계정만 실제
 **인쇄소 연결**
 
 - 사장님이 요청을 올리면 인쇄소들이 견적을 보내고, 사장님이 하나 고름. 디자인 원본은 고른 인쇄소만 볼 수 있음.
-- 1:1 채팅(사진 포함), 제작, 배송 단계와 송장번호, 토스 결제(테스트 모드), 후기와 인쇄소 평점.
+- 1:1 채팅(사진 포함), 제작, 배송 단계와 송장번호, 모의 결제(실제 과금 없음), 후기와 인쇄소 평점.
 - 새 인쇄소는 관리자가 국세청에서 사업자 상태를 확인하고 승인해야 견적을 보낼 수 있음.
 
 **그 밖에**
@@ -71,6 +71,14 @@ python server.py
 ```powershell
 python -m unittest -v test_server.py
 node --test tests/sticker-editor.test.cjs
+```
+
+## 수익화 시연
+
+패키지 구매, 토큰 충전·구독, 인쇄소 수수료, 재주문·정기배송, 시즌 시안을 시연합니다. 스티커의 문구는 한 번 클릭해 수정할 수 있습니다. 가격은 `pricing.js`에서 관리합니다. [3분 시연 순서와 DB 적용 안내](docs/COMMERCE_DEMO.md)를 참고하세요.
+
+```powershell
+node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce-exports.test.cjs
 ```
 
 ## 할 것

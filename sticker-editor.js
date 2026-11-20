@@ -95,7 +95,7 @@ const StickerEditor = (() => {
       <div class="sticker-reset"><button type="button" class="text-button" id="reset-layer">선택 요소 초기화</button><button type="button" class="text-button" id="reset-sticker">이 배치 전체 초기화</button></div>
       <p class="help" id="sticker-selection" role="status" aria-live="polite"></p></div>`;
   }
-  function bindCanvas(container, getState, refresh, save) {
+  function bindCanvas(container, getState, refresh, save, editText) {
     const canvas = container.querySelector('#sticker-canvas');
     if (!canvas) return;
     let drag = null;
@@ -120,18 +120,20 @@ const StickerEditor = (() => {
       if (!g || e.button !== 0 || drag) return;
       const p = point(e); if (!p) return;
       e.preventDefault(); select(g.dataset.stickerLayer); canvas.focus({ preventScroll: true });
-      drag = { id: e.pointerId, point: p, start: placement(getState(), active) }; canvas.setPointerCapture(e.pointerId);
+      drag = { id: e.pointerId, point: p, clientX: e.clientX, clientY: e.clientY, moved: false, layer: active, start: placement(getState(), active) }; canvas.setPointerCapture(e.pointerId);
     };
     canvas.onpointermove = e => {
       if (!drag || e.pointerId !== drag.id) return;
       const p = point(e); if (!p) return;
+      if(!drag.moved&&Math.hypot(e.clientX-drag.clientX,e.clientY-drag.clientY)<6)return;drag.moved=true;
       update(getState(), active, { x: drag.start.x + p.x - drag.point.x, y: drag.start.y + p.y - drag.point.y }); paintTransform();
     };
-    const finish = e => { if (!drag || e.pointerId !== drag.id) return; drag = null; if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId); commit(); };
+    const finish = e => { if (!drag || e.pointerId !== drag.id) return; const gesture=drag;drag = null; if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId); if(gesture.moved)commit();else if(e.type==='pointerup'&&['name','message'].includes(gesture.layer))editText?.(gesture.layer); };
     canvas.onpointerup = canvas.onpointercancel = finish;
     canvas.onlostpointercapture = () => { if (drag) { drag = null; commit(); } };
-    canvas.ondblclick = e => { const g = e.target.closest('[data-sticker-layer]'); const field = g?.dataset.stickerLayer === 'name' ? '#edit-name' : g?.dataset.stickerLayer === 'message' ? '#message' : null; if (field) { const input = container.querySelector(field); input?.focus(); input?.select(); } };
+    canvas.ondblclick = null;
     canvas.onkeydown = e => {
+      if(e.key==='Enter'&&['name','message'].includes(active)){e.preventDefault();editText?.(active);return}
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) || !group(active)) return;
       e.preventDefault(); const n = e.shiftKey ? 10 : 2, p = placement(getState(), active);
       update(getState(), active, { x: p.x + (e.key === 'ArrowRight' ? n : e.key === 'ArrowLeft' ? -n : 0), y: p.y + (e.key === 'ArrowDown' ? n : e.key === 'ArrowUp' ? -n : 0) }); commit();
