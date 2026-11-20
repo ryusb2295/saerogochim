@@ -31,6 +31,7 @@ STATIC = {'/manifest.json': 'application/manifest+json', '/sw.js': 'text/javascr
           '/data/gyeongsan-stores.json': 'application/json; charset=utf-8',
           '/config.js': 'text/javascript; charset=utf-8', '/print.js': 'text/javascript; charset=utf-8',
           '/chat.js': 'text/javascript; charset=utf-8', '/app.js': 'text/javascript; charset=utf-8',
+          '/sticker-editor.js': 'text/javascript; charset=utf-8',
           '/assets.js': 'text/javascript; charset=utf-8', '/style.css': 'text/css; charset=utf-8',
           '/vendor/astryx-theme-neutral.css': 'text/css; charset=utf-8'}
 STATIC.update({f'/assets/styles/{p.name}': 'image/png' for p in (ROOT / 'assets' / 'styles').glob('*.png')})   # 그림체 고르기 카드

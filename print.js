@@ -579,7 +579,13 @@ async function submitRequest(btn) {
     label('디자인 준비 중…');
     let src;
     if (uploadFile) src = URL.createObjectURL(uploadFile);
-    else { const svg = stickerSVG().replace('width="800" height="800"', 'width="1600" height="1600"'); src = svgUri(svg); await document.fonts.ready }
+    else {
+      stickerSVG(); // Queue the selected font before composing the print original.
+      await document.fonts.ready;
+      await fontsReady();
+      const svg = stickerSVG().replace('width="800" height="800"', 'width="1600" height="1600"');
+      src = svgUri(svg);
+    }
     const img = await loadImg(src);
     const original = uploadFile && uploadFile.type !== 'image/webp' ? uploadFile : await toBlob(img, 1600, false, 'image/png');
     let preview = await toBlob(img, 1000, true, 'image/webp');
