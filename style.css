@@ -757,3 +757,25 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .focus-intro{display:flex;align-items:flex-start;gap:8px}
 .focus-intro .ask-back{margin-top:2px}
 .focus-intro h1{margin:0 0 4px}
+
+/* ===== 로딩 화면 (Figma '로딩': 엔티가 일하는 중) ===== */
+.loader{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:62vh;padding:64px 24px 150px;border-radius:24px;background:linear-gradient(180deg,#cffae5 0%,#ecfff6 38%,#fff 62%)}
+.gen-modal .loader{min-height:100%;border-radius:0;justify-content:center;padding-top:40px}
+.ld-art{display:flex;flex-direction:column;align-items:center;margin-bottom:30px}
+.ld-bubble{position:relative;margin-bottom:12px;padding:6px 16px;border-radius:999px;background:#fff;color:#00a35f;font-size:13px;font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.ld-bubble:after{content:'';position:absolute;left:50%;bottom:-5px;width:10px;height:10px;background:#fff;transform:translateX(-50%) rotate(45deg)}
+.ld-ant{width:150px;height:auto;animation:ld-walk .55s ease-in-out infinite alternate}
+.ld-art .shiba-art{width:150px}
+.ld-art:not(.has-ant) .ld-ant,.ld-art.has-ant .shiba-art{display:none}
+@keyframes ld-walk{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-5px) rotate(2deg)}}
+.an-ring.ld-bar{width:min(240px,70%);height:8px;margin:0 0 24px;border-radius:99px;background:#ececec;overflow:hidden}
+.ld-bar .an-fill{display:block;width:0;height:100%;border-radius:99px;background:#00c673;transition:width .2s}
+.loader h2{margin:0 0 6px;font-size:20px;font-weight:700;color:#353535}
+.ld-sub{margin:0;font-size:14px;color:#9d9d9d}
+.loader .an-note{margin-top:16px;font-size:12px;color:#9d9d9d}
+/* 아래 모서리 치즈 장식 (Figma 그림을 받기 전 임시로 CSS로 그림) */
+.ld-deco:before,.ld-deco:after{content:'';position:absolute;bottom:-34px;width:118px;height:108px;border-radius:20px;background:radial-gradient(circle at 32% 34%,#fff3b0 0 10px,transparent 11px),radial-gradient(circle at 70% 66%,#fff3b0 0 8px,transparent 9px),radial-gradient(circle at 74% 26%,#fff3b0 0 5px,transparent 6px),#ffd84d}
+.ld-deco:before{left:-34px;transform:rotate(-28deg)}
+.ld-deco:after{right:-34px;transform:rotate(28deg)}
+@media (prefers-reduced-motion:reduce){.ld-ant{animation:none}}
+.ld-art .shiba-art img:first-child{border-radius:18px}
