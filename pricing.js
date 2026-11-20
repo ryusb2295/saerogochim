@@ -9,9 +9,9 @@
     brand: { name: '브랜드', price: 49000, rank: 3, items: ['개업 패키지 전체', '메뉴판·쿠폰 PNG', '라이트 1개월'] }
   },
   plans: {
-    free: { name: '무료', price: 0, tokens: 150, benefits: ['가입 시 토큰 1회 지급'] },
-    lite: { name: '라이트', price: 9900, tokens: 300, benefits: ['매월 토큰 한도까지 충전'] },
-    pro: { name: '프로', price: 19900, tokens: 1000, recommended: true, benefits: ['매월 토큰 한도까지 충전', '정기배송 신청', '시즌 시안 무료'] }
+    free: { name: '무료', price: 0, tokens: 150, benefits: ['가입 시 온 1회 지급'] },
+    lite: { name: '라이트', price: 9900, tokens: 300, benefits: ['매월 온 한도까지 충전'] },
+    pro: { name: '프로', price: 19900, tokens: 1000, recommended: true, benefits: ['매월 온 한도까지 충전', '정기배송 신청', '시즌 시안 무료'] }
   },
   tokenPacks: {
     small: { tokens: 100, price: 4900 },

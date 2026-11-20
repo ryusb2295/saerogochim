@@ -75,10 +75,10 @@ node --test tests/sticker-editor.test.cjs
 
 ## 수익화 시연
 
-패키지 구매, 토큰 충전·구독, 인쇄소 수수료, 재주문·정기배송, 시즌 시안을 시연합니다. 스티커의 문구는 한 번 클릭해 수정할 수 있습니다. 가격은 `pricing.js`에서 관리합니다. [3분 시연 순서와 DB 적용 안내](docs/COMMERCE_DEMO.md)를 참고하세요.
+재화 이름은 온입니다. 잔량·충전·구독은 마이페이지에서 확인합니다. 스티커는 저장한 브랜드·내 이미지·가게온 이미지로 시작하며, 문구 클릭 편집과 캐릭터 상단 크기 조절을 지원합니다. 편집·미리보기는 무료이고 사용 완료 때 작업당 10온, 새 브랜드 생성은 30온입니다. 다운로드에 패키지 결제창은 표시하지 않습니다. 인쇄소 수수료·재주문·정기배송·시즌 시연도 유지합니다. 가격은 `pricing.js`, [시연 순서·검증·DB 적용 안내](docs/COMMERCE_DEMO.md)를 참고하세요.
 
 ```powershell
-node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce-exports.test.cjs
+node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce-exports.test.cjs tests/commerce-flow.test.cjs
 ```
 
 ## 할 것

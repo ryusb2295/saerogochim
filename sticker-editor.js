@@ -87,6 +87,9 @@ const StickerEditor = (() => {
     container.querySelectorAll('[data-rec-hex]').forEach(b => b.onclick = () => { hsv = hexToHSV(b.dataset.recHex); paint(b.dataset.recHex); });
   }
   let active = 'character';
+  function quickControls() {
+    return '<div class="sticker-quick-size" id="sticker-quick-size" role="group" aria-label="캐릭터 크기 조절" hidden><span>캐릭터 크기</span><button type="button" id="quick-size-minus" aria-label="캐릭터 작게">−</button><input id="quick-layer-scale" type="range" min="40" max="180" value="100" aria-label="캐릭터 크기"><button type="button" id="quick-size-plus" aria-label="캐릭터 크게">+</button><output id="quick-scale-value" for="quick-layer-scale">100%</output></div>';
+  }
   function controls(appearance = '') {
     return `<div class="sticker-tools"><div class="sticker-layer-buttons" role="group" aria-label="편집할 요소">${Object.entries(layers).map(([key, label]) => `<button type="button" data-edit-layer="${key}" aria-pressed="false">${label}</button>`).join('')}</div>
       <div class="range-row"><label for="layer-scale">선택 요소 크기</label><input id="layer-scale" type="range" min="40" max="180" value="100"><output id="layer-scale-value" for="layer-scale">100%</output></div>
@@ -98,7 +101,7 @@ const StickerEditor = (() => {
   function bindCanvas(container, getState, refresh, save, editText) {
     const canvas = container.querySelector('#sticker-canvas');
     if (!canvas) return;
-    let drag = null;
+    let drag = null, showQuickSize = false;
     const svg = () => canvas.querySelector('svg');
     const group = key => canvas.querySelector(`[data-sticker-layer="${key}"]`);
     const paintSelection = () => {
@@ -110,9 +113,18 @@ const StickerEditor = (() => {
       container.querySelector('#layer-scale-value').textContent = scale.value + '%';
       container.querySelector('#layer-rotation-value').textContent = rotation.value + '°';
       container.querySelector('#sticker-selection').textContent = layers[active] + ' 선택됨';
+      const quick = container.querySelector('#sticker-quick-size');
+      if (quick) {
+        quick.hidden = !showQuickSize || active !== 'character' || !group('character');
+        const value = Math.round(placement(getState(), 'character').scale * 100);
+        container.querySelector('#quick-layer-scale').value = value;
+        container.querySelector('#quick-scale-value').textContent = value + '%';
+        container.querySelector('#quick-size-minus').disabled = value <= 40;
+        container.querySelector('#quick-size-plus').disabled = value >= 180;
+      }
     };
     const paintTransform = () => { const g = group(active); if (g) g.setAttribute('transform', transform(getState(), active, Number(g.dataset.cx), Number(g.dataset.cy))); };
-    const select = key => { active = key; paintSelection(); };
+    const select = key => { active = key; showQuickSize = key === 'character'; paintSelection(); };
     const point = e => { const matrix = svg()?.getScreenCTM(); if (!matrix) return null; const p = svg().createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(matrix.inverse()); };
     const commit = () => { refresh(); save(); paintSelection(); };
     canvas.onpointerdown = e => {
@@ -139,6 +151,13 @@ const StickerEditor = (() => {
       update(getState(), active, { x: p.x + (e.key === 'ArrowRight' ? n : e.key === 'ArrowLeft' ? -n : 0), y: p.y + (e.key === 'ArrowDown' ? n : e.key === 'ArrowUp' ? -n : 0) }); commit();
     };
     container.querySelectorAll('[data-edit-layer]').forEach(b => b.onclick = () => { select(b.dataset.editLayer); canvas.focus({ preventScroll: true }); });
+    const quickScale = container.querySelector('#quick-layer-scale');
+    const resizeCharacter = value => { active = 'character'; showQuickSize = true; update(getState(), 'character', { scale: value / 100 }); commit(); };
+    if (quickScale) {
+      quickScale.oninput = e => resizeCharacter(Number(e.target.value));
+      container.querySelector('#quick-size-minus').onclick = () => resizeCharacter(Math.round(placement(getState(), 'character').scale * 100) - 10);
+      container.querySelector('#quick-size-plus').onclick = () => resizeCharacter(Math.round(placement(getState(), 'character').scale * 100) + 10);
+    }
     container.querySelector('#layer-scale').oninput = e => { update(getState(), active, { scale: Number(e.target.value) / 100 }); commit(); };
     container.querySelector('#layer-rotation').oninput = e => { update(getState(), active, { rotation: Number(e.target.value) }); commit(); };
     container.querySelector('#reset-layer').onclick = () => { update(getState(), active, { x: 0, y: 0, scale: 1, rotation: 0 }); commit(); };
@@ -158,5 +177,5 @@ const StickerEditor = (() => {
     if (selected) track.scrollLeft = Math.max(0, selected.offsetLeft - track.offsetLeft - (track.clientWidth - selected.offsetWidth) / 2);
     paint();
   }
-  return { placement, update, transform, wrap, hexToHSV, hsvToHex, colorMarkup, bindColor, controls, bindCanvas, bindFonts };
+  return { placement, update, transform, wrap, hexToHSV, hsvToHex, colorMarkup, bindColor, quickControls, controls, bindCanvas, bindFonts };
 })();
