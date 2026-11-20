@@ -273,6 +273,7 @@ function bindReal() {
       const full = (a.road + ' ' + $('#addr-detail').value.trim()).trim(), patch = { region_sido: a.sido || null, region_sigungu: a.sigungu, address_detail: full };
       await q(sb.from('print_shops').update(patch).eq('id', myShop.id)); Object.assign(myShop, patch); render(); toast('업체 주소를 저장했어요.');
     } }));
+  if ($('#my-edit-btn')) $('#my-edit-btn').onclick = e => { const box = $('#my-edit'); box.hidden = !box.hidden; e.currentTarget.setAttribute('aria-expanded', String(!box.hidden)); if (!box.hidden) $('#my-shop').focus() };
   if ($('#real-name-form')) $('#real-name-form').onsubmit = async e => {
     e.preventDefault(); const v = $('#my-shop').value.trim(); if (!v || v.length > 24) return toast('이름은 1~24자로 적어주세요.');
     try { await q(sb.from('profiles').update({ display_name: v }).eq('id', uid)); if (myShop) await q(sb.from('print_shops').update({ name: v }).eq('id', myShop.id)); shop = v; render(); toast('이름을 바꿨어요.') } catch (e2) { toast(errMsg(e2)) }
@@ -287,7 +288,20 @@ function bindReal() {
     } catch (e2) { toast(errMsg(e2)) } finally { b.disabled = false }
   };
 }
+// 사장님 마이페이지 (시안): 프로필, 남은 온 카드, 메뉴 묶음 3개. 인쇄소는 아래 기존 화면
+function ownerMypage() {
+  if (!user) return ''; const a = Commerce.account(), plan = Commerce.P.plans[a.plan], rec = records()[0], pic = rec ? rec.customImage || svgUri(stickerSVG(rec)) : '', demo = user === PUBLIC_DEMO.id;
+  const row = (attr, label, side = '') => `<button ${attr}>${label}<span class="my-side">${side ? `<small>${side}</small>` : ''}${icon('chev')}</span></button>`;
+  const why = !pushSupported() ? '지원 안 함' : iosBrowser() ? '홈 화면 앱에서 켜기' : Notification.permission === 'denied' ? '차단됨' : pushOn ? '켜짐' : '꺼짐';
+  return `<section class="my-profile">${pic ? `<img class="my-pic" src="${esc(pic)}" alt="">` : `<span class="my-pic">${avatar(shop)}</span>`}<strong>${esc(shop)}</strong><button type="button" class="my-edit-btn" id="my-edit-btn" aria-expanded="false" aria-controls="my-edit">${icon('brush')}내 정보 수정</button></section>
+<section class="my-edit" id="my-edit" hidden><div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="가게 이름"><button class="secondary" type="submit">이름 변경</button></form></div>${demo ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : `<div class="my-list"><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>`}</section>
+<button type="button" class="my-tokens" data-page="token-history" aria-label="남은 온 ${a.tokenBalance} / ${plan.tokens}, 사용 내역 보기"><span class="my-tokens-head"><span><i aria-hidden="true">C</i>남은 온</span><b data-token-balance>${a.tokenBalance}/${plan.tokens}</b></span><span class="my-tokens-bar"><span style="width:${Math.min(100, a.tokenBalance / plan.tokens * 100)}%"></span></span></button>
+<div class="my-list">${row('data-page="requests"', '받은 견적')}${row('data-page="guide"', '이용 가이드')}</div>
+<div class="my-list">${row('data-page="plans"', '요금제')}${row('data-commerce-topup', '온 충전')}${row('data-page="token-history"', '구매 내역')}${row('data-page="demo-orders"', '배송 내역')}</div>
+<div class="my-list"><button id="push-toggle"${/지원|홈 화면|차단/.test(why) ? ' disabled' : ''} aria-pressed="${pushOn}">알림 설정<span class="my-side"><small>${why}</small>${icon('chev')}</span></button>${row('id="logout-my"', '로그아웃')}${row('data-page="token-history"', '구매 내역')}${row('data-page="demo-orders"', '배송 내역')}</div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
+}
 function realMypage() {
+  if (myRole === 'owner') return ownerMypage();
   return `<section class="shop-hero">${avatar(shop)}<div><strong>${esc(shop)}</strong><small>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''} · ${esc(user)}</small></div></section>
 <div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form>${myRole === 'printer' && myShop ? `<button id="shop-addr">업체 주소<small>${myShop.address_detail ? esc(myShop.address_detail) : myShop.region_sigungu ? esc(`${myShop.region_sido || ''} ${myShop.region_sigungu}`.trim()) + ' · 다시 찾기 ›' : '주소 검색 ›'}</small></button>` : ''}</div>
 <div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}${myRole === 'owner' ? `` : ''}<button data-page="guide">이용 가이드<small>›</small></button></div>
