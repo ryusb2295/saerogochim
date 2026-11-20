@@ -765,10 +765,9 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .ld-art{display:flex;flex-direction:column;align-items:center;margin-bottom:30px}
 .ld-bubble{position:relative;margin-bottom:12px;padding:6px 16px;border-radius:999px;background:#fff;color:#00a35f;font-size:13px;font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,.06)}
 .ld-bubble:after{content:'';position:absolute;left:50%;bottom:-5px;width:10px;height:10px;background:#fff;transform:translateX(-50%) rotate(45deg)}
-.ld-ant{width:150px;height:auto;animation:ld-walk .55s ease-in-out infinite alternate}
+.ld-ant{width:150px;height:auto}
 .ld-art .shiba-art{width:150px}
 .ld-art:not(.has-ant) .ld-ant,.ld-art.has-ant .shiba-art{display:none}
-@keyframes ld-walk{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-5px) rotate(2deg)}}
 .an-ring.ld-bar{width:min(240px,70%);height:8px;margin:0 0 24px;border-radius:99px;background:#ececec;overflow:hidden}
 .ld-bar .an-fill{display:block;width:0;height:100%;border-radius:99px;background:#00c673;transition:width .2s}
 .loader h2{margin:0 0 6px;font-size:20px;font-weight:700;color:#353535}
@@ -778,7 +777,6 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .ld-deco:before,.ld-deco:after{content:'';position:absolute;bottom:-34px;width:118px;height:108px;border-radius:20px;background:radial-gradient(circle at 32% 34%,#fff3b0 0 10px,transparent 11px),radial-gradient(circle at 70% 66%,#fff3b0 0 8px,transparent 9px),radial-gradient(circle at 74% 26%,#fff3b0 0 5px,transparent 6px),#ffd84d}
 .ld-deco:before{left:-34px;transform:rotate(-28deg)}
 .ld-deco:after{right:-34px;transform:rotate(28deg)}
-@media (prefers-reduced-motion:reduce){.ld-ant{animation:none}}
 .ld-art .shiba-art img:first-child{border-radius:18px}
 
 /* 질문 화면: 상단 바, 하단 탭 없이 한 화면 (시디과 피드백 26.11.20) */
