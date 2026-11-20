@@ -940,8 +940,9 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 .od-ant{position:absolute;bottom:-4px;width:46px;height:auto;transform:translateX(-50%) scaleX(-1);animation:od-walk 1.6s ease-in-out infinite}
 @keyframes od-walk{0%,100%{transform:translateX(-50%) translateY(0) scaleX(-1)}50%{transform:translateX(-50%) translateY(-3px) scaleX(-1)}}
 @media (prefers-reduced-motion:reduce){.od-ant{animation:none}}
-.od-steps{display:flex;justify-content:space-between;list-style:none;margin:12px 0 0;padding:0;font-size:14px;font-weight:600;color:#222}
-.od-steps li{flex:1;text-align:center}.od-steps li:first-child{text-align:left}.od-steps li:last-child{text-align:right}
+/* 글자를 막대 위 점과 같은 위치(0·33·67·100%)에 놓는다. 양 끝 글자는 화면 밖으로 안 나가게 안쪽으로 붙인다 */
+.od-steps{position:relative;height:20px;list-style:none;margin:12px 6px 0;padding:0;font-size:14px;font-weight:600;color:#222}
+.od-steps li{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}.od-steps li:first-child{transform:translateX(-6px)}.od-steps li:last-child{transform:translateX(calc(-100% + 6px))}
 .od-sec{margin-bottom:28px}
 .od-sec h2{margin:0 0 12px;font-size:18px;color:#222}
 .od-sec-head{display:flex;justify-content:space-between;align-items:center}
