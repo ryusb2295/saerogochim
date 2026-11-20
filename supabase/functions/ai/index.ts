@@ -162,6 +162,15 @@ Deno.serve(async req => {
     return json(kind === 'image' ? await image(brief, key) : await brand(brief, key));
   } catch (e) {
     console.error('ai failed:', e);   // Edge Functions > ai > Logs 에서 원인 확인
-    return json({ error: 'AI 요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.' }, 502);
+    // 흔한 원인은 화면에 그대로 알려 준다 (키·상세 응답은 내보내지 않음)
+    const m = String((e as Error)?.message ?? e);
+    const why = /insufficient_quota|billing/.test(m) ? 'OpenAI 크레딧이 다 떨어졌어요. 관리자에게 알려주세요.'
+      : /openai 429/.test(m) ? '요청이 몰려 잠시 막혔어요. 1분 뒤 다시 시도해주세요.'
+      : /openai 401/.test(m) ? 'AI 키가 올바르지 않아요. 관리자에게 알려주세요.'
+      : /moderation|safety|content_policy/.test(m) ? '안전 기준에 걸려 그림을 만들지 못했어요. 가게 소개 문구를 조금 바꿔 보세요.'
+      : /TimeoutError|aborted|timed out/i.test(m) ? '그림을 만드는 데 너무 오래 걸렸어요. 잠시 후 다시 시도해주세요.'
+      : /openai 40[04]/.test(m) && /model/.test(m) ? 'AI 모델 설정을 확인해야 해요. 관리자에게 알려주세요.'
+      : 'AI 요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.';
+    return json({ error: why }, 502);
   }
 });
