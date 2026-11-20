@@ -856,3 +856,10 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .tour-dots{display:flex;justify-content:center;gap:6px;margin:14px 0 4px}
 .tour-dots i{width:6px;height:6px;border-radius:3px;background:#dcdcdc;transition:width .2s}
 .tour-dots i.on{width:18px;background:#00c673}
+
+/* 인쇄 승인 체크: 손가락으로 누르기 쉽게, 미리보기 만들기 전에는 안내 */
+.print-approval{align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}
+.print-approval input{width:24px!important;height:24px;margin:0!important;accent-color:#00c673}
+.print-approval small{display:none;margin-top:2px;font-size:12px;font-weight:400;color:#949494}
+.print-approval:has(input:disabled){opacity:.6;cursor:default}.print-approval:has(input:disabled) small{display:block}
+.print-preview-grid figcaption small{display:block;font-size:11px;color:#949494}
