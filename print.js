@@ -153,7 +153,7 @@ const cloudBrand = {
   },
   save(r) {
     const { id, savedAt, ...data } = r;
-    q(sb.from('brands').upsert({ id, owner_id: uid, name: r.name || '이름 없는 브랜드', industry: r.industry || null, data, updated_at: new Date().toISOString() })).catch(() => toast('계정에 저장하지 못했어요. 이 기기에만 저장됐어요.'));
+    return q(sb.from('brands').upsert({ id, owner_id: uid, name: r.name || '이름 없는 브랜드', industry: r.industry || null, data, updated_at: new Date().toISOString() })).then(() => true).catch(() => { toast('계정에 저장하지 못했어요. 이 기기에만 저장됐어요.'); return false; });
   },
   remove(id) { q(sb.from('brands').delete().eq('id', id)).catch(() => toast('계정에서 지우지 못했어요. 다시 시도해주세요.')) }
 };
@@ -579,11 +579,11 @@ async function submitRequest(btn) {
     if (uploadFile) URL.revokeObjectURL(src);
     uploadFile = null; reqDraft = { ...reqDraft, title: '', note: '' };
     toast('견적 요청을 보냈어요. 인쇄소 견적이 오면 알려드려요.');
-    reqId = id; page = 'request'; render(); scrollTo(0, 0);
+    reqId = id; page = 'request'; render(); scrollTo(0, 0); return true;
   } catch (e) {
     for (const [b, p] of done) sb.storage.from(b).remove([p]).catch(() => {});   // 등록 실패 시 올린 파일 정리
     const m = $('#rq-form-err'); if (m) { m.textContent = errMsg(e); m.hidden = false }
-    btn.disabled = false; label('견적 요청 보내기');
+    btn.disabled = false; label('견적 요청 보내기'); return false;
   }
 }
 

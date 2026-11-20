@@ -56,7 +56,7 @@
     }
     get(user) { return this.transact(user, a => a); }
     spend(user, amount, reason) {
-      if (!Number.isSafeInteger(amount) || amount < 0) throw Error('토큰 사용량을 확인해주세요.');
+      if (!Number.isSafeInteger(amount) || amount < 0) throw Error('온 사용량을 확인해주세요.');
       return this.transact(user, a => {
         if (a.tokenBalance < amount) return { ok: false, balance: a.tokenBalance, required: amount };
         const reservation = id(); this.ledger(a, -amount, reason, { reservation }); return { ok: true, reservation, amount, userId: user };
