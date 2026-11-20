@@ -1,7 +1,7 @@
 // 가게온 서비스 워커: 앱 설치와 오프라인 열기를 위한 최소 캐시
 // 화면 파일은 항상 네트워크를 먼저 확인해서 새 버전이 바로 보이게 하고,
 // 연결이 끊겼을 때만 저장해 둔 파일을 보여준다. /api 요청은 건드리지 않는다.
-const CACHE = 'gageon-v25';
+const CACHE = 'gageon-v26';
 const SHELL = ['./', './index.html', './manifest.json', './config.js', './print.js', './chat.js', './assets.js', './pricing.js', './commerce-store.js', './commerce-exports.js', './commerce.js', './sticker-print-core.js', './sticker-print.js', './sticker-editor.js', './app.js', './style.css', './icons/icon-192.png', './icons/icon-512.png', './vendor/astryx-theme-neutral.css', './assets/brand/logo.svg', './assets/brand/logo-green.svg', './assets/brand/splash.webp', './assets/brand/onboarding.webp', './assets/brand/intro-scene.webp', './assets/brand/shiba.webp', './assets/brand/shiba-steam.webp', './assets/brand/ant.png'];
 
 self.addEventListener('install', event => {
