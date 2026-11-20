@@ -779,3 +779,14 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .ld-deco:after{right:-34px;transform:rotate(28deg)}
 @media (prefers-reduced-motion:reduce){.ld-ant{animation:none}}
 .ld-art .shiba-art img:first-child{border-radius:18px}
+
+/* 질문 화면: 상단 바, 하단 탭 없이 한 화면 (시디과 피드백 26.11.20) */
+.immersive .app-bar,.immersive .bottomnav{display:none!important}
+.immersive .main{padding-top:12px;padding-bottom:16px}
+.immersive .ask{min-height:calc(100dvh - 40px)}
+.immersive .ask-actions{bottom:env(safe-area-inset-bottom);padding-bottom:12px}
+.ask-prog{display:flex;gap:5px;margin:8px 0 30px}
+.ask-prog span{flex:1;height:4px;border-radius:2px;background:#f0f0f0;transition:background .2s}
+.ask-prog span.on{background:#00c673}
+.ask5 .ask-actions .primary{flex:1;width:auto}
+.ask5 .ask-actions .secondary{flex:none;min-width:92px}
