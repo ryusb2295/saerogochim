@@ -1021,7 +1021,7 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 .recent-card img{width:84px;height:84px;border-radius:50%;object-fit:cover}
 .recent-card strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:#222}
 .recent-card button{width:100%;min-height:32px;padding:0;border:0;border-radius:8px;background:#353535;color:#fff;font-size:13px;cursor:pointer}
-.season-card .actions button{white-space:nowrap}.home-resume{margin-top:18px}
+.season-card .actions button{white-space:nowrap;min-width:0;padding-left:12px;padding-right:12px}.season-card .actions .secondary{flex:0 0 auto}.season-card .actions .primary{flex:1}.home-resume{margin-top:18px}
 /* 홈 개미: 언덕 위에 서 있게 (그림은 벡터라 어떤 화면에서도 선명) */
 .home-ant{position:absolute;z-index:1;left:12%;bottom:12%;width:68%;pointer-events:none}
 .home-hero h1,.home-hero p{position:relative}
