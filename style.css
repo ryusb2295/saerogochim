@@ -1023,3 +1023,5 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 /* 홈 개미: 언덕 위에 서 있게 (그림은 벡터라 어떤 화면에서도 선명) */
 .home-ant{position:absolute;left:12%;bottom:calc(26px + 4.6vw);width:68%;max-width:330px;pointer-events:none}
 .home-hero h1,.home-hero p{position:relative}
+/* 아이폰: 하단 탭바는 홈 인디케이터 쪽으로 내리고, 본문 끝은 탭바에 가리지 않게 */
+@media (max-width:640px){.bottomnav{padding-bottom:max(8px,calc(env(safe-area-inset-bottom) - 14px))}.main{padding-bottom:calc(90px + env(safe-area-inset-bottom))}.immersive .main{padding-bottom:16px}}
