@@ -564,7 +564,7 @@ async function checkAI(){try{const c=new AbortController();const t=setTimeout(()
 // 로그인한 앱에서는 관리자가 AI를 켜 준 계정(aiAllowed, print.js)만 실제 생성. 아니면 예시 캐릭터(목업)
 function refreshAI(){const was=aiReady;aiReady=REAL?(localAI||!!CFG.aiFunction)&&aiAllowed:localAI;if(was!==aiReady&&page==='studio'&&step===2)render()}
 async function aiCall(kind,brief,signal){
- if(!localAI){const{data,error}=await sb.functions.invoke('ai',{body:{kind,brief}});if(error){let m='';try{m=(await error.context.json()).error}catch{}throw Error(m||'AI 요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.')}return data}
+ if(!localAI){const{data,error}=await sb.functions.invoke('ai',{body:{kind,brief}});if(error){let m='';const st=error.context?.status;try{m=(await error.context.json()).error}catch{}throw Error(m||(st?`AI 서버 응답 오류(${st})예요. 잠시 후 다시 시도해주세요.`:'연결이 끊겨 AI 결과를 받지 못했어요. 와이파이·데이터를 확인하고 다시 시도해주세요.'))}return data}
  const health=await (await fetch('/api/status',{signal})).json();if(!health.ready)throw Error('서버를 다시 실행하고 API 키를 입력해주세요.');
  const r=await fetch(kind==='image'?'/api/generate':'/api/brand',{method:'POST',headers:{'Content-Type':'application/json','X-Gageon-Token':health.token,...(await authHeader())},body:JSON.stringify(kind==='image'?{...brief,request_id:crypto.randomUUID()}:brief),signal});
  const d=await r.json();if(!r.ok)throw Error(d.error||'생성에 실패했어요.');return d}
