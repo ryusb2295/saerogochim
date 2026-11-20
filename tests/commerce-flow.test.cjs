@@ -73,3 +73,14 @@ test('another editing session has its own single use fee', async () => {
   assert.equal(f.run('Commerce.account().tokenBalance'), 130);
 });
 
+test('entry guidance quotes the cost without spending and recognizes a paid draft', async () => {
+  const f=fixture();
+  assert.equal(f.run("Commerce.entryCost('brand')"),30);
+  assert.equal(f.run("Commerce.entryCost('sticker')"),10);
+  assert.equal(f.run("Commerce.entryCost('post')"),10);
+  assert.equal(f.run('Commerce.account().tokenBalance'),150);
+  await f.run("Commerce.gate('save',async()=>true)");
+  assert.equal(f.run("Commerce.entryCost('resume')"),0);
+  assert.equal(f.run("Commerce.entryCost('current')"),0);
+  assert.equal(f.run('Commerce.account().tokenBalance'),140);
+});

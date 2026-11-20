@@ -366,11 +366,11 @@ if($('#post-text'))$('#post-text').oninput=e=>{state.postText=e.target.value;ref
 if($('#use-slogan'))$('#use-slogan').onclick=()=>{state.message=state.brand.slogan;render();toast('슬로건을 스티커 문구로 넣었어요.')};
 if($('#reanalyze'))$('#reanalyze').onclick=()=>{if(state.brand){state.brand.key='';state.brand.sloganEdited=false}ensureBrand()};
 if($('#new-brand'))$('#new-brand').onclick=createSheet;
-if($('#resume-draft'))$('#resume-draft').onclick=()=>{const d=draft();if(!d)return;state={...initial(),...d.state};focusMode='';page='studio';go(d.step||1)};
+if($('#resume-draft'))$('#resume-draft').onclick=()=>{const d=draft();if(!d)return;state={...initial(),...d.state};Commerce.entryInfo('resume',()=>{focusMode='';page='studio';go(d.step||1)})};
 if($('#name-form'))$('#name-form').onsubmit=e=>{e.preventDefault();const v=$('#my-shop').value.trim();if(!v){toast('가게 이름을 적어주세요.');return}try{const u=users();if(u[user]){u[user].shop=v;saveUsers(u)}}catch{toast('저장하지 못했어요.');return}shop=v;render();toast('가게 이름을 바꿨어요.')};
 if($('#logout-my'))$('#logout-my').onclick=()=>$('#logout').click();
 if($('#wipe'))$('#wipe').onclick=()=>{if(!confirm('이 브라우저의 계정, 저장한 브랜드, 작업 중인 내용, 체험 횟수가 모두 지워져요. 되돌릴 수 없어요. 지울까요?'))return;try{[KEY,SHOP_KEY,SEED_KEY,DRAFT_KEY,USAGE_KEY,USERS_KEY,SESSION_KEY].forEach(k=>localStorage.removeItem(k))}catch{}signOut();render()};
-$('#app').querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const r=records().find(r=>r.id===b.dataset.open);if(r){focusMode='edit';state={...initial(),...r,commerceSessionId:GageonCommerceStore.id()};page='studio';go(3)}});
+$('#app').querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const r=records().find(r=>r.id===b.dataset.open);if(r)Commerce.entryInfo('sticker',()=>{focusMode='edit';state={...initial(),...r,commerceSessionId:GageonCommerceStore.id()};page='studio';go(3)})});
 $('#app').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{const id=b.dataset.delete,all=records(),idx=all.findIndex(r=>r.id===id);if(idx<0)return;const rec=all[idx];try{localStorage.setItem(KEY,JSON.stringify(all.filter(r=>r.id!==id)))}catch{return toast('삭제하지 못했어요. 브라우저 저장 설정을 확인해주세요.')}render();snackbar(`${rec.name||'브랜드'} 브랜드를 삭제했어요.`,'되돌리기',()=>{const now=records();now.splice(Math.min(idx,now.length),0,rec);try{localStorage.setItem(KEY,JSON.stringify(now))}catch{}render()},()=>{if(REAL)cloudBrand.remove(id)})});
 }
 async function upload(e){const file=e.target.files[0];if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2*1024*1024){uploadError('2MB 이하 PNG, JPG, WebP 파일만 올릴 수 있어요.');e.target.value='';return}uploadError('');try{const bmp=await createImageBitmap(file);const c=document.createElement('canvas');const ratio=Math.min(1,640/Math.max(bmp.width,bmp.height));c.width=bmp.width*ratio;c.height=bmp.height*ratio;c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);state.customImage=c.toDataURL('image/png');state.generated=false;bmp.close();render();toast('내 캐릭터를 적용했어요.')}catch{uploadError('이 그림을 열 수 없어요. 다른 파일을 골라 주세요.')}}
@@ -427,11 +427,11 @@ function createSheet(){const rs=records(),prev=document.activeElement,el=documen
  document.body.append(el);document.body.classList.add('modal-open');let mode='';
  const close=()=>{el.remove();document.body.classList.remove('modal-open');prev?.focus?.()};
  el.querySelectorAll('[data-x]').forEach(b=>b.onclick=close);el.onclick=e=>{if(e.target===el)close()};el.onkeydown=e=>{if(e.key==='Escape')close()};
- el.querySelectorAll('[data-make]').forEach(b=>b.onclick=()=>{mode=b.dataset.make;if(mode==='brand'){close();startNewBrand();return}
-  if(mode==='sticker'){close();imageSourceSheet(mode);return}
-  if(rs.length===1){close();openBrand(rs[0].id,mode);return}
+ el.querySelectorAll('[data-make]').forEach(b=>b.onclick=()=>{mode=b.dataset.make;if(mode==='brand'){close();Commerce.entryInfo('brand',startNewBrand);return}
+  if(mode==='sticker'){close();Commerce.entryInfo('sticker',()=>imageSourceSheet(mode));return}
+  if(rs.length===1){close();Commerce.entryInfo(mode,()=>openBrand(rs[0].id,mode));return}
   el.querySelector('.make-list').hidden=true;el.querySelector('.make-pick').hidden=false;el.querySelector('#make-title').textContent=mode==='sticker'?'어떤 브랜드로 스티커를 만들까요?':'어떤 브랜드로 홍보물을 만들까요?';el.querySelector('[data-make-brand]')?.focus()});
- el.querySelectorAll('[data-make-brand]').forEach(b=>b.onclick=()=>{close();openBrand(b.dataset.makeBrand,mode)});
+ el.querySelectorAll('[data-make-brand]').forEach(b=>b.onclick=()=>{close();Commerce.entryInfo(mode,()=>openBrand(b.dataset.makeBrand,mode))});
  el.querySelector('.make-opt').focus()}
 // Existing brands, local files and bundled art share the same free preview flow.
 function imageSourceSheet(mode='sticker',replaceImage=false){
