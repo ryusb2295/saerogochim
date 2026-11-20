@@ -734,3 +734,27 @@ html.chat-open,html.chat-open body{overflow:hidden;overscroll-behavior:none}
 .font-carousel{display:flex;align-items:stretch;gap:6px;min-width:0}.font-carousel .font-choices{display:flex;position:relative;flex:1;min-width:0;overflow-x:auto;gap:8px;scroll-snap-type:x mandatory;padding:4px 3px 8px;scrollbar-width:thin}.font-carousel .font-choice{flex:0 0 calc((100% - 16px)/3);scroll-snap-align:start;min-width:72px}.font-nav{flex:0 0 26px;border:1px solid var(--line);border-radius:8px;background:white;font-size:26px;padding:0}.font-nav:disabled{opacity:.25;cursor:default}
 @media(prefers-reduced-motion:reduce){.font-choices{scroll-behavior:auto}}
 .commerce-sheet{max-height:88vh;overflow-y:auto}.package-options{display:flex;flex-direction:column}.package-options .choice{align-items:flex-start;text-align:left;padding:14px}.package-options small{font-size:12px;line-height:1.7;color:var(--muted)}.token-panel{margin-bottom:18px}.token-panel progress{width:100%;height:8px;accent-color:var(--ai)}.token-panel .my-list{margin-bottom:0}.commerce-order-thumb{display:block;width:100%;max-width:220px;height:auto;margin:12px auto}.season-card{margin:16px 0}.season-card h2{font-size:18px}.package-locked{color:var(--muted)}.commerce-sheet .field{margin-top:14px}
+
+/* 홈 + 만들기 바텀시트 */
+.make-list{display:grid;gap:10px;margin-top:6px}
+.make-opt{display:flex;align-items:center;gap:14px;width:100%;padding:14px;border:1px solid #ececec;border-radius:14px;background:#fff;text-align:left;color:#353535;cursor:pointer}
+.make-opt:not(:disabled):active{background:#f7f8fa}
+.make-opt:disabled{opacity:.55;cursor:default}
+.make-ic{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:12px;background:#e9f9f1;color:#00a35f}
+.make-ic .icon{width:22px;height:22px}
+.make-txt{flex:1;min-width:0}
+.make-txt strong{display:block;font-size:16px}
+.make-txt small{font-size:13px;color:#9d9d9d}
+.make-opt .chev{color:#cbcbcb;font-size:22px}
+.make-brands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:6px}
+.make-brands button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border:1px solid #ececec;border-radius:14px;background:#fff;font-size:13px;color:#353535;cursor:pointer}
+.make-brands img{width:100%;aspect-ratio:1;object-fit:contain}
+.make-brands span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 키보드 초점 표시도 초록 테마 색 */
+button:focus-visible,a:focus-visible{outline-color:#00c673}
+
+/* 저장한 브랜드로 바로 들어온 화면: 뒤로 가기 + 제목 (4단계 표시 없음) */
+.focus-intro{display:flex;align-items:flex-start;gap:8px}
+.focus-intro .ask-back{margin-top:2px}
+.focus-intro h1{margin:0 0 4px}
