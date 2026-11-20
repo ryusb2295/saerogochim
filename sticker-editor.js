@@ -87,12 +87,13 @@ const StickerEditor = (() => {
     container.querySelectorAll('[data-rec-hex]').forEach(b => b.onclick = () => { hsv = hexToHSV(b.dataset.recHex); paint(b.dataset.recHex); });
   }
   let active = 'character';
-  function controls() {
+  function controls(appearance = '') {
     return `<div class="sticker-tools"><div class="sticker-layer-buttons" role="group" aria-label="편집할 요소">${Object.entries(layers).map(([key, label]) => `<button type="button" data-edit-layer="${key}" aria-pressed="false">${label}</button>`).join('')}</div>
       <div class="range-row"><label for="layer-scale">선택 요소 크기</label><input id="layer-scale" type="range" min="40" max="180" value="100"><output id="layer-scale-value" for="layer-scale">100%</output></div>
       <div class="range-row"><label for="layer-rotation">회전</label><input id="layer-rotation" type="range" min="-180" max="180" value="0"><output id="layer-rotation-value" for="layer-rotation">0°</output></div>
+      ${appearance}
       <div class="sticker-reset"><button type="button" class="text-button" id="reset-layer">선택 요소 초기화</button><button type="button" class="text-button" id="reset-sticker">이 배치 전체 초기화</button></div>
-      <p class="help" id="sticker-edit-help">요소를 누르고 끌어서 옮겨보세요. 글씨를 두 번 누르면 아래에서 수정할 수 있어요. 방향키로도 이동할 수 있어요.</p><p class="help" id="sticker-selection" role="status" aria-live="polite"></p></div>`;
+      <p class="help" id="sticker-selection" role="status" aria-live="polite"></p></div>`;
   }
   function bindCanvas(container, getState, refresh, save) {
     const canvas = container.querySelector('#sticker-canvas');
