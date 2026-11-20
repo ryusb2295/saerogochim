@@ -255,9 +255,12 @@ function steps(){return `<div class="steps" aria-label="진행 단계">${['가�
 const shibaArt=()=>`<span class="shiba-art"><img src="assets/brand/shiba.webp" alt=""><img class="steam" src="assets/brand/shiba-steam.webp" alt=""></span>`;
 // 로딩 화면 (Figma '로딩'): 민트 배경, 말풍선, 엔티(개미), 가로 진행 막대. assets/brand/ant.png가 생기면 시바 대신 엔티가 나온다
 const loaderArt=()=>`<div class="ld-art"><span class="ld-bubble">영차영차~</span><img class="ld-ant" src="assets/brand/ant.png" alt="" onload="this.parentNode.classList.add('has-ant')">${shibaArt()}</div>`;
+// 아래 양쪽 치즈 (Figma 로딩 시안을 438px 화면 기준 좌표로 옮김). 오른쪽은 왼쪽을 뒤집고 연한 치즈가 앞에 온다
+const cheeseL='<g transform="translate(113 128) rotate(15)"><rect x="-150" width="150" height="100" rx="16" fill="#ffeeaa"/><circle cx="-28" cy="35" r="12" fill="#ffde55"/></g>',cheeseD='<g transform="translate(78 83) rotate(36)"><rect x="-130" width="130" height="140" rx="18" fill="#ffde55"/><circle cx="-44" r="15" fill="#fff"/></g>';
+const loaderDeco=`<div class="ld-deco" aria-hidden="true"><svg viewBox="0 0 438 180">${cheeseL}${cheeseD}<g transform="translate(438 0) scale(-1 1)">${cheeseD}${cheeseL}</g></svg></div>`;
 const loaderBar=label=>`<div class="an-ring ld-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="${label}"><i class="an-fill"></i></div>`;
 function analyzing(){candidates=[];const items=['업종을 읽고 있어요',state.dong?'주변 가게를 살펴보고 있어요':'가게 분위기를 정리하고 있어요','어울리는 색을 고르고 있어요'];
- $('#brand-form').outerHTML=`<section class="analyzing an2 loader" role="status" aria-live="polite">${loaderArt()}${loaderBar('브랜드 분석 진행률')}<b class="an-pct sr-only" id="an-pct">0%</b><h2>브랜드 분석 중…</h2><p class="ld-sub">엔티가 가게 정보를 살펴보고 있어요!</p>${aiReady?'':'<small class="an-note">시연용 예시 분석이에요.</small>'}<div class="ld-deco" aria-hidden="true"></div></section>`;
+ $('#brand-form').outerHTML=`<section class="analyzing an2 loader" role="status" aria-live="polite">${loaderArt()}${loaderBar('브랜드 분석 진행률')}<b class="an-pct sr-only" id="an-pct">0%</b><h2>브랜드 분석 중…</h2><p class="ld-sub">엔티가 가게 정보를 살펴보고 있어요!</p>${aiReady?'':'<small class="an-note">시연용 예시 분석이에요.</small>'}${loaderDeco}</section>`;
  // 약 2.6초 동안 1%씩 올라간다. 링이 차고, 3단계 목록은 끝난 건 체크, 하는 중인 건 빙글 도는 표시. 100%면 결과로
  let p=0;const t=setInterval(()=>{const ring=$('.an-ring');if(!ring){clearInterval(t);return}p++;ring.setAttribute('aria-valuenow',p);ring.querySelector('.an-fill').style.width=p+'%';$('#an-pct').textContent=p+'%';
   document.querySelectorAll('.an-list li').forEach(li=>{const i=+li.dataset.i,done=p>=(i+1)*100/3;li.classList.toggle('done',done);li.classList.toggle('active',!done&&p>=i*100/3)});
@@ -437,7 +440,7 @@ function createSheet(){const rs=records(),prev=document.activeElement,el=documen
 function exampleChar(){return !state.customImage||(state.generated&&!aiReady)}
 // AI 캐릭터 만드는 동안 화면 전체를 덮는 로딩 창 (분석 화면과 같은 원형 링 + 단계 체크리스트)
 const GEN_STEPS=[[0,'가게 특징을 읽고 있어요'],[20,'시디과 그림체를 맞추고 있어요'],[45,'캐릭터를 그리고 있어요'],[80,'마무리하고 있어요']];
-function openGenModal(){closeGenModal();document.body.classList.add('modal-open');document.body.insertAdjacentHTML('beforeend',`<div class="gen-modal" role="dialog" aria-modal="true" aria-labelledby="gen-title"><section class="an2 loader">${loaderArt()}${loaderBar('캐릭터 만들기 진행률')}<b class="an-pct sr-only" id="gen-pct">0%</b><h2 id="gen-title">캐릭터 만드는 중…</h2><p class="ld-sub">엔티가 일을 하고 있어요!</p><small class="an-note">보통 10~20초 걸려요. 완료 전 앱을 닫지 마세요.</small><div class="ld-deco" aria-hidden="true"></div></section></div>`);paintGen()}
+function openGenModal(){closeGenModal();document.body.classList.add('modal-open');document.body.insertAdjacentHTML('beforeend',`<div class="gen-modal" role="dialog" aria-modal="true" aria-labelledby="gen-title"><section class="an2 loader">${loaderArt()}${loaderBar('캐릭터 만들기 진행률')}<b class="an-pct sr-only" id="gen-pct">0%</b><h2 id="gen-title">캐릭터 만드는 중…</h2><p class="ld-sub">엔티가 일을 하고 있어요!</p><small class="an-note">보통 10~20초 걸려요. 완료 전 앱을 닫지 마세요.</small>${loaderDeco}</section></div>`);paintGen()}
 function closeGenModal(){$('.gen-modal')?.remove();document.body.classList.remove('modal-open')}
 // 실제 진행률은 알 수 없어서 보통 걸리는 시간(약 15초)에 맞춰 95%까지 천천히 오르고, 끝나면 100%
 function paintGen(){if(genPct<100)genPct=Math.min(95,Math.round(95*(1-Math.exp(-(Date.now()-genStart)/6000))));const m=$('.gen-modal');if(!m)return;const ring=m.querySelector('.an-ring');ring.setAttribute('aria-valuenow',genPct);ring.querySelector('.an-fill').style.width=genPct+'%';$('#gen-pct').textContent=genPct+'%';
