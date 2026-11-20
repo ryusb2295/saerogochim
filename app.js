@@ -521,7 +521,7 @@ function hideSplash(at){const el=$('.splash');if(!el)return;setTimeout(()=>{el.c
 // 로그인 전 첫 화면 (시디과 시안): 개미 그림 + 시작하기. 누르면 로그인 화면
 function showIntro(){
  document.body.insertAdjacentHTML('beforeend','<section class="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title"><div class="intro-art" aria-hidden="true"></div><div class="intro-sheet"><h1 id="intro-title">우리 가게만의 캐릭터,<br>쉽게 만들어 볼까요?</h1><p>가게를 소개하면 AI가 캐릭터부터<br>원하는 디자인까지 만들어드려요.</p><button class="primary" id="intro-start">시작하기</button></div></section>');
- $('#intro-start').onclick=()=>{$('.intro-screen').remove();$('#li-id')?.focus()};$('#intro-start').focus()}
+ $('#intro-start').onclick=()=>{const el=$('.intro-screen');if(!el||el.classList.contains('out'))return;el.classList.add('out');setTimeout(()=>{el.remove();$('#li-id')?.focus()},matchMedia('(prefers-reduced-motion:reduce)').matches?0:420)};$('#intro-start').focus()}
 async function init(){const splashAt=showSplash();checkAI();try{if(window.GAGEON_ASSETS){assets=window.GAGEON_ASSETS}else{await Promise.all([...EX_ART,'shop'].map(async n=>{const r=await fetch('assets/'+n+'.svg');if(!r.ok)throw Error(n);assets[n]=await r.text()}))}seedSamples();await seedDemo();if(REAL){await restoreSession()}else{try{const id=localStorage.getItem(SESSION_KEY)||'';if(users()[id])signIn(id)}catch{}page=user?'home':'start'}state.name=shop;render();if(splashAt)hideSplash(splashAt);if(page==='start')showIntro()}catch(e){if(splashAt)hideSplash(splashAt);console.error(e);showCrash()}}
 addEventListener('pagehide',saveDraft);
 // 입력이 멈추고 1초 뒤 임시 저장, AI 생성 중에는 창을 닫기 전에 한 번 묻는다

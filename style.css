@@ -904,3 +904,11 @@ body:has(.my-profile) .my-list>button:not(:last-child):after{content:'';position
 /* 아이폰 상태바 띠는 바로 아래 색 한 가지로 칠해진다. 그림 화면은 위쪽을 그 색으로 서서히 이어서 경계를 없앤다 */
 .intro-art{position:relative}.intro-art:before{content:"";position:absolute;left:0;right:0;top:0;height:72px;background:linear-gradient(#a4dcfe,rgba(164,220,254,0))}
 .splash{background-color:#3ee8a5}.splash:before{content:"";position:absolute;left:0;right:0;top:0;height:90px;background:linear-gradient(#3ee8a5,rgba(62,232,165,0))}.splash>*:not(small){position:relative}
+
+/* 시작하기: 그림은 위로, 시트는 아래로 빠지며 뒤의 로그인 화면이 드러난다 */
+.intro-art,.intro-sheet{transition:transform .42s cubic-bezier(.4,0,.2,1),opacity .42s}
+.intro-screen{transition:background-color .42s}
+.intro-screen.out{background-color:transparent;pointer-events:none}
+.intro-screen.out .intro-art{transform:translateY(-30%);opacity:0}
+.intro-screen.out .intro-sheet{transform:translateY(100%)}
+@media (prefers-reduced-motion:reduce){.intro-art,.intro-sheet,.intro-screen{transition:none}}
