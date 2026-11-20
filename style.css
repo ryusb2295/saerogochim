@@ -1005,7 +1005,7 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 .quick-replies[hidden]{display:none}
 
 /* 홈 (시안): 개미 그림 위 인사, 둥근 흰 시트의 두 버튼, 최근 작업 카드 */
-.home-hero{position:relative;margin:-12px -16px 0;height:calc(84px + 72vw);max-height:430px;padding:18px 16px 0;background:#f7fbfa url(assets/brand/home-hero.webp) center bottom/100% auto no-repeat}
+.home-hero{position:relative;margin:-12px -16px 0;height:calc(84px + 72vw);max-height:430px;padding:18px 16px 0;background:url(assets/brand/home-hill.webp) center calc(100% + 18vw)/100% auto no-repeat,#f2f8f8 url(assets/brand/home-bg.webp) center bottom/cover no-repeat;overflow:hidden}
 .home-hero h1{margin:0;font-size:21px;color:#222;letter-spacing:-.3px}
 .home-hero p{margin:4px 0 0;font-size:14px;color:#555}
 .home-sheet{position:relative;display:grid;gap:10px;margin:-22px -16px 22px;padding:24px 16px 4px;border-radius:24px 24px 0 0;background:#fff}
@@ -1020,3 +1020,6 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 .recent-card strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:#222}
 .recent-card button{width:100%;min-height:32px;padding:0;border:0;border-radius:8px;background:#353535;color:#fff;font-size:13px;cursor:pointer}
 .season-card .actions button{white-space:nowrap}.home-resume{margin-top:18px}
+/* 홈 개미: 언덕 위에 서 있게 (그림은 벡터라 어떤 화면에서도 선명) */
+.home-ant{position:absolute;left:50%;bottom:calc(14px + 4vw);width:min(56%,260px);transform:translateX(-46%);pointer-events:none}
+.home-hero h1,.home-hero p{position:relative}
