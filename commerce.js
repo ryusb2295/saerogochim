@@ -83,7 +83,7 @@ const Commerce = (() => {
   }
   function entryInfo(kind, next) {
     const cost=entryCost(kind),label=kind==='brand'?'새 브랜드 만들기':kind==='post'?'홍보물 만들기':kind==='suggestion'?'시즌 이미지 만들기':'스티커 만들기';
-    return sheet('온 사용 안내', '<p><strong>'+label+' · '+cost+'온</strong></p><p>현재 남은 온: '+account().tokenBalance+'온</p><p class="help">'+(kind==='brand'?'질문 입력과 화면 진입은 무료예요. 마지막 브랜드 만들기 버튼으로 생성에 성공하면 '+cost+'온을 사용해요.':kind==='suggestion'?'시안 만들기를 실행할 때 사용해요. 실패하면 반환해요.':cost?'편집과 미리보기는 무료예요. 저장·파일 받기·인쇄 견적 제출에 성공할 때 이번 작업에 한 번만 사용해요.':'이번 작업의 온 사용이 이미 완료되어 추가 차감하지 않아요.')+'</p><button type="button" class="primary full" data-entry-next>확인하고 계속하기</button>',({el,done})=>{el.querySelector('[data-entry-next]').onclick=()=>{done();guard(next)();};});
+    return sheet('온 사용 안내', '<p><strong>'+label+' · '+cost+'온</strong></p><p>현재 남은 온: '+account().tokenBalance+'온</p><p class="help">'+(kind==='brand'?'질문 입력과 음식·상품 사진 적용은 무료예요. AI 캐릭터 생성 또는 사진 배경 제거에 성공하면 '+cost+'온을 사용해요.':kind==='suggestion'?'시안 만들기를 실행할 때 사용해요. 실패하면 반환해요.':cost?'편집과 미리보기는 무료예요. 저장·파일 받기·인쇄 견적 제출에 성공할 때 이번 작업에 한 번만 사용해요.':'이번 작업의 온 사용이 이미 완료되어 추가 차감하지 않아요.')+'</p><button type="button" class="primary full" data-entry-next>확인하고 계속하기</button>',({el,done})=>{el.querySelector('[data-entry-next]').onclick=()=>{done();guard(next)();};});
   }
   function topup(required = 0) {
     return new Promise(resolve => {
