@@ -18,15 +18,34 @@ const Commerce = (() => {
   const lock = async fn => {if(remoteLoading)await remoteLoading;return rawLocalLock(()=>syncTransaction(fn));};
   const account = () => db().get(who());
   function brandId(s = state) { if (!s.commerceBrandId) s.commerceBrandId = s.id || GageonCommerceStore.id(); return s.commerceBrandId; }
-  const signature = s => JSON.stringify([s.name || '', s.message || '', s.postTpl || '', s.postText || '', s.brand?.slogan || '',s.menuItems||'',s.couponText||'']);
-  function noteDesign(s = state) {
-    const key = brandId(s), a = account();
-    if (!(key in a.appliedDesigns)){const text=signature(s);db().applyDesign(who(),key,text);if(remoteAvailable===true)guard(async()=>{await lock(()=>db().applyDesign(who(),key,text));})();}
+  // Opening, editing and previewing never spend On. A work session is committed
+  // only after generation, a successful export/save, or a submitted print request.
+  function usageKey(s = state) {
+    brandId(s);
+    s.commerceSessionId ||= GageonCommerceStore.id();
+    return 'use-v2:' + s.commerceSessionId;
   }
-  async function applyDesign(s = state) {
-    noteDesign(s);
-    if (account().appliedDesigns[brandId(s)] === signature(s)) return true;
-    return withTokens(P.costs.edit, 'edit', async () => { await lock(()=>db().applyDesign(who(), brandId(s), signature(s))); saveDraft(); return true; });
+  function noteDesign(s = state) { usageKey(s); }
+  async function markUsed(s = state, owner = who()) { await lock(() => { if(who()!==owner||state!==s)throw Error('브랜드나 계정이 바뀌었어요. 다시 눌러주세요.'); return db().applyDesign(owner, usageKey(s), 'used'); }); saveDraft(); }
+  async function useDesign(action, s = state) {
+    const owner = who(), key = usageKey(s);
+    const run = async () => {
+      if (who() !== owner || state !== s) throw Error('브랜드나 계정이 바뀌었어요. 다시 눌러주세요.');
+      const result = await action();
+      if (result === false) return false;
+      await markUsed(s, owner); return true;
+    };
+    await lock(() => {});
+    if (account().appliedDesigns[key] === 'used') return run();
+    return withTokens(P.costs.edit, 'edit', run);
+  }
+  async function generate(action) {
+    const s = state, owner = who();
+    return withTokens(P.costs.generate, 'generate', async () => {
+      const result = await action();
+      if (result === false || state !== s || who() !== owner) return false;
+      await markUsed(s, owner); return true;
+    });
   }
   function sheet(title, body, setup) {
     const previous = document.activeElement, el = document.createElement('div');
@@ -56,10 +75,20 @@ const Commerce = (() => {
       toast('결제 완료(시연) · 실제 돈은 나가지 않았어요.'); return result;
     } finally { checkoutBusy = false; }
   }
+  function entryCost(kind) {
+    if(kind==='brand')return P.costs.generate;
+    if(kind==='suggestion')return account().plan==='pro'?0:P.costs.suggestion;
+    if(['resume','current'].includes(kind)&&account().appliedDesigns[usageKey(state)]==='used')return 0;
+    return P.costs.edit;
+  }
+  function entryInfo(kind, next) {
+    const cost=entryCost(kind),label=kind==='brand'?'새 브랜드 만들기':kind==='post'?'홍보물 만들기':kind==='suggestion'?'시즌 이미지 만들기':'스티커 만들기';
+    return sheet('온 사용 안내', '<p><strong>'+label+' · '+cost+'온</strong></p><p>현재 남은 온: '+account().tokenBalance+'온</p><p class="help">'+(kind==='brand'?'질문 입력과 화면 진입은 무료예요. 마지막 브랜드 만들기 버튼으로 생성에 성공하면 '+cost+'온을 사용해요.':kind==='suggestion'?'시안 만들기를 실행할 때 사용해요. 실패하면 반환해요.':cost?'편집과 미리보기는 무료예요. 저장·파일 받기·인쇄 견적 제출에 성공할 때 이번 작업에 한 번만 사용해요.':'이번 작업의 온 사용이 이미 완료되어 추가 차감하지 않아요.')+'</p><button type="button" class="primary full" data-entry-next>확인하고 계속하기</button>',({el,done})=>{el.querySelector('[data-entry-next]').onclick=()=>{done();guard(next)();};});
+  }
   function topup(required = 0) {
     return new Promise(resolve => {
       const a = account(); let completed = false;
-      sheet(required ? `토큰이 조금 모자라요` : '토큰 충전', `<p>지금 ${a.tokenBalance}토큰${required ? ` · 필요 ${required}토큰` : ''}</p><p class="help">모든 결제는 시연용이에요.</p><div class="my-list">${Object.entries(P.tokenPacks).map(([key, pack]) => `<button type="button" data-token-pack="${key}">${pack.tokens}토큰<small>${money(pack.price)}</small></button>`).join('')}<button type="button" data-lite>라이트 구독으로 바꾸기<small>월 ${money(P.plans.lite.price)} · ${P.plans.lite.tokens}토큰</small></button></div>`, ({ el, done, busy, onClose }) => {
+      sheet(required ? `온이 조금 모자라요` : '온 충전', `<p>지금 ${a.tokenBalance}온${required ? ` · 필요 ${required}온` : ''}</p><p class="help">모든 결제는 시연용이에요.</p><div class="my-list">${Object.entries(P.tokenPacks).map(([key, pack]) => `<button type="button" data-token-pack="${key}">${pack.tokens}온<small>${money(pack.price)}</small></button>`).join('')}<button type="button" data-lite>라이트 구독으로 바꾸기<small>월 ${money(P.plans.lite.price)} · ${P.plans.lite.tokens}온</small></button></div>`, ({ el, done, busy, onClose }) => {
         onClose(() => resolve(completed));
         const buy = item => busy(async () => { await mockCheckout(item, receipt => db().checkout(who(), item, receipt)); completed = true; done(); });
         el.querySelectorAll('[data-token-pack]').forEach(b => b.onclick = () => buy({ kind: 'tokens', id: b.dataset.tokenPack }));
@@ -78,60 +107,41 @@ const Commerce = (() => {
       return result !== false;
     } finally { tokenBusy = false; paintBalance(); }
   }
-  const rank = s => { const p = db().package(who(), brandId(s)); return p ? P.packages[p.packageId].rank : 0; };
-  const requiredRank = kind => ['sticker', 'character', 'save'].includes(kind) ? 1 : ['menu', 'coupon'].includes(kind) ? 3 : 2;
-  async function requirePackage(kind, s = state) {
-    await lock(()=>{});const need = requiredRank(kind), current = rank(s); if (current >= need) return true;
-    return new Promise(resolve => {
-      const old = db().package(who(), brandId(s)); let selected = need === 3 ? 'brand' : 'opening', completed = false;
-      sheet(`${s.name || '우리 가게'} 패키지를 골라주세요`, `<p>미리보기는 무료예요. 받을 파일만 결제해요.</p>${current && need > current ? '<p class="help">개업 패키지에서 포장·SNS·스티커 세트를 받을 수 있어요. 기존 구매 금액을 빼고 업그레이드해요.</p>' : ''}<div class="choices wrap package-options" role="group" aria-label="패키지 상품">${Object.entries(P.packages).map(([key, pkg]) => `<button type="button" class="choice with-icon ${key === selected ? 'selected' : ''}" data-package="${key}" ${pkg.rank < need || pkg.rank <= current ? 'disabled' : ''} aria-pressed="${key === selected}"><strong>${pkg.name}${pkg.recommended ? ' · 추천' : ''}</strong><span>${money(Math.max(0, pkg.price - (old ? P.packages[old.packageId].price : 0)))}</span><small>${pkg.items.map(esc).join('<br>')}</small></button>`).join('')}</div><button type="button" class="primary full" data-package-buy style="margin-top:16px"></button><p class="help">스타터는 기본 스티커 1종을 받아요. 인쇄비는 별도예요.</p>`, ({ el, done, busy, onClose }) => {
-        onClose(() => resolve(completed));
-        const paint = () => { el.querySelector('[data-package-buy]').textContent = `${money(Math.max(0, P.packages[selected].price - (old ? P.packages[old.packageId].price : 0)))} 결제하기 (시연)`; };
-        el.querySelectorAll('[data-package]').forEach(b => b.onclick = () => { selected = b.dataset.package; el.querySelectorAll('[data-package]').forEach(x => { x.classList.toggle('selected', x === b); x.setAttribute('aria-pressed', String(x === b)); }); paint(); });
-        el.querySelector('[data-package-buy]').onclick = () => busy(async () => { const item = { kind: 'package', id: selected, brandId: brandId(s) }; await mockCheckout(item, receipt => db().checkout(who(), item, receipt)); completed = true; done(); }); paint();
-      });
-    });
-  }
-  async function gate(kind, action) {
-    const requested=state,owner=who();
-    if (!(await applyDesign())) return false;
-    if (!(await requirePackage(kind,requested))) return false;
-    if(state!==requested||who()!==owner)throw Error('브랜드나 계정이 바뀌었어요. 다시 눌러주세요.');
-    await action(); paintPackageLocks(); return true;
-  }
+  async function gate(kind, action) { return useDesign(action); }
   function editText(layer) {
     if (!['name', 'message'].includes(layer)) return;
     noteDesign(); const editing=state; const field = layer === 'name' ? 'name' : 'message', original = String(state[field] || '');
-    sheet(layer === 'name' ? '상호명 수정' : '스티커 문구 수정', `<form id="inline-text-form"><label class="mini-label" for="inline-sticker-text">${layer === 'name' ? '상호명' : '문구'}</label><input type="text" id="inline-sticker-text" maxlength="${layer === 'name' ? 24 : 40}" value="${esc(original)}"><p class="help">미리보기와 입력은 무료예요. 바뀐 문구를 반영하면 ${P.costs.edit}토큰을 사용해요.</p><button class="primary full" type="submit">수정 반영 · ${P.costs.edit}토큰</button></form>`, ({ el, done, busy, error }) => {
+    sheet(layer === 'name' ? '상호명 수정' : '스티커 문구 수정', `<form id="inline-text-form"><label class="mini-label" for="inline-sticker-text">${layer === 'name' ? '상호명' : '문구'}</label><input type="text" id="inline-sticker-text" maxlength="${layer === 'name' ? 24 : 40}" value="${esc(original)}"><p class="help">문구 수정과 미리보기는 무료예요. 저장·파일 받기·견적 요청을 완료할 때 ${P.costs.edit}온을 한 번 사용해요.</p><button class="primary full" type="submit">수정 반영</button></form>`, ({ el, done, busy, error }) => {
       const input = el.querySelector('input'); input.focus(); input.select();
       el.querySelector('form').onsubmit = e => { e.preventDefault();if(state!==editing)return error(Error('브랜드가 바뀌었어요. 편집창을 다시 열어주세요.')); const value = input.value;
         if (field === 'name' && !value.trim()) return error(Error('상호명을 입력해주세요.'));
         if (field === 'message' && shortLayout(state) && msgLen(value) > MSG_MAX) return error(Error(`이 배치는 ${MSG_MAX}자까지 들어가요.`));
         if (value === original) return done();
-        // Close the editor before a possible top-up sheet so dialogs never overlap.
-        done();
-        guard(async () => { const ok = await withTokens(P.costs.edit, 'edit', async () => { state[field] = value; await lock(()=>db().applyDesign(who(), brandId(), signature(state))); refreshSticker(); saveDraft(); return true; }); if (ok) { const target = $(field === 'name' ? '#edit-name' : '#message'); if (target){target.value = value;target.dispatchEvent(new Event('input',{bubbles:true}));} toast('문구를 반영했어요.'); } })();
+        state[field] = value; refreshSticker(); saveDraft();
+        const target = $(field === 'name' ? '#edit-name' : '#message');
+        if (target) { target.value = value; target.dispatchEvent(new Event('input', { bubbles: true })); }
+        done(); toast('문구를 반영했어요.');
       };
     });
   }
   function accountCard() {
     if (!user) return ''; const a = account(), plan = P.plans[a.plan];
-    return `<section class="panel token-panel"><div class="panel-title">남은 토큰 <span data-token-balance>${a.tokenBalance} / ${plan.tokens}</span></div><progress max="${plan.tokens}" value="${Math.min(a.tokenBalance, plan.tokens)}" aria-label="남은 토큰"></progress><p class="help">캐릭터 ${P.costs.generate}토큰 · 문구 수정·홍보물 ${P.costs.edit}토큰<br>모의 결제 토큰이에요. 추가 충전분은 기본 한도를 넘을 수 있어요.</p><div class="my-list"><button data-page="plans">요금제<small>${plan.name}${a.cancelAtRenewal ? ' · 해지 예약' : ''} ›</small></button><button data-commerce-topup>토큰 충전<small>›</small></button><button data-page="token-history">사용·구매 내역<small>›</small></button><button data-page="demo-orders">시연 주문·정기배송<small>›</small></button>${(!REAL || user === PUBLIC_DEMO.id) ? '<button data-page="demo-printer">인쇄소 정산 시연<small>같은 주문 확인 ›</small></button>' : ''}</div><small class="help">${remoteAvailable===true?'수익화 시연 정보를 계정으로 동기화해요.':'수익화 시연 정보는 이 브라우저에서 계정별로 보관돼요.'}</small></section>`;
+    return `<section class="panel token-panel"><div class="panel-title">남은 온 <span data-token-balance>${a.tokenBalance} / ${plan.tokens}</span></div><progress max="${plan.tokens}" value="${Math.min(a.tokenBalance, plan.tokens)}" aria-label="남은 온"></progress><p class="help">브랜드 생성 ${P.costs.generate}온 · 스티커·홍보물 사용 ${P.costs.edit}온<br>편집·미리보기는 무료예요. 추가 충전분은 기본 한도를 넘을 수 있어요.</p><div class="my-list"><button data-page="plans">요금제<small>${plan.name}${a.cancelAtRenewal ? ' · 해지 예약' : ''} ›</small></button><button data-commerce-topup>온 충전<small>›</small></button><button data-page="token-history">사용·구매 내역<small>›</small></button><button data-page="demo-orders">시연 주문·정기배송<small>›</small></button>${(!REAL || user === PUBLIC_DEMO.id) ? '<button data-page="demo-printer">인쇄소 정산 시연<small>같은 주문 확인 ›</small></button>' : ''}</div><small class="help">${remoteAvailable===true?'수익화 시연 정보를 계정으로 동기화해요.':'수익화 시연 정보는 이 브라우저에서 계정별로 보관돼요.'}</small></section>`;
   }
   function plansPage() {
     const a = account();
-    return `<button class="text-button" data-page="mypage">마이페이지로</button><section class="intro"><h1>우리 가게에 맞는 요금제</h1><p>시연 결제예요. 인쇄비는 구독료에 포함되지 않아요.</p></section>${Object.entries(P.plans).map(([key, plan]) => `<section class="panel" style="margin-bottom:14px"><div class="panel-title">${plan.name}${plan.recommended ? '<span class="ai-badge">추천</span>' : ''}</div><strong>${plan.price ? '월 ' + money(plan.price) : '무료'}</strong><p>${key === 'free' ? '가입 시 1회' : '매월'} ${plan.tokens}토큰</p><ul>${plan.benefits.map(b => `<li>${b}</li>`).join('')}</ul>${key !== 'free' ? `<button class="${a.plan === key ? 'secondary' : 'primary'} full" data-subscribe="${key}" ${a.plan === key && !a.cancelAtRenewal ? 'disabled' : ''}>${a.plan === key && !a.cancelAtRenewal ? '이용 중이에요' : '이 요금제로 시작하기 (시연)'}</button>` : '<p class="help">무료 토큰은 다시 지급되지 않아요.</p>'}</section>`).join('')}<p class="help">매월 갱신일에 플랜 한도까지 채우고 남은 토큰은 이월되지 않아요.${a.planRenewsAt ? '<br>다음 갱신: ' + esc(new Date(a.planRenewsAt).toLocaleDateString('ko-KR')) : ''}</p>${a.plan !== 'free' ? `<button class="text-button" data-cancel-plan>${a.cancelAtRenewal ? '다음 갱신일부터 무료로 바뀌어요' : '다음 갱신일부터 해지하기'}</button>` : ''}<div class="my-list"><button data-reset-commerce>수익화 시연 상태 초기화<small>현재 계정만 초기화 ›</small></button></div>`;
+    return `<button class="text-button" data-page="mypage">마이페이지로</button><section class="intro"><h1>우리 가게에 맞는 요금제</h1><p>시연 결제예요. 인쇄비는 구독료에 포함되지 않아요.</p></section>${Object.entries(P.plans).map(([key, plan]) => `<section class="panel" style="margin-bottom:14px"><div class="panel-title">${plan.name}${plan.recommended ? '<span class="ai-badge">추천</span>' : ''}</div><strong>${plan.price ? '월 ' + money(plan.price) : '무료'}</strong><p>${key === 'free' ? '가입 시 1회' : '매월'} ${plan.tokens}온</p><ul>${plan.benefits.map(b => `<li>${b}</li>`).join('')}</ul>${key !== 'free' ? `<button class="${a.plan === key ? 'secondary' : 'primary'} full" data-subscribe="${key}" ${a.plan === key && !a.cancelAtRenewal ? 'disabled' : ''}>${a.plan === key && !a.cancelAtRenewal ? '이용 중이에요' : '이 요금제로 시작하기 (시연)'}</button>` : '<p class="help">무료 온은 다시 지급되지 않아요.</p>'}</section>`).join('')}<p class="help">매월 갱신일에 플랜 한도까지 채우고 남은 온은 이월되지 않아요.${a.planRenewsAt ? '<br>다음 갱신: ' + esc(new Date(a.planRenewsAt).toLocaleDateString('ko-KR')) : ''}</p>${a.plan !== 'free' ? `<button class="text-button" data-cancel-plan>${a.cancelAtRenewal ? '다음 갱신일부터 무료로 바뀌어요' : '다음 갱신일부터 해지하기'}</button>` : ''}<div class="my-list"><button data-reset-commerce>수익화 시연 상태 초기화<small>현재 계정만 초기화 ›</small></button></div>`;
   }
   function historyPage() {
-    const a = account(), reasons = { signup: '가입 지급', subscription: '구독 한도', purchase: '토큰 충전', generate: '캐릭터 생성', edit: '문구·홍보물 반영', suggestion: '시즌 시안' };
-    return `<button class="text-button" data-page="mypage">마이페이지로</button>${accountCard()}<h2 class="sec-label">토큰 내역</h2><div class="my-list">${a.ledger.slice(0, 50).map(x => `<div>${reasons[x.reason] || esc(x.reason)}${x.note ? `<small>${esc(x.note)}</small>` : ''}<small>${x.delta > 0 ? '+' : ''}${x.delta} · ${new Date(x.createdAt).toLocaleString('ko-KR')}</small></div>`).join('')}</div><h2 class="sec-label">패키지 구매</h2><div class="my-list">${a.purchases.map(x => `<div>${P.packages[x.packageId].name}<small>${money(x.price)} · 시연</small></div>`).join('') || '<div>아직 구매한 패키지가 없어요.</div>'}</div>`;
+    const a = account(), reasons = { signup: '가입 지급', subscription: '구독 한도', purchase: '온 충전', generate: '캐릭터 생성', edit: '문구·홍보물 반영', suggestion: '시즌 시안' };
+    return `<button class="text-button" data-page="mypage">마이페이지로</button>${accountCard()}<h2 class="sec-label">온 내역</h2><div class="my-list">${a.ledger.slice(0, 50).map(x => `<div>${reasons[x.reason] || esc(x.reason)}${x.note ? `<small>${esc(x.note)}</small>` : ''}<small>${x.delta > 0 ? '+' : ''}${x.delta} · ${new Date(x.createdAt).toLocaleString('ko-KR')}</small></div>`).join('')}</div><h2 class="sec-label">패키지 구매</h2><div class="my-list">${a.purchases.map(x => `<div>${P.packages[x.packageId].name}<small>${money(x.price)} · 시연</small></div>`).join('') || '<div>아직 구매한 패키지가 없어요.</div>'}</div>`;
   }
   function ownerSummary(amount) { const n = GageonCommerceStore.settlement(amount); return `<div class="my-list"><div>견적 금액<small>${money(n.amount)}</small></div><div>가게온 이용료<small>${money(n.ownerFee)}</small></div><div><strong>결제 금액</strong><strong>${money(n.amount)}</strong></div></div>`; }
   function printerSummary(amount, status, paid = true) { if (!Number.isSafeInteger(amount)) return ''; const n = GageonCommerceStore.settlement(amount); return `<div class="my-list"><div>거래액<small>${money(n.amount)}</small></div><div>플랫폼 이용료 ${P.feeRate * 100}%<small class="danger-text">−${money(n.platformFee)}</small></div><div><strong>${status === 'completed' && paid ? '정산 금액(시연)' : '정산 예정 금액'}</strong><strong>${money(n.printerPayout)}</strong></div></div><p class="help">사장님 수령 확인 후 정산돼요(에스크로). 시연 정보예요.</p>`; }
   const orderStatus = { awaiting_payment: '결제 대기', accepted: '업체 선택', in_progress: '제작 중', delivered: '납품 완료', completed: '수령 확인' };
   function orderCard(o, printer = false) {
     const completed = ['delivered', 'completed'].includes(o.status);
-    return `<article class="panel" style="margin-bottom:14px"><p class="meta">시연 주문 · ${orderStatus[o.status]}${o.recurringDeliveryId ? ' · 정기배송' : ''}</p><strong>${esc(o.title)}</strong><p>${Number(o.quantity).toLocaleString()}개 · ${esc(o.width)}×${esc(o.height)}${esc(o.unit)} · ${esc(o.material)}</p><p class="help">${esc(o.printerName)} · 희망 납기 ${esc(o.due)}<br>${esc(o.region || '')}</p>${o.previewImage ? `<img class="commerce-order-thumb" src="${esc(o.previewImage)}" alt="주문한 디자인">` : ''}${printer ? printerSummary(o.amount, o.status, !!o.paidAt) : ownerSummary(o.amount)}${!printer && o.status === 'awaiting_payment' ? `<button class="primary full" data-demo-pay="${o.id}">${money(o.amount)} 결제하기 (시연)</button>` : ''}${!printer && completed ? `<button class="secondary full" data-reorder="${o.id}">같은 디자인으로 다시 주문</button>${recurringCard(o)}` : ''}${!printer && o.status === 'delivered' ? `<button class="primary full" data-demo-complete="${o.id}">수령 확인 (시연)</button>` : ''}${printer && ['accepted', 'in_progress'].includes(o.status) ? `<button class="primary full" data-demo-advance="${o.id}" data-printer="${esc(o.printerId)}">${o.status === 'accepted' ? '제작 시작 (시연)' : '납품 완료 (시연)'}</button>` : ''}</article>`;
+    return `<article class="panel" style="margin-bottom:14px"><p class="meta">시연 주문 · ${orderStatus[o.status]}${o.recurringDeliveryId ? ' · 정기배송' : ''}</p><strong>${esc(o.title)}</strong><p>${Number(o.quantity).toLocaleString()}개 · ${esc(o.width)}×${esc(o.height)}${esc(o.unit)} · ${esc(o.material)}</p><p class="help">${esc(o.printerName)} · 희망 납기 ${esc(o.due)}<br>${esc(o.region || '')}</p>${o.previewImage ? `<img class="commerce-order-thumb" src="${esc(o.previewImage)}" alt="주문한 디자인">` : ''}${!printer&&o.printJobId?`<button class="secondary full" data-print-job="${esc(o.printJobId)}">승인한 인쇄 파일 ZIP 받기</button>`:''}${printer ? printerSummary(o.amount, o.status, !!o.paidAt) : ownerSummary(o.amount)}${!printer && o.status === 'awaiting_payment' ? `<button class="primary full" data-demo-pay="${o.id}">${money(o.amount)} 결제하기 (시연)</button>` : ''}${!printer && completed ? `<button class="secondary full" data-reorder="${o.id}">같은 디자인으로 다시 주문</button>${recurringCard(o)}` : ''}${!printer && o.status === 'delivered' ? `<button class="primary full" data-demo-complete="${o.id}">수령 확인 (시연)</button>` : ''}${printer && ['accepted', 'in_progress'].includes(o.status) ? `<button class="primary full" data-demo-advance="${o.id}" data-printer="${esc(o.printerId)}">${o.status === 'accepted' ? '제작 시작 (시연)' : '납품 완료 (시연)'}</button>` : ''}</article>`;
   }
   function recurringCard(o) {
     const a = account(), recurring = a.recurring.find(r => r.sourceOrderId === o.id && r.active);
@@ -170,9 +180,9 @@ const Commerce = (() => {
       const candidate = suggestionFor(saved, season); let suggestion = a.suggestions.find(x => x.id === candidate.id);
       if (a.plan === 'pro' && !suggestion) { candidate.previewImage = svgUri(seasonSVG(candidate));if(remoteAvailable===true){if(!autoSuggestionBusy){autoSuggestionBusy=true;guard(async()=>{try{await lock(()=>db().saveSuggestion(who(),candidate));}finally{autoSuggestionBusy=false;}render();})();}}else suggestion=db().saveSuggestion(who(),candidate); }
       const item = suggestion || candidate;
-      card = `<section class="panel season-card"><span class="ai-badge">AI 시즌 제안 · ${new Date().getMonth() + 1}월</span><h2>${esc(item.title)}${suggestion ? '이 준비됐어요' : '을 만들어볼까요?'}</h2><p class="help">저장한 ${esc(saved.name)} 캐릭터에 계절 문구를 더했어요. 시연에서는 기존 캐릭터로 시안을 조합해요.</p>${suggestion ? `<img class="commerce-order-thumb" src="${esc(suggestion.previewImage)}" alt="${esc(item.title)}"><div class="actions"><button class="secondary" data-view-suggestion="${item.id}">시안 보기</button><button class="primary" data-print-suggestion="${item.id}">이 시안으로 인쇄 견적 받기</button></div>` : `<button class="primary full" data-make-suggestion>${a.plan === 'pro' ? '시안 만들기 · 무료' : `시안 받기 · ${P.costs.suggestion}토큰`}</button>`}</section>`;
+      card = `<section class="panel season-card"><span class="ai-badge">AI 시즌 제안 · ${new Date().getMonth() + 1}월</span><h2>${esc(item.title)}${suggestion ? '이 준비됐어요' : '을 만들어볼까요?'}</h2><p class="help">저장한 ${esc(saved.name)} 캐릭터에 계절 문구를 더했어요. 시연에서는 기존 캐릭터로 시안을 조합해요.</p>${suggestion ? `<img class="commerce-order-thumb" src="${esc(suggestion.previewImage)}" alt="${esc(item.title)}"><div class="actions"><button class="secondary" data-view-suggestion="${item.id}">시안 보기</button><button class="primary" data-print-suggestion="${item.id}">이 시안으로 인쇄 견적 받기</button></div>` : `<button class="primary full" data-make-suggestion>${a.plan === 'pro' ? '시안 만들기 · 무료' : `시안 받기 · ${P.costs.suggestion}온`}</button>`}</section>`;
     }
-    return `<div class="my-list"><button data-commerce-topup>남은 토큰 <span data-token-balance>${a.tokenBalance} / ${P.plans[a.plan].tokens}</span><small>충전 ›</small></button></div>${card}`;
+    return card;
   }
   async function makeSuggestion() {
     const saved = records()[0], season = seasonCandidate(); if (!saved || !season) return;
@@ -181,21 +191,18 @@ const Commerce = (() => {
     const cost = account().plan === 'pro' ? 0 : P.costs.suggestion;
     if (await withTokens(cost, 'suggestion', create)) render();
   }
-  function showSuggestion(id, printing) {
+  async function showSuggestion(id, printing) {
     const s = account().suggestions.find(x => x.id === id); if (!s) return;
     state = { ...initial(), ...s.brand, message: s.message, layout: 'basic' }; state.commerceBrandId = s.brandId;
-    db().updateSuggestion(who(), id, printing ? 'ordered' : 'viewed');
-    if (!printing) { db().applyDesign(who(), brandId(), signature(state)); page = 'studio'; step = 3; render(); scrollTo(0, 0); return; }
+    state.commerceSessionId = GageonCommerceStore.id();
+    await lock(()=>db().updateSuggestion(who(), id, printing ? 'ordered' : 'viewed'));
+    await markUsed();
+    if (!printing) { focusMode='sticker'; page = 'studio'; step = 3; render(); scrollTo(0, 0); return; }
     // SVG stays editable in the studio. The quote form receives a real PNG file.
     guard(async () => { const image = await loadImg(s.previewImage), blob = await toBlob(image, P.print.pixels, false, 'image/png'); uploadFile = new File([blob], s.title + '.png', { type: 'image/png' }); reqDraft = { ...reqDraft, title: s.title }; goPage('newreq'); })();
   }
   function paintBalance() {
     if (!user) return; const a = account(); document.querySelectorAll('[data-token-balance]').forEach(n => n.textContent = `${a.tokenBalance} / ${P.plans[a.plan].tokens}`);
-  }
-  function paintPackageLocks() {
-    if (page !== 'studio' || step !== 4) return;
-    const current = rank(state);
-    document.querySelectorAll('[data-commerce-download]').forEach(b => { const locked = current > 0 && current < requiredRank(b.dataset.commerceDownload); b.classList.toggle('package-locked', locked); b.setAttribute('aria-label', locked ? `${b.dataset.label} · 개업 또는 브랜드 패키지에서 받을 수 있어요` : b.dataset.label); b.textContent = (locked ? '🔒 ' : '') + (b.closest('figure') ? '받기' : b.dataset.label); });
   }
   async function payLive() {
     const details = V['request-' + reqId]?.data; if (!details) throw Error('견적을 다시 열어주세요.');
@@ -220,25 +227,28 @@ const Commerce = (() => {
     if (page === 'requests') $('.main')?.insertAdjacentHTML('beforeend', `<div class="my-list"><button data-page="demo-orders">시연 재주문·정기배송<small>›</small></button></div>${db().orders(who()).filter(x => ['delivered', 'completed'].includes(x.status)).slice(0, 2).map(o => orderCard(o)).join('')}`);
     if (page === 'request') $('.main')?.insertAdjacentHTML('beforeend', realRequestExtra(V['request-' + reqId]?.data));
     if (page === 'jobs' || page === 'dash') $('.main')?.insertAdjacentHTML('beforeend', '<div class="my-list"><button data-page="demo-printer">시연 주문·정산 보기<small>›</small></button></div>');
-    bind(); paintPackageLocks();
+    bind(); StickerPrint.decorate();
   }
   function bind() {
     const box = $('#app');
     box.querySelectorAll('[data-export-field]').forEach(input=>input.oninput=()=>{state[input.dataset.exportField]=input.value;saveDraft();});
-    if($('#to-request'))$('#to-request').onclick=guard(async()=>{if(await applyDesign())goPage('newreq')});
-    if(!REAL&&$('#req-form'))$('#req-form').onsubmit=guard(async e=>{e.preventDefault();if(!checkReq())return;const button=e.target.querySelector('[type=submit]');button.disabled=true;try{const d=reqDraft;let image=svgUri(stickerSVG());if(uploadFile)image=await new Promise((ok,bad)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result);reader.onerror=bad;reader.readAsDataURL(uploadFile)});await lock(()=>db().importOrder(who(),{id:GageonCommerceStore.id(),title:d.title,item:d.item,quantity:Number(d.quantity),width:Number(d.width),height:Number(d.height),unit:d.unit,material:d.material,finishing:[...d.finishing],region:[d.region_sido,d.region_sigungu].join(' '),printerId:P.demoOrder.printerId,printerName:P.demoOrder.printerName,amount:Math.round(P.demoOrder.amount*Number(d.quantity)/P.demoOrder.quantity),shipping:P.demoOrder.shipping,status:'awaiting_payment',paidAt:null,due:d.due,createdAt:db().now(),previewImage:image}));uploadFile=null;goPage('demo-orders')}finally{button.disabled=false}});
+    if($('#to-request'))$('#to-request').onclick=()=>state.shape==='circle'?StickerPrint.open():goPage('newreq');
+    if($('#print-sticker'))$('#print-sticker').onclick=StickerPrint.open;
+    if(REAL&&$('#req-form')){$('#req-form').onsubmit=guard(async e=>{e.preventDefault();if(checkReq())await gate('request',()=>submitRequest(e.target.querySelector('[type=submit]')));});}
+    if(!REAL&&$('#req-form'))$('#req-form').onsubmit=guard(async e=>{e.preventDefault();if(!checkReq())return;await gate('request',async()=>{const button=e.target.querySelector('[type=submit]');button.disabled=true;try{const delivery=await StickerPrint.delivery();const d=reqDraft;let image=svgUri(stickerSVG());if(uploadFile)image=await new Promise((ok,bad)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result);reader.onerror=bad;reader.readAsDataURL(uploadFile)});await lock(()=>db().importOrder(who(),{id:GageonCommerceStore.id(),title:d.title,item:d.item,quantity:Number(d.quantity),width:Number(d.width),height:Number(d.height),unit:d.unit,material:d.material,finishing:[...d.finishing],region:[d.region_sido,d.region_sigungu].join(' '),printerId:P.demoOrder.printerId,printerName:P.demoOrder.printerName,amount:Math.round(P.demoOrder.amount*Number(d.quantity)/P.demoOrder.quantity),shipping:P.demoOrder.shipping,status:'awaiting_payment',paidAt:null,due:d.due,createdAt:db().now(),previewImage:image,...(delivery?{printJobId:delivery.jobId,printFiles:delivery.files,printAsset:delivery.metadata.asset}:{})}));StickerPrint.clear();uploadFile=null;goPage('demo-orders');return true;}finally{button.disabled=false}});});
 
-    box.querySelectorAll('[data-page]').forEach(b => b.onclick = () => { syncForm(); goPage(b.dataset.page); });
+    box.querySelectorAll('[data-page]').forEach(b => b.onclick = () => { syncForm(); if(b.dataset.page==='studio')return entryInfo('brand',startNewBrand); goPage(b.dataset.page); });
     box.querySelectorAll('[data-commerce-topup]').forEach(b => b.onclick = guard(async () => { if (await topup()) render(); }));
-    box.querySelectorAll('[data-subscribe]').forEach(b => b.onclick = () => sheet(`${P.plans[b.dataset.subscribe].name} 구독`, `<p>월 ${money(P.plans[b.dataset.subscribe].price)} · ${P.plans[b.dataset.subscribe].tokens}토큰</p><p class="help">시연 결제예요. 갱신 시 한도까지 채우며 이월되지 않아요.</p><button class="primary full" data-confirm>결제하기 (시연)</button>`, ({ el, busy, done }) => { el.querySelector('[data-confirm]').onclick = () => busy(async () => { const item = { kind: 'plan', id: b.dataset.subscribe }; await mockCheckout(item, receipt => db().checkout(who(), item, receipt)); done(); render(); }); }));
+    box.querySelectorAll('[data-subscribe]').forEach(b => b.onclick = () => sheet(`${P.plans[b.dataset.subscribe].name} 구독`, `<p>월 ${money(P.plans[b.dataset.subscribe].price)} · ${P.plans[b.dataset.subscribe].tokens}온</p><p class="help">시연 결제예요. 갱신 시 한도까지 채우며 이월되지 않아요.</p><button class="primary full" data-confirm>결제하기 (시연)</button>`, ({ el, busy, done }) => { el.querySelector('[data-confirm]').onclick = () => busy(async () => { const item = { kind: 'plan', id: b.dataset.subscribe }; await mockCheckout(item, receipt => db().checkout(who(), item, receipt)); done(); render(); }); }));
     box.querySelectorAll('[data-cancel-plan]').forEach(b => b.onclick = guard(async () => { await lock(() => db().cancel(who())); render(); toast('다음 갱신일부터 무료로 바뀌어요.'); }));
-    box.querySelectorAll('[data-reset-commerce]').forEach(b => b.onclick = () => sheet('시연 상태를 초기화할까요?', '<p>현재 계정의 시연 토큰·구독·패키지·시연 주문만 초기화해요. 브랜드와 실제 견적·채팅은 그대로예요.</p><button class="primary full" data-reset-confirm>현재 계정 초기화</button>', ({ el, busy, done }) => { el.querySelector('[data-reset-confirm]').onclick = () => busy(async () => { await lock(() => db().reset(who())); done(); render(); }); }));
+    box.querySelectorAll('[data-reset-commerce]').forEach(b => b.onclick = () => sheet('시연 상태를 초기화할까요?', '<p>현재 계정의 시연 온·구독·패키지·시연 주문만 초기화해요. 브랜드와 실제 견적·채팅은 그대로예요.</p><button class="primary full" data-reset-confirm>현재 계정 초기화</button>', ({ el, busy, done }) => { el.querySelector('[data-reset-confirm]').onclick = () => busy(async () => { await lock(() => db().reset(who())); done(); render(); }); }));
     const actions = { sticker: () => download('sticker'), sns: () => download('sns'), pack: () => download('pack'), character: () => CommerceExports.download('character'), svg: () => CommerceExports.download('svg'), pdf: () => CommerceExports.download('pdf'), menu: () => CommerceExports.download('menu'), coupon: () => CommerceExports.download('coupon') };
     box.querySelectorAll('[data-commerce-download]').forEach(b => b.onclick = guard(() => gate(b.dataset.commerceDownload, actions[b.dataset.commerceDownload])));
     box.querySelectorAll('[data-set]').forEach(b => b.onclick = guard(() => gate('set', () => download('sticker', setSticker(Number(b.dataset.set)), b, '_스티커_' + STICKER_SET[Number(b.dataset.set)].replace(/[!\s]/g, '')))));
     if ($('#save')) $('#save').onclick = guard(() => gate('save', save));
-    if ($('#apply-design')) $('#apply-design').onclick = guard(async () => { if (await applyDesign()) toast('문구·홍보물을 반영했어요.'); });
-    if ($('#to-result')) $('#to-result').onclick = guard(async () => { if (!state.name.trim()) return toast('상호명을 입력해주세요.'); if (await applyDesign()) go(4); });
+    if ($('#to-result')) $('#to-result').onclick = () => { if (!state.name.trim()) return toast('상호명을 입력해주세요.'); go(4); };
+    if ($('#change-sticker-image')) $('#change-sticker-image').onclick = () => entryInfo('current',()=>imageSourceSheet(focusMode || 'sticker', true));
+    box.querySelectorAll('[data-print-job]').forEach(b=>b.onclick=guard(()=>StickerPrint.downloadStored(b.dataset.printJob)));
     box.querySelectorAll('[data-seed-order]').forEach(b => b.onclick = guard(async () => { await lock(seedOrder); render(); }));
     box.querySelectorAll('[data-reorder]').forEach(b => b.onclick = () => { const source = db().orders(who()).find(x => x.id === b.dataset.reorder); if (source) reorderSheet(source); });
     box.querySelectorAll('[data-demo-pay]').forEach(b => b.onclick = guard(async () => { if (b.disabled) return; b.disabled = true; try { await mockCheckout({ kind: 'print' }, receipt => db().payOrder(who(), b.dataset.demoPay, receipt)); render(); } finally { b.disabled = false; } }));
@@ -247,9 +257,9 @@ const Commerce = (() => {
     box.querySelectorAll('[data-start-recurring]').forEach(b => b.onclick = guard(async () => { await lock(() => db().recurring(who(), b.dataset.startRecurring)); render(); }));
     box.querySelectorAll('[data-stop-recurring]').forEach(b => b.onclick = guard(async () => { await lock(() => db().stopRecurring(who(), b.dataset.stopRecurring)); render(); }));
     box.querySelectorAll('[data-run-recurring]').forEach(b => b.onclick = guard(async () => { b.disabled = true; await lock(() => db().runRecurring(who(), b.dataset.runRecurring, true)); render(); }));
-    box.querySelectorAll('[data-make-suggestion]').forEach(b => b.onclick = guard(makeSuggestion));
-    box.querySelectorAll('[data-view-suggestion]').forEach(b => b.onclick = () => showSuggestion(b.dataset.viewSuggestion, false));
-    box.querySelectorAll('[data-print-suggestion]').forEach(b => b.onclick = () => showSuggestion(b.dataset.printSuggestion, true));
+    box.querySelectorAll('[data-make-suggestion]').forEach(b => b.onclick = ()=>entryInfo('suggestion',makeSuggestion));
+    box.querySelectorAll('[data-view-suggestion]').forEach(b => b.onclick = guard(() => showSuggestion(b.dataset.viewSuggestion, false)));
+    box.querySelectorAll('[data-print-suggestion]').forEach(b => b.onclick = guard(() => showSuggestion(b.dataset.printSuggestion, true)));
     box.querySelectorAll('[data-live-reorder],[data-live-recurring]').forEach(b => b.onclick = guard(async () => { const o = await lock(() => importLive(V['request-' + reqId].data)); if (b.hasAttribute('data-live-reorder')) reorderSheet(o); else { if (account().plan !== 'pro') return goPage('plans'); await lock(() => db().recurring(who(), o.id)); goPage('demo-orders'); } }));
     box.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => sheet('인쇄비 결제 (시연)', ownerSummary(Number(b.dataset.pay)) + '<p class="help">실제 돈은 나가지 않아요.</p><button class="primary full" data-pay-confirm>결제하기 (시연)</button>', ({ el, busy, done }) => { el.querySelector('[data-pay-confirm]').onclick = () => busy(async () => { await payLive(); done(); }); }));
   }
@@ -263,5 +273,5 @@ const Commerce = (() => {
     addEventListener('storage', e => { if (e.key === GageonCommerceStore.KEY && user && !tokenBusy && !checkoutBusy && !document.querySelector('.modal-back') && !document.querySelector('#inline-text-form')) render(); });
     addEventListener('visibilitychange',()=>{if(!document.hidden&&user)guard(async()=>{await lock(()=>db().dueRecurring(who()));render()})()});
   }
-  return { P, account, accountCard, homeCard, brandId, noteDesign, applyDesign, withTokens, gate, editText, afterRender, prepare, install, payLive, ownerSummary, printerSummary, seasonCandidate, seasonSVG, db };
+  return { P, account, accountCard, homeCard, brandId, noteDesign, useDesign, generate, withTokens, gate, editText, sheet, entryInfo, entryCost, afterRender, prepare, install, payLive, ownerSummary, printerSummary, seasonCandidate, seasonSVG, db };
 })();

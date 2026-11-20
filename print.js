@@ -153,7 +153,7 @@ const cloudBrand = {
   },
   save(r) {
     const { id, savedAt, ...data } = r;
-    q(sb.from('brands').upsert({ id, owner_id: uid, name: r.name || '이름 없는 브랜드', industry: r.industry || null, data, updated_at: new Date().toISOString() })).catch(() => toast('계정에 저장하지 못했어요. 이 기기에만 저장됐어요.'));
+    return q(sb.from('brands').upsert({ id, owner_id: uid, name: r.name || '이름 없는 브랜드', industry: r.industry || null, data, updated_at: new Date().toISOString() })).then(() => true).catch(() => { toast('계정에 저장하지 못했어요. 이 기기에만 저장됐어요.'); return false; });
   },
   remove(id) { q(sb.from('brands').delete().eq('id', id)).catch(() => toast('계정에서 지우지 못했어요. 다시 시도해주세요.')) }
 };
@@ -561,13 +561,15 @@ async function submitRequest(btn) {
       src = svgUri(svg);
     }
     const img = await loadImg(src);
-    const original = uploadFile && uploadFile.type !== 'image/webp' ? uploadFile : await toBlob(img, 1600, false, 'image/png');
+    const printDelivery = await StickerPrint.delivery();
+    const original = printDelivery?.file || (uploadFile && uploadFile.type !== 'image/webp' ? uploadFile : await toBlob(img, 1600, false, 'image/png'));
+    if(printDelivery&&original.size>30*1024*1024)throw Error('전달 파일이 30MB를 넘어요.');
     let preview = await toBlob(img, 1000, true, 'image/webp');
     const pext = preview.type === 'image/webp' ? 'webp' : 'png';
-    const oext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[original.type] || 'png';
+    const oext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'application/zip':'zip' }[original.type] || 'png';
     const dpath = `${uid}/${id}/original.${oext}`, ppath = `${uid}/${id}.${pext}`;
     label('파일 올리는 중…');
-    await q(sb.storage.from('request-files').upload(dpath, original, { contentType: original.type }), 60000); done.push(['request-files', dpath]);
+    try{await q(sb.storage.from('request-files').upload(dpath, original, { contentType: original.type }), 60000);}catch(error){if(printDelivery)throw Error('승인 인쇄 ZIP을 업로드하지 못했어요. ZIP 파일을 내려받아 인쇄소에 전달하거나 관리자에게 파일 업로드 설정을 확인해주세요.');throw error;} done.push(['request-files', dpath]);
     await q(sb.storage.from('request-previews').upload(ppath, preview, { contentType: preview.type }), 60000); done.push(['request-previews', ppath]);
     label('요청 등록 중…');
     await q(sb.from('print_requests').insert({
@@ -577,13 +579,13 @@ async function submitRequest(btn) {
       region_sigungu: d.region_sigungu.trim(), note: d.note.trim() || null, design_path: dpath, preview_path: ppath
     }));
     if (uploadFile) URL.revokeObjectURL(src);
-    uploadFile = null; reqDraft = { ...reqDraft, title: '', note: '' };
+    StickerPrint.clear();uploadFile = null; reqDraft = { ...reqDraft, title: '', note: '' };
     toast('견적 요청을 보냈어요. 인쇄소 견적이 오면 알려드려요.');
-    reqId = id; page = 'request'; render(); scrollTo(0, 0);
+    reqId = id; page = 'request'; render(); scrollTo(0, 0); return true;
   } catch (e) {
     for (const [b, p] of done) sb.storage.from(b).remove([p]).catch(() => {});   // 등록 실패 시 올린 파일 정리
     const m = $('#rq-form-err'); if (m) { m.textContent = errMsg(e); m.hidden = false }
-    btn.disabled = false; label('견적 요청 보내기');
+    btn.disabled = false; label('견적 요청 보내기'); return false;
   }
 }
 
@@ -689,7 +691,7 @@ function jobsPage() {
 <div class="job-top"><div class="job-info"><p class="meta"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>납기 ${ymd(x.due_date)}${x.status !== 'completed' ? ` · ${dday(x.due_date).replace('오늘 마감', '오늘')}` : ''}</p><strong>${esc(x.title)}</strong><small>${specLine(x)}</small><small>의뢰인 ${esc(x.client || '소상공인')} · ${esc(x.region_sido)} ${esc(x.region_sigungu)}</small>${x.paid_at || x.tracking_no ? `<small>${x.paid_at ? '<b class="open">결제 완료</b>' : ''}${x.tracking_no ? `송장 ${esc(x.courier || '')} ${esc(x.tracking_no)}` : ''}</small>` : ''}</div>${x.url ? `<img src="${esc(x.url)}" alt="${esc(x.title)} 디자인" loading="lazy">` : ''}</div>
 <ol class="progress">${['업체 선택', '제작 중', '납품', '완료'].map((l, i) => `<li class="${i <= steps.indexOf(x.status) ? 'done' : ''}">${l}</li>`).join('')}</ol>
 ${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
-${Commerce.printerSummary(x._commerceAmount,x.status,!!x.paid_at)}<div class="job-links"><button data-original="${esc(x.design_path)}">${icon('download')}원본 파일</button>${x.conv ? `<button data-chat="${x.conv}">${icon('chat')}채팅하기</button>` : ''}</div>
+${Commerce.printerSummary(x._commerceAmount,x.status,!!x.paid_at)}<div class="job-links"><button data-original="${esc(x.design_path)}">${icon('download')}${x.design_path.endsWith('.zip')?'인쇄 파일 ZIP':'원본 파일'}</button>${x.conv ? `<button data-chat="${x.conv}">${icon('chat')}채팅하기</button>` : ''}</div>
 ${next[x.status] ? `<button class="primary full" data-advance="${x.id}" data-to="${next[x.status][0]}" data-ask="${next[x.status][2]}">${next[x.status][1]}</button>` : x.status === 'delivered' ? '<p class="job-wait">소상공인이 받았는지 확인하면 완료돼요</p>' : ''}</article>`;
   return stateView(r, 'jobs', d => d.length ? `<h2 class="sec-label">진행 중 ${active(d).length}건</h2>${active(d).map(card).join('') || '<p class="help">진행 중인 의뢰가 없어요.</p>'}${done(d).length ? `<h2 class="sec-label">완료<small>제작이 끝난 의뢰예요</small></h2>${done(d).map(card).join('')}` : ''}`
     : emptyBox('수락된 의뢰가 없어요', '견적이 수락되면 여기에서 원본을 받고 제작 상태를 알려요.', '<button class="secondary" data-page="market">요청 찾기</button>'));

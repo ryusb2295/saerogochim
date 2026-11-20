@@ -74,10 +74,10 @@ node --test tests/sticker-editor.test.cjs
 
 ## 수익화 시연
 
-패키지 구매, 토큰 충전·구독, 인쇄소 수수료, 재주문·정기배송, 시즌 시안을 시연합니다. 스티커의 문구는 한 번 클릭해 수정할 수 있습니다. 가격은 `pricing.js`에서 관리합니다. [3분 시연 순서와 DB 적용 안내](docs/COMMERCE_DEMO.md)를 참고하세요.
+재화 이름은 온입니다. 잔량·충전·구독은 마이페이지에서 확인합니다. 스티커는 저장한 브랜드·내 이미지·가게온 이미지로 시작하며, 문구 클릭 편집과 캐릭터 상단 크기 조절을 지원합니다. 편집·미리보기는 무료이고 사용 완료 때 작업당 10온, 새 브랜드 생성은 30온입니다. 다운로드에 패키지 결제창은 표시하지 않습니다. 인쇄소 수수료·재주문·정기배송·시즌 시연도 유지합니다. 가격은 `pricing.js`, [시연 순서·검증·DB 적용 안내](docs/COMMERCE_DEMO.md)를 참고하세요.
 
 ```powershell
-node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce-exports.test.cjs
+node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce-exports.test.cjs tests/commerce-flow.test.cjs
 ```
 
 ## 할 것
@@ -101,3 +101,7 @@ node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce
 - [ADMIN.md](ADMIN.md): 관리자 계정, 인쇄소 승인, 국세청 확인, 푸시 알림, AI 켜기 설정
 - [docs/API.md](docs/API.md): 쓴 외부 서비스, 서버 요청, DB 함수
 - [docs/IMAGE_GENERATION.md](docs/IMAGE_GENERATION.md): 이미지 생성 방식을 정한 과정 (LoRA 실험)
+
+## 50mm 원형 스티커 인쇄
+
+결과 화면에서 원형 스티커 인쇄하기 → 배경·업체 규격 → 미리보기 생성 → 승인 → PDF/ZIP 받기 또는 견적 요청 순서로 사용합니다. artwork.pdf와 cutline.pdf를 분리하며, 300ppi 미만은 생성 전에 차단합니다. 이미지 만들기 화면 진입 때 30/10/0온과 실제 차감 시점을 안내합니다. [규격·파일·인쇄소 전달 설정](docs/STICKER_PRINT.md)을 확인하세요.
