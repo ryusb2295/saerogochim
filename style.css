@@ -901,3 +901,6 @@ body:has(.my-profile) .my-list>button:not(:last-child):after{content:'';position
 .intro-sheet h1{margin:0 0 14px;font-size:23px;line-height:32px;font-weight:700;color:#353535;letter-spacing:-.4px}
 .intro-sheet p{margin:0;font-size:14px;line-height:22px;color:#949494}
 .intro-sheet .primary{margin-top:auto;min-height:55px;background:#00c673}
+/* 아이폰 상태바 띠는 바로 아래 색 한 가지로 칠해진다. 그림 화면은 위쪽을 그 색으로 서서히 이어서 경계를 없앤다 */
+.intro-art{position:relative}.intro-art:before{content:"";position:absolute;left:0;right:0;top:0;height:72px;background:linear-gradient(#a4dcfe,rgba(164,220,254,0))}
+.splash{background-color:#3ee8a5}.splash:before{content:"";position:absolute;left:0;right:0;top:0;height:90px;background:linear-gradient(#3ee8a5,rgba(62,232,165,0))}.splash>*:not(small){position:relative}
