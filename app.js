@@ -11,7 +11,7 @@ const themes=[
   {name:'은은한 라벤더',bg:'#f0e8ff',ink:'#573c79',accent:'#9a74cd'},
   {name:'선명한 옐로',bg:'#fff3bd',ink:'#604900',accent:'#d5a025'}
 ];
-const initial=()=>({name:'',industry:'',style:'',mood:'귀엽고 친근한',audience:'전 연령',feature:'',service:'',moods:[],colorPrefs:[],keywords:'',theme:0,recommendedColor:null,customColor:null,shape:'circle',message:'맛있게 드세요!',fontSize:58,mockup:'bag',customImage:null,id:null,dong:'',postTpl:'신메뉴',postText:'',brand:null});
+const initial=()=>({name:'',industry:'',style:'',mood:'귀엽고 친근한',audience:'전 연령',feature:'',service:'',moods:[],colorPrefs:[],keywords:'',theme:0,recommendedColor:null,customColor:null,shape:'circle',message:'맛있게 드세요!',fontSize:58,stickerEdits:{},mockup:'bag',customImage:null,id:null,dong:'',postTpl:'신메뉴',postText:'',brand:null});
 const isHexColor=color=>typeof color==='string'&&/^#[0-9a-f]{6}$/i.test(color);
 function colorChannels(color){
   return [1,3,5].map(offset=>parseInt(color.slice(offset,offset+2),16));
@@ -24,16 +24,12 @@ function contrastInk(color){
   return 0.2126*r+0.7152*g+0.0722*b>0.179?'#000000':'#ffffff';
 }
 function brandTheme(st=state){
-  const base=themes[st.theme]||themes[0];
-  if(isHexColor(st.customColor)){
-    const bg=st.customColor,ink=contrastInk(bg);
-    const target=ink==='#000000'?0:255;
-    const accent='#'+colorChannels(bg).map(value=>Math.round(value*0.72+target*0.28).toString(16).padStart(2,'0')).join('');
-    return {...base,bg,ink,accent};
-  }
-  const colors=st.brand?.colors,index=st.recommendedColor;
-  if(!Number.isInteger(index)||index<0||index>3||!Array.isArray(colors)||colors.length!==4||!colors.every(isHexColor))return base;
-  return {...base,ink:colors[0],accent:index<2?colors[index]:colors[1],bg:index>1?colors[index]:colors[3]};
+  const base=themes[st.theme]||themes[0],colors=st.brand?.colors,index=st.recommendedColor;
+  const selected=isHexColor(st.customColor)?st.customColor:Number.isInteger(index)&&index>=0&&index<4&&Array.isArray(colors)&&colors.length===4&&colors.every(isHexColor)?colors[index]:null;
+  if(!selected)return base;
+  const bg=selected,ink=contrastInk(bg),target=ink==='#000000'?0:255;
+  const accent='#'+colorChannels(bg).map(v=>Math.round(v*.72+target*.28).toString(16).padStart(2,'0')).join('');
+  return {...base,bg,ink,accent};
 }
 const isPresetSelected=index=>!isHexColor(state.customColor)&&state.recommendedColor===null&&state.theme===index;
 const extraRecommendedColors=[
@@ -43,78 +39,24 @@ const extraRecommendedColors=[
   {name:'따뜻한 오트 베이지',color:'#dbccb5'}
 ];
 function recommendedSwatches(){
-  const colors=state.brand?.colors;
-  const suggestions=Array.isArray(colors)&&colors.length===4&&colors.every(isHexColor)?colors:[];
-  const swatches=suggestions.map((color,index)=>({name:'추천 색상 '+(index+1),color,index}));
-  swatches.push(...extraRecommendedColors.filter(({color})=>
-    !suggestions.some(suggestion=>suggestion.toLowerCase()===color)
-  ));
-  return `<div class="rec-colors" role="group" aria-label="추천 컬러">${swatches.map(({name,color,index})=>{
-    const extra=index===undefined;
-    const selected=extra?state.customColor===color:!isHexColor(state.customColor)&&state.recommendedColor===index;
-    const data=extra?`data-rec-hex="${color}"`:`data-rec-color="${index}"`;
-    return `<button type="button" ${data} class="${selected?'selected':''}" style="background:${esc(color)}" aria-label="${esc(name)} ${esc(color)} 적용" aria-pressed="${selected}" title="${esc(name)} ${esc(color)}"></button>`;
-  }).join('')}</div>`;
+  const colors=state.brand?.colors,swatches=[];
+  const add=(color,name)=>{if(isHexColor(color)&&!swatches.some(s=>s.color.toLowerCase()===color.toLowerCase()))swatches.push({color:color.toLowerCase(),name})};
+  if(Array.isArray(colors))colors.forEach((c,i)=>add(c,'추천 색상 '+(i+1)));
+  extraRecommendedColors.forEach(({color,name})=>add(color,name));
+  themes.forEach(t=>add(t.bg,t.name));
+  const current=brandTheme().bg.toLowerCase();
+  return `<div class="rec-colors" role="group" aria-label="추천 컬러">${swatches.map(({name,color})=>`<button type="button" data-rec-hex="${color}" class="${current===color?'selected':''}" style="background:${color}" aria-label="${esc(name)} ${color} 적용" aria-pressed="${current===color}" title="${esc(name)} ${color}"></button>`).join('')}</div>`;
 }
-function customColorPicker(){
-  const color=brandTheme().bg;
-  return `<div class="brand-color-picker">
-    <label class="brand-color-visual" for="brand-color"><input id="brand-color" type="color" value="${esc(color)}"><span>색상표 열기</span></label>
-    <div class="brand-color-code">
-      <label for="brand-color-hex">색상 코드</label>
-      <input id="brand-color-hex" type="text" value="${esc(color.toUpperCase())}" placeholder="#3B82F6" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="brand-color-error">
-    </div>
-    <p class="field-error" id="brand-color-error" role="alert" hidden>색상 코드를 #3B82F6처럼 입력해 주세요.</p>
-  </div>`;
-}
+function customColorPicker(){return StickerEditor.colorMarkup(brandTheme().bg)}
 function bindCustomColor(){
-  const picker=$('#brand-color'),code=$('#brand-color-hex'),error=$('#brand-color-error');
-  if(!picker||!code||!error)return;
-  function setColor(color){
-    state.customColor=color.toLowerCase();
-    state.recommendedColor=null;
-    $('#app').querySelectorAll('button[data-theme],button[data-rec-color],button[data-rec-hex]').forEach(button=>{
+  StickerEditor.bindColor($('#app'),brandTheme().bg,color=>{
+    state.customColor=color.toLowerCase();state.recommendedColor=null;
+    $('#app').querySelectorAll('[data-rec-hex]').forEach(button=>{
       const selected=button.dataset.recHex===state.customColor;
-      button.classList.toggle('selected',selected);
-      button.setAttribute('aria-pressed',String(selected));
+      button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
     });
-    code.removeAttribute('aria-invalid');
-    error.hidden=true;
-    saveDraft();
-    refreshSticker();
-  }
-  $('#app').querySelectorAll('button[data-rec-hex]').forEach(button=>button.onclick=()=>{
-    const color=button.dataset.recHex;
-    picker.value=color;
-    code.value=color.toUpperCase();
-    setColor(color);
+    saveDraft();refreshSticker();
   });
-  picker.oninput=picker.onchange=()=>{
-    code.value=picker.value.toUpperCase();
-    setColor(picker.value);
-  };
-  const readCode=()=> '#'+code.value.trim().replace(/^#/,'').toLowerCase();
-  code.oninput=()=>{
-    const color=readCode();
-    if(!isHexColor(color))return;
-    picker.value=color;
-    setColor(color);
-  };
-  code.onblur=()=>{
-    const color=readCode();
-    if(isHexColor(color)){
-      code.value=color.toUpperCase();
-      return;
-    }
-    code.setAttribute('aria-invalid','true');
-    error.hidden=false;
-  };
-  code.onkeydown=event=>{
-    if(event.key==='Enter'){
-      event.preventDefault();
-      code.blur();
-    }
-  };
 }
 let state=initial(),page='studio',step=1,assets={},toastTimer,shop='';
 let generating=false,genStart=0,genPct=0,genError='',autoKey='';let askQ=0;// 질문 수. AI 켜진 계정은 마지막에 그림체 고르기가 하나 더 있음
@@ -141,7 +83,7 @@ function toast(msg){$('#toast').textContent=msg;$('#toast').classList.add('toast
 function assetType(){return typeOf(state)}
 function svgUri(svg){return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)}
 // 스티커 글꼴 (구글 폰트, OFL). 스티커는 SVG 그림이라 화면 글꼴을 못 써서, 쓰인 글자만 잘라 SVG 안에 넣는다
-const STICKER_FONTS=[['','기본'],['Jua','주아'],['Do Hyeon','도현'],['Black Han Sans','검은고딕'],['Gaegu','개구'],['Yeon Sung','연성']];
+const STICKER_FONTS=[['','기본'],['Jua','주아'],['Do Hyeon','도현'],['Black Han Sans','검은고딕'],['Gaegu','개구'],['Yeon Sung','연성'],['Gugi','구기'],['Gamja Flower','감자꽃'],['Gowun Batang','고운바탕'],['Gowun Dodum','고운돋움'],['Stylish','스타일리시'],['Dongle','동글']];
 const STYLE_FONT={duck:'Jua',pastel:'Jua',object:'Black Han Sans',flat:'Do Hyeon',airbrush:'Do Hyeon',doodle:'Gaegu',crayon:'Gaegu',line:'Yeon Sung'};
 const MOOD_FONT_STYLE={'귀엽고 친근한':'duck','따뜻하고 정겨운':'crayon','깔끔하고 모던한':'flat','고급스럽고 차분한':'pastel','재미있고 개성 있는':'object','힙하고 트렌디한':'airbrush'};
 // 직접 고른 글꼴이 없으면 그림체(없으면 분위기)에 맞춰 정한다
@@ -206,24 +148,35 @@ const MSG_MAX=18,msgLen=m=>String(m||'').replace(/[\s/]/g,'').length,shortLayout
 const LAYOUTS=[['char','캐릭터만'],['basic','기본'],['arc','둥근 글씨'],['big','큰 글씨'],['band','띠']];
 const PHRASES=[['소중한 주문 / 감사합니다','big'],['이것은 / 뇌물 / 답례는 리뷰♥','big'],['사장님 몰래 드리는 / 서비스 / 맛있게 드세요','big'],['맛있게 드세요!','basic']];
 function stickerSVG(s=state,mode='sticker'){
-const t=brandTheme(s),type=typeOf(s);
-const raw=s.customImage||svgUri(assets[type]||''),size=mode==='sns'?1080:800,scale=size/800;
+const t=brandTheme(s),type=typeOf(s),raw=s.customImage||svgUri(assets[type]||''),size=mode==='sns'?1080:800;
 const outer=s.shape==='circle'?`<circle cx="400" cy="400" r="390" fill="white"/><circle cx="400" cy="400" r="372" fill="${t.bg}" stroke="${t.accent}" stroke-width="2" stroke-dasharray="4 8"/>`:`<rect x="10" y="10" width="780" height="780" rx="60" fill="white"/><rect x="28" y="28" width="744" height="744" rx="47" fill="${t.bg}" stroke="${t.accent}" stroke-width="2" stroke-dasharray="4 8"/>`;
-const nameSize=Math.min(Number(s.fontSize)||58,620/Math.max(s.name.length,1)),f=fontOf(s),face=fontFace(f,(s.name||'')+s.message+s.industry),name=esc(s.name||''),weight=face?400:800;
-const bg=mode==='sns'?`<rect width="800" height="800" fill="${t.bg}"/><circle cx="400" cy="355" r="270" fill="white" opacity=".45"/>`:outer,open=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 800 800">${bg}${face}`,txt=`fill="${t.ink}" ${fontAttr(face&&f)} text-anchor="middle"`;
-// 배치: 문구를 /로 나누면 큰 글씨 배치에서 작은 줄 / 큰 글씨 / 작은 줄로 쓴다
+const nameSize=Math.min(Number(s.fontSize)||58,620/Math.max((s.name||'').length,1)),f=fontOf(s),face=fontFace(f,(s.name||'')+(s.message||'')+(s.industry||'')),name=esc(s.name||''),weight=face?400:800;
+const bg=mode==='sns'?`<rect width="800" height="800" fill="${t.bg}"/><circle cx="400" cy="355" r="270" fill="white" opacity=".45"/>`:outer;
+const open=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 800 800">${bg}${face}`,txt=`fill="${t.ink}" ${fontAttr(face&&f)} text-anchor="middle"`;
 const parts=String(s.message||'').split('/').map(x=>x.trim()).filter(Boolean),line=parts.join(' ');
-// 이름도 문구도 비우면 기본 배치는 캐릭터만 크게
-if(s.layout==='char'||((s.layout||'basic')==='basic'&&!(s.name||'').trim()&&!line))return `${open}<image href="${esc(raw)}" x="110" y="110" width="580" height="580"/></svg>`;
-if(s.layout==='arc'){const top=Math.min(64,820/Math.max(line.length,1)),bot=Math.min(52,560/Math.max((s.name||'').length,1));
- return `${open}<defs><path id="arc-top" d="M 120 410 A 280 280 0 0 1 680 410"/><path id="arc-bot" d="M 150 420 A 250 250 0 0 0 650 420"/></defs><image href="${esc(raw)}" x="185" y="150" width="430" height="405"/><g ${txt} font-weight="${weight}"><text font-size="${top}"><textPath href="#arc-top" startOffset="50%">${esc(line)}</textPath></text><text font-size="${bot}" dy="${bot*.8}"><textPath href="#arc-bot" startOffset="50%">${name}</textPath></text></g></svg>`}
-if(s.layout==='big'){// 3줄 이상: 작은 줄 / 큰 글씨 / 작은 줄, 1~2줄: 전부 큰 글씨
+const layer=(key,content,x,y)=>StickerEditor.wrap(s,key,content,x,y);
+const character=(x,y,w,h)=>layer('character',`<image href="${esc(raw)}" x="${x}" y="${y}" width="${w}" height="${h}"/>`,x+w/2,y+h/2);
+const label=(y,fs,extra='')=>layer('name',`<text x="400" y="${y}" ${txt} font-size="${fs}" font-weight="${weight}" ${extra}>${name}</text>`,400,y-fs*.35);
+if(s.layout==='char'||((s.layout||'basic')==='basic'&&!(s.name||'').trim()&&!line))return open+character(110,110,580,580)+'</svg>';
+if(s.layout==='arc'){
+ const top=Math.min(64,820/Math.max(line.length,1)),bot=Math.min(52,560/Math.max((s.name||'').length,1));
+ const message=layer('message',`<text ${txt} font-weight="${weight}" font-size="${top}"><textPath href="#arc-top" startOffset="50%">${esc(line)}</textPath></text>`,400,170);
+ const shop=layer('name',`<text ${txt} font-weight="${weight}" font-size="${bot}" dy="${bot*.8}"><textPath href="#arc-bot" startOffset="50%">${name}</textPath></text>`,400,650);
+ return `${open}<defs><path id="arc-top" d="M 120 410 A 280 280 0 0 1 680 410"/><path id="arc-bot" d="M 150 420 A 250 250 0 0 0 650 420"/></defs>${character(185,150,430,405)}${message}${shop}</svg>`;
+}
+if(s.layout==='big'){
  const three=parts.length>=3,small1=three?parts[0]:'',small2=three?parts.slice(2).join(' '):'',bigs=three?[parts[1]]:parts.length?parts:[s.name||''];
  const lines=bigs.flatMap(x=>wrapText(x,6,3)),bs=Math.min(200,600/Math.max(...lines.map(l=>l.length),1),300/lines.length),mid=330-(lines.length-1)*bs*.55,sm=x=>Math.min(50,480/Math.max(x.length,1));
- return `${open}<g ${txt} font-weight="${weight}">${small1?`<text x="400" y="${mid-bs*.75}" font-size="${sm(small1)}">${esc(small1)}</text>`:''}${lines.map((l,i)=>`<text x="400" y="${mid+bs*.35+i*bs*1.08}" font-size="${bs}">${esc(l)}</text>`).join('')}${small2?`<text x="400" y="${mid+bs*.35+(lines.length-1)*bs*1.08+sm(small2)*1.5}" font-size="${sm(small2)}" fill="${t.accent}">${esc(small2)}</text>`:''}</g><image href="${esc(raw)}" x="270" y="500" width="260" height="245"/><text x="400" y="108" ${txt} font-size="${Math.min(30,300/Math.max((s.name||'').length,1))}" opacity=".75">${name}</text></svg>`}
-if(s.layout==='band'){const clip=s.shape==='circle'?'<circle cx="400" cy="400" r="372"/>':'<rect x="28" y="28" width="744" height="744" rx="47"/>',lines=wrapText(line,9,3),fs=Math.min(68,560/Math.max(...lines.map(l=>l.length),1));
- return `${open}<defs><clipPath id="band-clip">${clip}</clipPath></defs><image href="${esc(raw)}" x="225" y="45" width="350" height="330"/><g clip-path="url(#band-clip)"><rect x="-100" y="${470-lines.length*fs*.75}" width="1000" height="${lines.length*fs*1.5}" fill="${t.accent}" transform="rotate(-10 400 470)"/></g><g ${fontAttr(face&&f)} text-anchor="middle" fill="#fff" font-weight="${weight}" transform="rotate(-10 400 470)">${lines.map((l,i)=>`<text x="400" y="${470+fs*.35+(i-(lines.length-1)/2)*fs*1.15}" font-size="${fs}">${esc(l)}</text>`).join('')}</g><g ${txt}><text x="400" y="665" font-size="${Math.min(54,520/Math.max((s.name||'').length,1))}" font-weight="${weight}">${name}</text></g></svg>`}
-return `${open}<image href="${esc(raw)}" x="170" y="110" width="460" height="430"/><g ${txt}><text x="400" y="600" font-size="${nameSize}" font-weight="${weight}">${name}</text><text x="400" y="661" font-size="${Math.min(28,600/Math.max(line.length,1))}" letter-spacing="1">${esc(line)}</text></g></svg>`;
+ const message=layer('message',`<g ${txt} font-weight="${weight}">${small1?`<text x="400" y="${mid-bs*.75}" font-size="${sm(small1)}">${esc(small1)}</text>`:''}${lines.map((l,i)=>`<text x="400" y="${mid+bs*.35+i*bs*1.08}" font-size="${bs}">${esc(l)}</text>`).join('')}${small2?`<text x="400" y="${mid+bs*.35+(lines.length-1)*bs*1.08+sm(small2)*1.5}" font-size="${sm(small2)}" fill="${t.accent}">${esc(small2)}</text>`:''}</g>`,400,330);
+ return open+message+character(270,500,260,245)+label(108,Math.min(30,300/Math.max((s.name||'').length,1)),'opacity=".75"')+'</svg>';
+}
+if(s.layout==='band'){
+ const clip=s.shape==='circle'?'<circle cx="400" cy="400" r="372"/>':'<rect x="28" y="28" width="744" height="744" rx="47"/>',lines=wrapText(line,9,3),fs=Math.min(68,560/Math.max(...lines.map(l=>l.length),1));
+ const message=layer('message',`<g clip-path="url(#band-clip)"><rect x="-100" y="${470-lines.length*fs*.75}" width="1000" height="${lines.length*fs*1.5}" fill="${t.accent}" transform="rotate(-10 400 470)"/></g><g ${fontAttr(face&&f)} text-anchor="middle" fill="${contrastInk(t.accent)}" font-weight="${weight}" transform="rotate(-10 400 470)">${lines.map((l,i)=>`<text x="400" y="${470+fs*.35+(i-(lines.length-1)/2)*fs*1.15}" font-size="${fs}">${esc(l)}</text>`).join('')}</g>`,400,470);
+ return `${open}<defs><clipPath id="band-clip">${clip}</clipPath></defs>${character(225,45,350,330)}${message}${label(665,Math.min(54,520/Math.max((s.name||'').length,1)))}</svg>`;
+}
+const message=layer('message',`<text x="400" y="661" ${txt} font-size="${Math.min(28,600/Math.max(line.length,1))}" letter-spacing="1">${esc(line)}</text>`,400,650);
+return open+character(170,110,460,430)+label(600,nameSize)+message+'</svg>';
 }
 function logo(){return `<button class="logo" data-page="home" aria-label="가게온 홈"><img class="wordmark" src="assets/brand/logo-green.svg" alt="가게온"></button>`}
 function nav(cls){return `<nav class="${cls}" aria-label="주요 메뉴">${navItems().map(([p,i,l])=>`<button data-page="${p}" class="${navTab()===p?'active':''}" ${navTab()===p?'aria-current="page"':''}>${icon(i)}<span>${l}</span>${p==='chats'&&typeof chatUnread!=='undefined'&&chatUnread?`<i class="nav-badge">${chatUnread>99?'99+':chatUnread}</i>`:''}</button>`).join('')}</nav>`}
@@ -327,13 +280,13 @@ return `<form id="brand-form" class="ask ask5" novalidate><div class="ask-top"><
 <section class="ask-q" data-q="4" ${hid(4)}><h2>입력하신 가게 정보를 확인해 주세요</h2><p class="ask-sub">수정 버튼을 눌러 바로 고칠 수 있어요.</p><div id="ask-confirm">${askQ===4?confirmHTML():''}</div></section>
 <div class="ask-actions"><button type="button" class="primary" id="ask-next" ${askQ<askN()-1?'':'hidden'}>다음</button><button class="primary ai" type="submit" id="ask-submit" ${askQ===askN()-1?'':'hidden'}>캐릭터 생성하기</button></div></form>`}
 function conceptPage(){return `<div class="layout"><section class="panel"><div class="panel-title">${esc(state.name)} 브랜드 분석 <span class="ai-badge">${state.brand?.src==='ai'?'AI':'예시'}</span></div><p class="sub">가게 정보를 바탕으로 브랜드 방향을 정리했어요.</p>${analysisCard()}${state.dong?marketCard():''}<h3 class="sec-title">캐릭터</h3><div class="notice">${aiWaiting()?(generating?'AI가 캐릭터를 그리고 있어요. 잠시만 기다려 주세요.':'AI 캐릭터를 아직 못 만들었어요. 아래 버튼으로 다시 시도해 주세요.'):state.generated?(aiReady?'AI가 생성한 캐릭터예요. 같은 원본을 스티커에 재사용해요.':'목업 시연용 결과예요. 실제 서비스에서는 AI가 새로 그린 캐릭터가 들어가요.'):state.customImage?'직접 올린 이미지로 제작 중이에요.':(aiReady?'현재는 예시 캐릭터예요. 아래 버튼으로 AI 생성을 요청할 수 있어요.':'현재는 예시 캐릭터예요. 직접 만든 캐릭터 이미지를 올려 쓸 수도 있어요.')}</div>${aiReady?(generating?'':`<button class="primary ai full" id="generate-ai">${icon('brush')}${state.generated?'다른 캐릭터로 다시 만들기':'AI로 새 캐릭터 만들기'}</button><p class="help">업종과 가게 특징, 시디과 화풍을 반영해 새 캐릭터를 그려요. 15초 정도 걸려요.</p>`):`<button class="primary ai full" id="generate-ai">${icon('brush')}AI로 새 캐릭터 만들기</button><p class="help">시연용 목업이에요. 실제 AI 대신 업종에 맞춰 준비해 둔 캐릭터로 결과를 보여드려요. 체험 생성 ${Math.max(0,MOCK_LIMIT-used())}/${MOCK_LIMIT}회 남음</p>`}<div id="generation-status" role="status" aria-live="polite">${genError&&aiReady&&!generating?`<p class="field-error">${esc(genError)} <button type="button" class="text-button" id="retry-ai">다시 시도</button></p>`:''}</div>${state.dong?'':`<details class="market-fold"><summary>우리 동네 같은 업종 가게 보기</summary>${marketCard()}</details>`}<label class="upload-label" for="upload">내 캐릭터로 만들고 싶다면?<input type="file" id="upload" accept="image/png,image/jpeg,image/webp"><span>PNG·JPG·WebP, 2MB 이하 · 투명 PNG 권장</span></label><p class="field-error" id="upload-error" role="alert" hidden></p>${state.customImage?'<button class="text-button" id="reset-image">예시 캐릭터로 돌아가기</button>':''}<div class="actions"><button class="secondary" data-step="1">${icon('back')}이전</button><button class="primary" data-step="3">이 브랜드로 만들기 ${icon('arrow')}</button></div></section><aside class="panel"><div class="preview-stage">${aiWaiting()?`<div class="char-wait big">${shibaArt()}<small>${generating?'캐릭터를 그리고 있어요':'캐릭터가 아직 없어요'}</small></div>`:`${exampleChar()?'<span class="example-tag">예시 캐릭터</span>':''}<img id="concept-sticker" class="big-sticker" src="${svgUri(stickerSVG())}" alt="${esc(state.name)} 브랜드 미리보기">`}</div>${candidates.length>1?`<div class="cand-row" role="group" aria-label="만든 캐릭터 후보">${candidates.map((u,i)=>`<button type="button" class="cand${u===state.customImage?' on':''}" data-cand="${i}" aria-pressed="${u===state.customImage}" aria-label="후보 ${i+1}"><img src="${u}" alt=""></button>`).join('')}</div>`:''}<p class="preview-caption">${candidates.length>1?'다시 만든 캐릭터는 아래에 쌓여요. 눌러서 고를 수 있어요.':'선택한 캐릭터와 색상은 다음 단계에도 유지돼요.'}</p><div class="note">${icon('save')}완성한 브랜드를 저장하면 다음에도 같은 캐릭터로 만들 수 있어요.</div></aside></div>`}
-function editorPage(){return `<div class="layout"><section class="panel"><div class="panel-title">스티커를 내 마음에 쏙 맞게</div><p class="sub">글자를 수정해도 캐릭터는 그대로 유지돼요.</p><div class="field"><label for="edit-name">상호명</label><input type="text" id="edit-name" maxlength="24" value="${esc(state.name)}"></div><div class="field"><label for="message">스티커 문구</label><input type="text" id="message" maxlength="40" value="${esc(state.message)}"><div class="suggest-chips phrase-chips" aria-label="자주 쓰는 문구">${PHRASES.map(([m],i)=>`<button type="button" data-phrase="${i}">${esc(m.replace(/\s*\/\s*/g,' '))}</button>`).join('')}</div><p class="help">‘/’로 줄을 나눌 수 있어요. 예: 이것은 / 뇌물 / 답례는 리뷰♥${shortLayout(state)?`<span class="counter" id="msg-count">${msgLen(state.message)}/${MSG_MAX}</span>`:''}</p><p class="field-error" id="msg-error" role="alert" ${shortLayout(state)&&msgLen(state.message)>MSG_MAX?'':'hidden'}>이 배치는 ${MSG_MAX}자까지 들어가요. 문구를 줄여 주세요.</p></div><div class="field"><label>배치</label><div class="choices layout-choices">${LAYOUTS.map(([v,l])=>`<button class="choice ${(state.layout||'basic')===v?'selected':''}" data-field="layout" data-value="${v}" aria-pressed="${(state.layout||'basic')===v}">${l}</button>`).join('')}</div></div><div class="field"><label>스티커 모양</label><div class="choices">${[['circle','원형'],['square','둥근 사각형']].map(([v,l])=>`<button class="choice ${state.shape===v?'selected':''}" data-field="shape" data-value="${v}" aria-pressed="${state.shape===v}">${l}</button>`).join('')}</div></div><div class="field"><label>브랜드 색상</label><p class="mini-label">추천 컬러</p>${recommendedSwatches()}${customColorPicker()}<p class="mini-label">기본 색상</p><div class="color-options">${themes.map((t,i)=>`<button class="color-dot ${isPresetSelected(i)?'selected':''}" data-theme="${i}" style="background:${t.accent}" aria-label="${t.name}" aria-pressed="${isPresetSelected(i)}"></button>`).join('')}</div></div><div class="field"><label>상호명 글꼴</label><div class="font-choices">${STICKER_FONTS.map(([v,l])=>`<button type="button" class="font-choice ${fontOf(state)===v?'selected':''}" data-field="font" data-value="${v}" aria-pressed="${fontOf(state)===v}"><b style="font-family:${v?`'${v}',`:''}sans-serif">${esc(state.name||'우리 가게')}</b><small>${l}</small></button>`).join('')}</div><p class="help">스티커, SNS 홍보물, 다운로드 PNG에 같이 들어가요.</p></div><div class="field"><label for="font-size">상호명 크기</label><div class="range-row"><span class="range-end">작게</span><input id="font-size" type="range" min="36" max="80" value="${state.fontSize}" aria-valuetext="${fontSizeLabel(state.fontSize)}"><span class="range-end">크게</span></div><div class="font-preview"><img id="font-preview-sticker" src="${svgUri(stickerSVG())}" alt="상호명 크기 미리보기"></div><p class="help">크기를 바꾸면 바로 위 미리보기에 반영돼요. 긴 상호명은 스티커에 맞게 자동으로 줄어들어요.</p></div><div class="field"><label>SNS 홍보물</label>${choice('postTpl',['신메뉴','이벤트','할인'])}<input type="text" id="post-text" maxlength="24" style="margin-top:10px" aria-label="홍보물 제목" placeholder="${esc(postHead({...state,postText:''}))}" value="${esc(state.postText)}"><p class="help">비워 두면 템플릿 기본 문구가 들어가요.</p><label for="edit-slogan">슬로건</label><input type="text" id="edit-slogan" maxlength="60" value="${esc(state.brand?.slogan||'')}" placeholder="SNS 홍보물에 들어갈 문구"><img id="live-post" class="post-preview" src="${svgUri(postSVG())}" alt="SNS 홍보물 미리보기"></div><div class="actions"><button class="secondary" data-step="2">${icon('back')}이전</button><button class="primary" id="to-result">결과물 보기 ${icon('arrow')}</button></div></section><aside class="panel"><div class="preview-stage"><img id="live-pack" class="pack-preview" src="${svgUri(packSVG())}" alt="포장에 붙인 편집 중인 스티커 미리보기"></div><p class="preview-caption">원본 이미지 + 선명한 한글 상호명</p><div class="download-info">${icon('image')}<div><strong>스티커 디자인 PNG</strong><small>800 × 800 px · 스티커 바깥 투명 배경</small></div></div></aside></div>`}
+function editorPage(){return `<div class="layout"><section class="panel"><div class="panel-title">스티커를 내 마음에 쏙 맞게</div><p class="sub">캐릭터와 글씨를 직접 옮기고 크기를 바꿔보세요.</p><div class="field"><label for="edit-name">상호명</label><input type="text" id="edit-name" maxlength="24" value="${esc(state.name)}"></div><div class="field"><label for="message">스티커 문구</label><input type="text" id="message" maxlength="40" value="${esc(state.message)}"><div class="suggest-chips phrase-chips" aria-label="자주 쓰는 문구">${PHRASES.map(([m],i)=>`<button type="button" data-phrase="${i}">${esc(m.replace(/\s*\/\s*/g,' '))}</button>`).join('')}</div><p class="help">‘/’로 줄을 나눌 수 있어요. 예: 이것은 / 뇌물 / 답례는 리뷰♥${shortLayout(state)?`<span class="counter" id="msg-count">${msgLen(state.message)}/${MSG_MAX}</span>`:''}</p><p class="field-error" id="msg-error" role="alert" ${shortLayout(state)&&msgLen(state.message)>MSG_MAX?'':'hidden'}>이 배치는 ${MSG_MAX}자까지 들어가요. 문구를 줄여 주세요.</p></div><div class="field"><label>배치</label><div class="choices layout-choices">${LAYOUTS.map(([v,l])=>`<button class="choice ${(state.layout||'basic')===v?'selected':''}" data-field="layout" data-value="${v}" aria-pressed="${(state.layout||'basic')===v}">${l}</button>`).join('')}</div></div><div class="field"><label>스티커 모양</label><div class="choices">${[['circle','원형'],['square','둥근 사각형']].map(([v,l])=>`<button class="choice ${state.shape===v?'selected':''}" data-field="shape" data-value="${v}" aria-pressed="${state.shape===v}">${l}</button>`).join('')}</div></div><div class="field"><label>브랜드 색상</label><p class="mini-label">추천 컬러</p>${recommendedSwatches()}${customColorPicker()}</div><div class="field"><label>상호명 글꼴</label><div class="font-carousel"><button type="button" class="font-nav" id="font-prev" aria-label="이전 글꼴">‹</button><div class="font-choices" id="font-choices" role="group" aria-label="스티커 글꼴 12종">${STICKER_FONTS.map(([v,l])=>`<button type="button" class="font-choice ${fontOf(state)===v?'selected':''}" data-field="font" data-value="${v}" aria-pressed="${fontOf(state)===v}"><b style="font-family:${v?`'${v}',`:''}sans-serif">${esc(state.name||'우리 가게')}</b><small>${l}</small></button>`).join('')}</div><button type="button" class="font-nav" id="font-next" aria-label="다음 글꼴">›</button></div><p class="help">좌우로 넘겨 12가지 글꼴을 골라보세요. 스티커, SNS 홍보물, 다운로드 PNG에 같이 들어가요.</p></div><div class="field"><label for="font-size">상호명 크기</label><div class="range-row"><span class="range-end">작게</span><input id="font-size" type="range" min="36" max="80" value="${state.fontSize}" aria-valuetext="${fontSizeLabel(state.fontSize)}"><span class="range-end">크게</span></div><p class="help">크기를 바꾸면 위 편집 화면에 반영돼요. 긴 상호명은 스티커에 맞게 자동으로 줄어들어요.</p></div><div class="field"><label>SNS 홍보물</label>${choice('postTpl',['신메뉴','이벤트','할인'])}<input type="text" id="post-text" maxlength="24" style="margin-top:10px" aria-label="홍보물 제목" placeholder="${esc(postHead({...state,postText:''}))}" value="${esc(state.postText)}"><p class="help">비워 두면 템플릿 기본 문구가 들어가요.</p><label for="edit-slogan">슬로건</label><input type="text" id="edit-slogan" maxlength="60" value="${esc(state.brand?.slogan||'')}" placeholder="SNS 홍보물에 들어갈 문구"><img id="live-post" class="post-preview" src="${svgUri(postSVG())}" alt="SNS 홍보물 미리보기"></div><div class="actions"><button class="secondary" data-step="2">${icon('back')}이전</button><button class="primary" id="to-result">결과물 보기 ${icon('arrow')}</button></div></section><aside class="panel sticker-editor-panel"><div class="preview-stage"><div id="sticker-canvas" class="sticker-canvas" tabindex="0" role="group" aria-label="스티커 편집 화면" aria-describedby="sticker-edit-help">${stickerSVG()}</div></div>${StickerEditor.controls()}<details class="pack-fold"><summary>포장에 붙여 보기</summary><img id="live-pack" class="pack-preview" src="${svgUri(packSVG())}" alt="편집 중인 스티커의 포장 미리보기"></details><div class="download-info">${icon('image')}<div><strong>스티커 디자인 PNG</strong><small>800 × 800 px · 스티커 바깥 투명 배경</small></div></div></aside></div>`}
 function resultPage(){return `<div class="layout"><section class="panel"><div class="panel-title success-title">${icon('check')}우리 가게의 브랜드가 완성됐어요</div><p class="sub">미리보기는 참고용이며 실제 인쇄 결과와 차이가 있을 수 있어요.</p><div class="choices">${[['bag','종이 쇼핑백'],['box','포장 상자'],['cup','테이크아웃 컵']].map(([v,l])=>`<button class="choice ${(state.mockup||'bag')===v?'selected':''}" data-field="mockup" data-value="${v}" aria-pressed="${(state.mockup||'bag')===v}">${l}</button>`).join('')}</div><img class="pack-preview" src="${svgUri(packSVG())}" alt="${esc(state.name)} 스티커를 붙인 포장 미리보기"><p class="preview-caption">한 번 만든 캐릭터, 다양한 곳에서 같은 모습으로.</p><div class="insta" aria-label="인스타그램 게시물 미리보기"><div class="insta-head"><span class="insta-av"><img src="${svgUri(stickerSVG())}" alt=""></span>${esc(state.name)}</div><img src="${svgUri(postSVG())}" alt="${esc(postHead(state))} 홍보물"><div class="insta-foot">${icon('heart')}<b>${esc(state.name)}</b> ${esc(state.brand?.slogan||state.message)} <span>${(state.brand?.keywords||[]).map(k=>'#'+esc(k.replace(/\s/g,''))).join(' ')}</span></div></div><button class="secondary full" style="margin-top:20px" data-step="3">${icon('back')}디자인 더 다듬기</button></section><aside class="panel"><div class="panel-title">${esc(state.name)} 브랜드 패키지</div><div class="deliverables"><figure><img src="${svgUri(stickerSVG())}" alt="스티커"><figcaption>스티커</figcaption><button class="secondary" id="download">${icon('download')}받기</button></figure><figure><img src="${svgUri(postSVG())}" alt="SNS 홍보물"><figcaption>SNS 홍보물</figcaption><button class="secondary" id="download-sns">${icon('download')}받기</button></figure><figure><img src="${svgUri(packSVG())}" alt="포장 미리보기"><figcaption>포장</figcaption><button class="secondary" id="download-pack">${icon('download')}받기</button></figure></div><p class="mini-label">스티커 세트</p><div class="deliverables set">${STICKER_SET.map((m,i)=>`<figure><img src="${svgUri(stickerSVG(setSticker(i)))}" alt="${m} 스티커"><figcaption>${m}</figcaption><button class="secondary" data-set="${i}">${icon('download')}받기</button></figure>`).join('')}</div><button class="primary full" id="to-request" style="margin-bottom:10px">${icon('box')}이 디자인으로 인쇄 견적 받기</button><button class="secondary full" id="save">${icon('save')}내 브랜드에 저장</button><p class="help">스티커 800 × 800 px / SNS·포장 1080 × 1080 px<br>${REAL?'저장하면 내 계정에 남아 다른 기기에서도 이어 만들 수 있어요.':'체험 모드라 이 브라우저에만 저장돼요.'}</p><div class="note">${icon('info')}${REAL?'인쇄 견적을 요청하면 여러 인쇄소가 견적을 보내요. 업체를 고른 뒤 채팅으로 규격과 배송을 맞춰요.':'인쇄 견적과 주문은 로그인 후 이용할 수 있어요.'}</div></aside></div>`}
 function saved(){const rs=records();return `<section class="intro"><h1>다시 만나도, <em>우리다운 모습.</em></h1><p>저장해둔 캐릭터와 디자인으로 언제든 다시 시작해요.</p></section>${REAL?'':`<div class="notice">이 브라우저에 저장된 브랜드 ${rs.length}개. 브라우저 데이터를 지우면 함께 삭제돼요.</div>`}${rs.length?`<div class="saved-grid">${rs.map(r=>`<article class="saved-card"><div class="saved-art"><img src="${svgUri(stickerSVG(r))}" alt="${esc(r.name)} 스티커"></div><div class="saved-body"><h3>${esc(r.name)}</h3><p>${esc(r.industry)}</p><p class="date">${new Date(r.savedAt).toLocaleDateString('ko-KR')}</p><div class="actions"><button class="secondary" data-open="${esc(r.id)}">이어 만들기</button></div><button class="card-del" data-delete="${esc(r.id)}" aria-label="${esc(r.name)} 삭제">×</button></div></article>`).join('')}</div>`:`<div class="empty"><h2>첫 번째 브랜드를 기다리고 있어요</h2><p>우리 가게의 이야기를 들려주고, 나만의 브랜드를 저장해보세요.</p><button class="primary" data-page="studio">브랜드 만들기 ${icon('arrow')}</button></div>`}`}
 function guide(){return `<section class="intro"><h1>처음이어도, <em>차근차근.</em></h1><p>가게의 이야기가 스티커가 되기까지, 네 단계면 충분해요.</p></section><div class="guide-grid">${[['01','가게 이야기를 들려주세요','상호명, 업종, 분위기, 고객층을 입력해요. 우리 가게만의 특징에는 “밤늦게까지 여는 국물 떡볶이”처럼 차별점을 적어주세요.'],['02','우리다운 브랜드를 골라요','업종에 맞춘 예시 캐릭터와 세 가지 색상으로 체험해요. 직접 만든 캐릭터 이미지를 올려 사용할 수도 있어요.'],['03','문구와 모양을 바꿔보세요','캐릭터는 유지하면서 상호명, 문구, 글자 크기, 스티커 모양을 직접 바꿀 수 있어요.'],['04','붙여보고, 저장하고, 가져가요','쇼핑백과 상자에 적용한 모습을 보고 PNG로 내려받아요. 내 브랜드에 저장하면 같은 브라우저에서 다시 편집할 수 있어요.']].map(([n,t,p])=>`<article class="panel"><div class="num">${Number(n)}단계</div><h3>${t}</h3><p>${p}</p></article>`).join('')}</div><div class="panel guide-status"><strong>현재 버전에서 가능한 것</strong><p>입력 · Python 서버 연결 시 AI 생성 · 예시 캐릭터 선택 · 이미지 업로드 · 스티커 편집 · 포장 미리보기 · PNG 다운로드 · 브라우저 저장</p><strong>다음 단계</strong><p>계정과 클라우드 저장 · 실물 주문 연계</p><p>현재 앱은 모바일에 맞춘 웹 프로토타입이에요. 브라우저 메뉴의 ‘홈 화면에 추가’를 지원하는 기기에서는 바로가기로 사용할 수 있어요.</p></div>`}
 function buildBrandRequest(){return {name:state.name.trim(),industry:state.industry.trim(),mood:(state.moods||[]).length?state.moods.join(', '):state.mood,audience:state.audience,feature:state.feature.trim(),service:(state.service||'').trim(),colors:(state.colorPrefs||[]).join(', '),keywords:(state.keywords||'').trim(),style:state.style||''}}
 function syncForm(){if($('#store-name'))state.name=$('#store-name').value;if($('#industry'))state.industry=$('#industry').value;if($('#dong'))state.dong=$('#dong').value;if($('#feature'))state.feature=$('#feature').value;if($('#service'))state.service=$('#service').value;if($('#keywords'))state.keywords=$('#keywords').value}
-function refreshSticker(){const sticker=svgUri(stickerSVG());if($('#concept-sticker'))$('#concept-sticker').src=sticker;if($('#live-sticker'))$('#live-sticker').src=sticker;if($('#live-pack'))$('#live-pack').src=svgUri(packSVG());if($('#font-preview-sticker'))$('#font-preview-sticker').src=sticker;if($('#live-post'))$('#live-post').src=svgUri(postSVG())}
+function refreshSticker(){const svg=stickerSVG(),sticker=svgUri(svg);const canvas=$('#sticker-canvas');if(canvas){canvas.innerHTML=svg;canvas.dispatchEvent(new Event('stickerrefresh'))}if($('#concept-sticker'))$('#concept-sticker').src=sticker;if($('#live-sticker'))$('#live-sticker').src=sticker;if($('#live-pack'))$('#live-pack').src=svgUri(packSVG());if($('#font-preview-sticker'))$('#font-preview-sticker').src=sticker;if($('#live-post'))$('#live-post').src=svgUri(postSVG())}
 function clearError(f,err){if(!f.value.trim())return;f.classList.remove('invalid');f.removeAttribute('aria-invalid');$('#'+err).hidden=true}
 // 가게 정보 입력은 질문 하나씩 보여준다 (삼쩜삼, 토스 방식). 입력칸은 모두 그려 두고 지금 질문만 보이게 한다
 function askShow(n){syncForm();askQ=Math.max(0,Math.min(askN()-1,n));if(askQ===4&&$('#ask-confirm'))$('#ask-confirm').innerHTML=confirmHTML();setTimeout(()=>growArea($('#feature')));$('#app').querySelectorAll('.ask-q').forEach(s=>s.hidden=Number(s.dataset.q)!==askQ);$('#app').querySelectorAll('.ask-dots span').forEach((b,i)=>b.classList.toggle('on',i<=askQ));$('#ask-next').hidden=askQ===askN()-1;$('#ask-submit').hidden=askQ!==askN()-1;window.scrollTo({top:0});const f=$('.ask-q:not([hidden]) input[type=text]');if(f&&askQ===0)f.focus({preventScroll:true})}
@@ -363,11 +316,13 @@ function bind(){
 if($('#generate-ai'))$('#generate-ai').onclick=generateAI;if($('#retry-ai'))$('#retry-ai').onclick=generateAI;
 $('#app').querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{syncForm();page=b.dataset.page;render();window.scrollTo({top:0})});
 $('#app').querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));
-$('#app').querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>{syncForm();state[b.dataset.field]=b.dataset.value;if(step===1){$('#app').querySelectorAll('[data-field]').forEach(x=>{const selected=state[x.dataset.field]===x.dataset.value;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected))})}else render()});
+$('#app').querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>{syncForm();state[b.dataset.field]=b.dataset.value;if(b.dataset.field==='font'){saveDraft();$('#app').querySelectorAll('[data-field=font]').forEach(x=>{const selected=x.dataset.value===state.font;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected))});refreshSticker();return}if(step===1){$('#app').querySelectorAll('[data-field]').forEach(x=>{const selected=state[x.dataset.field]===x.dataset.value;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected))})}else render()});
 // <html data-theme> 같은 브라우저·확장 프로그램 속성과 겹치지 않게 버튼만 고른다
 $('#app').querySelectorAll('button[data-theme]').forEach(b=>b.onclick=()=>{state.theme=Number(b.dataset.theme);state.recommendedColor=null;state.customColor=null;render()});
 $('#app').querySelectorAll('button[data-rec-color]').forEach(b=>b.onclick=()=>{state.recommendedColor=Number(b.dataset.recColor);state.customColor=null;render()});
  bindCustomColor();
+ StickerEditor.bindCanvas($('#app'),()=>state,refreshSticker,saveDraft);
+ StickerEditor.bindFonts($('#app'));
 if($('#brand-form'))$('#brand-form').onsubmit=e=>{e.preventDefault();syncForm();state.name=state.name.trim();const empty=[['store-name','name-error',state.name],['industry','industry-error',state.industry.trim()]].filter(x=>!x[2]);empty.forEach(([id,err])=>{const f=$('#'+id);f.classList.add('invalid');f.setAttribute('aria-invalid','true');$('#'+err).hidden=false});if(empty.length){askShow(0);const f=$('#'+empty[0][0]);f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true});return}analyzing()};
 if($('#ask-next')){$('#ask-next').onclick=askNext;$('#ask-prev').onclick=()=>{if(askQ)askShow(askQ-1);else{page='home';render()}};$('#app').querySelectorAll('.ask-q input[type=text]').forEach(x=>{if(x.id!=='dong-q')x.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();askNext()}}});
  $('#app').querySelectorAll('[data-multi]').forEach(b=>b.onclick=()=>{const f=b.dataset.multi,v=b.dataset.value,a=[...(state[f]||[])],i=a.indexOf(v);if(i<0)a.push(v);else a.splice(i,1);state[f]=a;if(f==='moods')state.mood=a.length?a.join(', '):initial().mood;b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',String(i<0))});
