@@ -820,3 +820,4 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .chat-attach{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;color:#555;cursor:pointer}
 .chat-attach .icon,.chat-send .icon{width:22px;height:22px}
 .chat-send{display:grid;place-items:center;flex:none;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:#00c673;color:#fff;cursor:pointer}
+.chat-input .chat-send{padding:0}
