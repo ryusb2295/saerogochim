@@ -917,3 +917,4 @@ body:has(.my-profile) .my-list>button:not(:last-child):after{content:'';position
 .q-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 4px}
 .q-meta .rate{margin-left:0}
 .q-meta .q-tag{margin:0;padding:3px 9px;font-size:12px;line-height:18px}
+.rate.none{color:#b5b5b5}

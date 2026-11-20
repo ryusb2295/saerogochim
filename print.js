@@ -32,7 +32,8 @@ const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', file
 const loadReviews = async (col, ids) => { if (!ids.length) return []; try { return await q(sb.from('reviews').select('*').in(col, ids).order('created_at', { ascending: false })) } catch { return [] } };
 const reviewer = x => `${esc(x.author || '익명')} 사장님`;   // author 칸이 없는 예전 후기는 익명
 const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
-const rateLine = rs => rs.length ? `<span class="rate">★ ${(rs.reduce((s, x) => s + x.rating, 0) / rs.length).toFixed(1)} <small>후기 ${rs.length}개</small></span>` : '';
+// 후기가 없어도 ★ 0.0 후기 0개로 보여서 견적 카드마다 별점·배지 줄이 같은 모양이 된다
+const rateLine = rs => `<span class="rate${rs.length ? '' : ' none'}">★ ${(rs.length ? rs.reduce((s, x) => s + x.rating, 0) / rs.length : 0).toFixed(1)} <small>후기 ${rs.length}개</small></span>`;
 const chip = ([label, cls]) => `<span class="st ${cls}">${label}</span>`;
 const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
 const ymd = d => new Date(d).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
