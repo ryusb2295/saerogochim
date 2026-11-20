@@ -653,7 +653,7 @@ ${d.fresh.length ? `<div class="h-scroll">${d.fresh.slice(0, 6).map(x => `<butto
 ${d.jobs.length ? `<div class="list">${d.jobs.slice(0, 3).map(x => `<button class="job-row" data-page="jobs"><div><strong>${esc(x.title)}</strong><small>납기 ${ymd(x.due_date)} · ${next[x.status]}</small></div>${chip(REQ_ST[x.status])}</button>`).join('')}</div>`
       : `<div class="go-card" style="cursor:default">${icon('box')}<div><strong>진행 중인 의뢰가 없어요</strong><small>견적이 수락되면 여기에서 제작 상태를 관리해요</small></div></div>`}
 <div class="section-head"><h2>최근 채팅</h2></div>
-${d.convs.length ? `<div class="list">${d.convs.slice(0, 2).map(c => `<button class="chat-row" data-chat="${c.id}">${avatar(c.other_name)}<div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>`
+${d.convs.some(c => c.last_body) ? `<div class="list">${d.convs.filter(c => c.last_body).slice(0, 2).map(c => `<button class="chat-row" data-chat="${c.id}">${avatar(c.other_name)}<div><strong>${esc(c.other_name)}</strong><small>${esc(c.title)}</small><p>${esc(c.last_body || '대화를 시작해 보세요')}</p></div><div class="meta"><small>${chatTime(c.last_at)}</small>${Number(c.unread) ? `<i class="badge">${c.unread}</i>` : ''}</div></button>`).join('')}</div>`
       : `<p class="help">견적이 수락되면 소상공인과 채팅할 수 있어요.</p>`}`;
   });
 }
