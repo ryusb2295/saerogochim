@@ -912,3 +912,8 @@ body:has(.my-profile) .my-list>button:not(:last-child):after{content:'';position
 .intro-screen.out .intro-art{transform:translateY(-30%);opacity:0}
 .intro-screen.out .intro-sheet{transform:translateY(100%)}
 @media (prefers-reduced-motion:reduce){.intro-art,.intro-sheet,.intro-screen{transition:none}}
+
+/* 견적 카드: 별점과 최저가·가장 빠른 납기 배지를 이름 아래 한 줄에 같은 간격으로 */
+.q-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 4px}
+.q-meta .rate{margin-left:0}
+.q-meta .q-tag{margin:0;padding:3px 9px;font-size:12px;line-height:18px}
