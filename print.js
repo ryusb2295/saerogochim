@@ -236,6 +236,13 @@ function bindReal() {
     const on = b.dataset.on === 'true'; b.disabled = true;
     try { await q(sb.rpc('admin_set_ai', { p_user: b.dataset.adminAi, p_on: on })); toast(`${b.dataset.username} AI 생성을 ${on ? '켰어요' : '껐어요'}.`); reload('admin-accounts') } catch (e) { toast(errMsg(e)); b.disabled = false }
   });
+  // 시연용 무료 충전 (supabase/17_admin_tokens.sql)
+  $('#app').querySelectorAll('[data-admin-tokens]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { const left = await q(sb.rpc('admin_grant_tokens', { p_user: b.dataset.adminTokens, p_amount: 1000 })); toast(`${b.dataset.username}에 1000온을 충전했어요. 지금 ${Number(left).toLocaleString()}온`) }
+    catch (e) { toast(/no_demo_account/.test(e?.message || '') ? '아직 온 기록이 없는 계정이에요. 그 계정으로 한 번 로그인한 뒤 다시 눌러주세요.' : /admin_grant_tokens/.test(e?.message || '') ? '서버에 17_admin_tokens.sql을 먼저 적용해 주세요.' : errMsg(e)) }
+    b.disabled = false
+  });
   $('#app').querySelectorAll('[data-admin-delete]').forEach(b => b.onclick = () => {
     const name = b.dataset.username, id = b.dataset.adminDelete;
     modal({ title: '계정을 탈퇴시킬까요?', ok: '계정 탈퇴', danger: true,
@@ -300,7 +307,7 @@ function adminPage() {
   const r = useData('admin-accounts', () => q(sb.rpc('admin_accounts')));
   const group = (rows, role, title) => {
     const accounts = rows.filter(x => x.role === role);
-    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''} · AI ${x.ai_enabled ? '켜짐' : '꺼짐'}</small>${role === 'printer' ? bizLine(x) : ''}</div><span class="admin-actions"><button class="${x.ai_enabled ? 'secondary' : 'primary'}" data-admin-ai="${esc(x.id)}" data-on="${!x.ai_enabled}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} AI ${x.ai_enabled ? '끄기' : '켜기'}">AI ${x.ai_enabled ? '끄기' : '켜기'}</button>${role === 'printer' ? `<button class="${x.verified ? 'secondary' : 'primary'}" data-admin-verify="${esc(x.id)}" data-on="${!x.verified}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} ${x.verified ? '승인 취소' : '승인'}">${x.verified ? '승인 취소' : '승인'}</button>` : ''}<button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></span></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
+    return `<section class="admin-group"><h2 class="sec-label">${title} <small>${accounts.length}명</small></h2>${accounts.length ? accounts.map(x => `<article class="admin-account"><div><strong>${esc(x.display_name)}</strong><span class="admin-id">@${esc(x.username)}</span><small>가입 ${esc(new Date(x.created_at).toLocaleDateString('ko-KR'))}${role === 'printer' ? ` · ${x.verified ? '승인됨' : '승인 대기'}` : ''} · AI ${x.ai_enabled ? '켜짐' : '꺼짐'}</small>${role === 'printer' ? bizLine(x) : ''}</div><span class="admin-actions"><button class="${x.ai_enabled ? 'secondary' : 'primary'}" data-admin-ai="${esc(x.id)}" data-on="${!x.ai_enabled}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} AI ${x.ai_enabled ? '끄기' : '켜기'}">AI ${x.ai_enabled ? '끄기' : '켜기'}</button>${role === 'printer' ? `<button class="${x.verified ? 'secondary' : 'primary'}" data-admin-verify="${esc(x.id)}" data-on="${!x.verified}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} ${x.verified ? '승인 취소' : '승인'}">${x.verified ? '승인 취소' : '승인'}</button>` : ''}${role === 'owner' ? `<button class="secondary" data-admin-tokens="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 온 1000 무료 충전">+1000온</button>` : ''}<button class="secondary admin-remove" data-admin-delete="${esc(x.id)}" data-username="${esc(x.username)}" aria-label="${esc(x.username)} 계정 탈퇴">탈퇴</button></span></article>`).join('') : '<p class="help">등록된 계정이 없어요.</p>'}</section>`;
   };
   return `<section class="intro"><h1>계정 관리</h1><p>가입한 회원을 확인하고, 인쇄소를 승인하거나 탈퇴 처리해요. 승인된 인쇄소만 견적을 보낼 수 있어요. AI 생성은 켜 준 계정만 쓸 수 있어요(요금이 나가요).</p></section>${stateView(r, 'admin-accounts', rows => `<div class="admin-summary"><strong>전체 ${rows.length}명</strong><button class="secondary" data-reload="admin-accounts">새로고침</button></div>${group(rows, 'owner', '소상공인')}${group(rows, 'printer', '인쇄소')}`)}`;
 }

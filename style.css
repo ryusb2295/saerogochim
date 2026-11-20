@@ -894,3 +894,5 @@ body:has(.order-card),body:has(.order-card) main,body:has(.order-card) #app{back
 .order-steps li.now:not(:last-child) i{animation:order-pulse 1.8s ease-out infinite}
 @keyframes order-pulse{0%{box-shadow:0 0 0 0 rgba(0,198,115,.5)}70%,100%{box-shadow:0 0 0 9px rgba(0,198,115,0)}}
 @media (prefers-reduced-motion:reduce){.order-steps li.now i{animation:none}}
+/* 버튼이 3개라 폰에서는 이름 아래 줄로 내린다 */
+@media (max-width:520px){.admin-account{flex-wrap:wrap}.admin-account>div{flex:1 1 100%}.admin-actions{flex:1 1 100%}.admin-actions button{flex:1}}
