@@ -918,3 +918,39 @@ body:has(.my-profile) .my-list>button:not(:last-child):after{content:'';position
 .q-meta .rate{margin-left:0}
 .q-meta .q-tag{margin:0;padding:3px 9px;font-size:12px;line-height:18px}
 .rate.none{color:#b5b5b5}
+
+/* 인쇄 주문상세 (시안): 상태 제목, 개미가 올라탄 진행 막대, 흰 카드 묶음 */
+body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#fff}
+.od-head{margin:8px 0 28px}
+.od-head h1{margin:0;font-size:20px;color:#222}
+.od-head>p{margin:4px 0 0;font-size:13px;color:#949494}
+.od-track{position:relative;height:4px;margin:44px 6px 0;border-radius:2px;background:#ececec}
+.od-fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#00c673}
+.od-track i{position:absolute;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#c9c9c9}
+.od-track i.on{background:#0a9f5d}
+.od-ant{position:absolute;bottom:-4px;width:46px;height:auto;transform:translateX(-50%);animation:od-walk 1.6s ease-in-out infinite}
+@keyframes od-walk{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.od-ant{animation:none}}
+.od-steps{display:flex;justify-content:space-between;list-style:none;margin:12px 0 0;padding:0;font-size:14px;font-weight:600;color:#222}
+.od-steps li{flex:1;text-align:center}.od-steps li:first-child{text-align:left}.od-steps li:last-child{text-align:right}
+.od-sec{margin-bottom:28px}
+.od-sec h2{margin:0 0 12px;font-size:18px;color:#222}
+.od-sec-head{display:flex;justify-content:space-between;align-items:center}
+.od-sec-head .text-button{font-size:14px;color:#222}
+.od-box{border:1px solid #e6e6e6;border-radius:14px;padding:16px 18px}
+.od-item{display:flex;gap:14px;align-items:center}
+.od-item img,.od-thumb{flex:none;width:62px;height:62px;border-radius:12px;object-fit:cover;background:#fff4c9}
+.od-item strong{display:block;font-size:16px;color:#222}
+.od-item small{display:block;margin-top:4px;font-size:12px;color:#7a7a7a}
+.od-info{margin:16px 0 0;font-size:13px;line-height:22px;color:#a0a0a0}
+.od-btn{margin-top:12px;min-height:50px;background:#353535}
+.od-btn.secondary{background:#f3f3f3}
+.od-pay p{display:flex;justify-content:space-between;margin:0 0 10px;font-size:14px;color:#222}
+.od-pay .od-total{margin:14px 0 0;padding-top:14px;border-top:1px solid #ececec;font-size:17px;font-weight:700}
+.od-pay .od-total b{font-size:19px}
+.od-quote{position:relative;border:1px solid #e6e6e6;border-radius:14px;padding:18px;margin-bottom:12px}
+.od-quote.picked{border-color:#222}
+.od-quote strong{display:block;font-size:16px;color:#222}
+.od-quote small{display:block;margin-top:2px;font-size:12px;color:#b0b0b0}
+.od-quote p{margin:14px 0 0;padding-bottom:12px;border-bottom:1px solid #ececec;font-size:13px;line-height:22px;color:#7a7a7a}
+.od-quote b{display:block;margin-top:12px;text-align:right;font-size:17px;color:#222}

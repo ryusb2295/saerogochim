@@ -25,7 +25,7 @@ const Q_ST = { submitted: ['검토 중', 'st-open'], withdrawn: ['철회', 'st-d
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
 const FINISH = ['무광 코팅', '유광 코팅', '도무송 재단', '박'];
-const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '인쇄', newreq: '제작 견적 요청', request: '견적 비교', pay: '결제', chats: '채팅', chat: '채팅', notis: '알림' };
+const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '인쇄', newreq: '제작 견적 요청', request: '인쇄', pay: '결제', chats: '채팅', chat: '채팅', notis: '알림' };
 const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.', biz_no_missing: '사업자등록번호가 없는 인쇄소예요.', nts_key_missing: '국세청 API 키가 아직 설정되지 않았어요.', nts_failed: '국세청 조회에 실패했어요. 잠시 뒤 다시 시도해주세요.' };
 
 // 후기: 11_reviews.sql을 아직 실행하지 않은 DB에서는 빈 목록으로 돌아간다
@@ -470,6 +470,8 @@ function watchQuotes(id) {
   quoteChannel = sb.channel('quotes-' + id).on('postgres_changes', { event: '*', schema: 'public', table: 'quotations', filter: 'request_id=eq.' + id }, () => { if (page === 'request' && !modalOpen()) reload('request-' + id) }).subscribe();
 }
 function specLine(x) { return `${x.item === 'other' ? esc(x.item_other) : ITEM[x.item]} · ${Number(x.quantity).toLocaleString()}개 · ${x.width}×${x.height}${x.unit} · ${esc(x.material)}${x.finishing?.length ? ' · ' + x.finishing.map(esc).join(', ') : ''}` }
+let showAllQuotes = false;
+const fullDate = d => { const t = new Date(d); return isNaN(t) ? '-' : `${t.getFullYear()}년 ${t.getMonth() + 1}월 ${t.getDate()}일` };
 function requestPage() {
   watchQuotes(reqId);
   const r = useData('request-' + reqId, () => loadRequest(reqId));
@@ -490,6 +492,18 @@ function requestPage() {
     // 이미 끝난 의뢰에는 결제하라고 조르지 않는다
     const pay = at < 0 || !picked || (at === 3 && !req.paid_at) ? '' : req.paid_at ? `<p class="paid">${icon('check')}결제 완료 · ${won(due)} · ${ymd(req.paid_at)} <small>테스트 결제</small></p>`
       : 'paid_at' in req ? `<div class="pay-card"><strong>결제를 기다리고 있어요</strong>${Commerce.ownerSummary(due)}<small>모의 결제예요. 실제 돈은 나가지 않아요.</small><button class="primary full" data-pay="${due}">${won(due)} 결제하기</button></div>` : '';
+    // 업체를 고른 뒤 주문상세 (시디과 시안): 진행 막대 + 개미, 주문 내역, 채팅, 결제 정보, 견적
+    if (at >= 0) {
+      const head = [['업체가 정해졌어요', '채팅으로 규격과 배송을 맞춰보세요'], ['제작 중이에요', '인쇄소가 정성껏 만들고 있어요'], ['납품이 완료되었어요', '곧 만날 수 있어요!'], ['거래가 완료되었어요', '이용해 주셔서 감사해요']][at];
+      const qList = [...live].sort((a, b) => (b.status === 'accepted') - (a.status === 'accepted')), shown = showAllQuotes ? qList : qList.slice(0, 2);
+      const qCard = x => `<article class="od-quote${x.status === 'accepted' ? ' picked' : ''}"><strong>${esc(x.print_shops?.name || '인쇄소')}</strong><small>${esc(x.print_shops?.region_sido || '')} ${esc(x.print_shops?.region_sigungu || '')}</small><p>금액 : ${won(x.total_price)}<br>배송비 : ${won(x.shipping_fee)}<br>납품 예상 : ${fullDate(x.delivery_date)}</p><b>${won(x.total_price + x.shipping_fee)}</b></article>`;
+      const payRows = picked ? `<section class="od-sec"><h2>결제 정보</h2><div class="od-box od-pay"><p><span>금액</span><span>${won(picked.total_price)}</span></p><p><span>배송비</span><span>${won(picked.shipping_fee)}</span></p><p><span>결제 방식</span><span>${req.paid_at ? '모의 결제' : '결제 전'}</span></p><p class="od-total"><span>결제 금액</span><b>${won(due)}</b></p></div>${pay.includes('data-pay') ? `<button class="primary full od-btn" data-pay="${due}">${won(due)} 결제하기</button><small class="help">모의 결제예요. 실제 돈은 나가지 않아요.</small>` : ''}</section>` : '';
+      return `<button class="ask-back" data-page="requests" aria-label="인쇄 목록">${icon('back')}</button>
+<section class="od-head"><h1>${head[0]}</h1><p>${head[1]}</p><div class="od-track" aria-label="진행 단계 ${STEP_INFO[at][0]}"><span class="od-fill" style="width:${at / 3 * 100}%"></span>${[0, 1, 2, 3].map(i => `<i class="${i <= at ? 'on' : ''}" style="left:${i / 3 * 100}%"></i>`).join('')}<img class="od-ant" src="assets/brand/ant.png" alt="" style="left:${at / 3 * 100}%"></div><ol class="od-steps">${STEP_INFO.map(([l], i) => `<li class="${i === at ? 'now' : ''}"${i === at ? ' aria-current="step"' : ''}>${l === '제작 중' ? '제작중' : l}</li>`).join('')}</ol>${ship}</section>
+<section class="od-sec"><h2>주문 내역</h2><div class="od-box"><div class="od-item">${preview ? `<img src="${esc(preview)}" alt="">` : '<span class="od-thumb"></span>'}<div><strong>${esc(req.title)}</strong><small>${specLine(req)}</small></div></div><p class="od-info">인쇄업체 : ${esc(picked?.print_shops?.name || '-')}<br>주문일시 : ${fullDate(req.created_at)}<br>희망 납기 : ${fullDate(req.due_date)}</p></div>${conv ? `<button class="primary full od-btn" data-chat="${conv.id}">채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary full od-btn" data-complete="${req.id}">받았어요 (완료 확인)</button>` : ''}${review}</section>
+${payRows}
+<section class="od-sec"><div class="od-sec-head"><h2>견적</h2>${qList.length > 2 ? `<button class="text-button" data-all-quotes>${showAllQuotes ? '접기' : '전체 보기'} ›</button>` : ''}</div>${shown.map(qCard).join('')}</section>`;
+    }
     return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button>
 <section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[reqSt(req, live.length)])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
 ${at >= 0 ? `${pay}<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${when(i)}</small>` : i < at && when(i) ? `<small>${when(i).slice(3)}</small>` : ''}${i === 2 && i <= at ? ship : ''}</li>`).join('')}</ol>${review}<div class="actions">${conv ? `<button class="${pay.includes('data-pay') || review.includes('<form') ? 'secondary' : 'primary'}" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
@@ -761,7 +775,8 @@ function bindPrint() {
   $('#app').querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-reorder-req]').forEach(b => b.onclick = () => { reqId = b.dataset.reorderReq; page = 'request'; render(); scrollTo(0, 0); let n = 0; const t = setInterval(() => { const go = $('[data-live-reorder]'); if (go || ++n > 40 || page !== 'request') { clearInterval(t); go?.click() } }, 150) });
-  $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });
+  $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() })
+  $('#app').querySelectorAll('[data-all-quotes]').forEach(b => b.onclick = () => { showAllQuotes = !showAllQuotes; render() });
   const rf = $('#review-form');
   if (rf) {
     // 별을 누를 때 화면을 다시 그리지 않아서 적던 후기가 지워지지 않는다
