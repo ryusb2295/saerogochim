@@ -283,8 +283,8 @@ function bindReal() {
 function realMypage() {
   return `<section class="shop-hero">${avatar(shop)}<div><strong>${esc(shop)}</strong><small>${myRole === 'printer' ? '인쇄소' : '소상공인'} 회원${myRole === 'printer' && !myShop?.verified ? ' · 승인 대기' : ''} · ${esc(user)}</small></div></section>
 <div class="my-list"><form class="my-name" id="real-name-form"><input id="my-shop" type="text" maxlength="24" value="${esc(shop)}" aria-label="${myRole === 'printer' ? '업체명' : '가게 이름'}"><button class="secondary" type="submit">이름 변경</button></form>${myRole === 'printer' && myShop ? `<button id="shop-addr">업체 주소<small>${myShop.address_detail ? esc(myShop.address_detail) : myShop.region_sigungu ? esc(`${myShop.region_sido || ''} ${myShop.region_sigungu}`.trim()) + ' · 다시 찾기 ›' : '주소 검색 ›'}</small></button>` : ''}</div>
-<div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}${myRole === 'owner' ? `<div>AI 캐릭터 생성<small>${Math.max(0, MOCK_LIMIT - used())} / ${MOCK_LIMIT}회 남음</small></div>` : ''}<button data-page="guide">이용 가이드<small>›</small></button></div>
-${pushRow()}${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
+<div class="my-list"><button data-page="notis">알림<small>${notiCount ? notiCount + '개 안 읽음' : '›'}</small></button>${myRole === 'printer' ? '<button data-page="jobs">수락된 의뢰<small>›</small></button>' : '<button data-page="requests">받은 견적<small>›</small></button>'}${myRole === 'owner' ? `` : ''}<button data-page="guide">이용 가이드<small>›</small></button></div>
+${myRole==='owner'?Commerce.accountCard():''}${pushRow()}${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? '<p class="help">공개 체험 계정이라 비밀번호는 바꿀 수 없어요.</p>' : ''}<div class="my-list"${[PUBLIC_DEMO.id, QUICK.printer.id].includes(user) ? ' hidden' : ''}><details><summary>비밀번호 변경</summary><form id="real-pw-form" novalidate>${fld('pw-cur', '현재 비밀번호', 'password', 'maxlength="64" autocomplete="current-password"')}${fld('pw-new', '새 비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password"')}${fld('pw-new2', '새 비밀번호 확인', 'password', 'data-rule="pw" data-same="pw-new" maxlength="64" autocomplete="new-password"')}<button class="primary full" type="submit">변경하기</button></form></details></div>
 <div class="my-list"><button id="logout-my">로그아웃<small>›</small></button></div><p class="help">회원 탈퇴는 시연 기간에는 운영자에게 요청해주세요.</p>`;
 }
 
@@ -461,7 +461,7 @@ function requestPage() {
     const picked = quotes.find(x => x.status === 'accepted'), due = picked ? picked.total_price + picked.shipping_fee : 0;
     // 이미 끝난 의뢰에는 결제하라고 조르지 않는다
     const pay = at < 0 || !picked || (at === 3 && !req.paid_at) ? '' : req.paid_at ? `<p class="paid">${icon('check')}결제 완료 · ${won(due)} · ${ymd(req.paid_at)} <small>테스트 결제</small></p>`
-      : CFG.tossClientKey && 'paid_at' in req ? `<div class="pay-card"><strong>결제를 기다리고 있어요</strong><small>결제하면 인쇄소에 알림이 가요</small><button class="primary full" data-pay="${due}">${won(due)} 결제하기</button></div>` : '';
+      : 'paid_at' in req ? `<div class="pay-card"><strong>결제를 기다리고 있어요</strong>${Commerce.ownerSummary(due)}<small>모의 결제예요. 실제 돈은 나가지 않아요.</small><button class="primary full" data-pay="${due}">${won(due)} 결제하기</button></div>` : '';
     return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button>
 <section class="req-head">${preview ? `<img src="${esc(preview)}" alt="${esc(req.title)} 디자인 미리보기">` : ''}<div>${chip(REQ_ST[reqSt(req, live.length)])}<h1>${esc(req.title)}</h1><p>${specLine(req)}</p><small>희망 납기 ${ymd(req.due_date)} · 견적 마감 ${ymd(req.quote_deadline)}</small><small>배송 ${esc(req.region_sido)} ${esc(req.region_sigungu)}</small></div></section>
 ${at >= 0 ? `${pay}<ol class="timeline" aria-label="진행 상황">${STEP_INFO.map(([l, d], i) => `<li class="${i <= at ? 'done' : ''}${i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}><b>${l}</b>${i === at ? `<small>${d}${when(i)}</small>` : i < at && when(i) ? `<small>${when(i).slice(3)}</small>` : ''}${i === 2 && i <= at ? ship : ''}</li>`).join('')}</ol>${review}<div class="actions">${conv ? `<button class="${pay.includes('data-pay') || review.includes('<form') ? 'secondary' : 'primary'}" data-chat="${conv.id}">${icon('chat')}채팅하기</button>` : ''}${req.status === 'delivered' ? `<button class="secondary" data-complete="${req.id}">완료 확인</button>` : ''}</div>` : ''}
@@ -479,35 +479,9 @@ ${req.status === 'open' ? `<button class="text-button danger-text" data-cancel="
 // 시연용: 토스 승인 API를 부르지 않고 결제창에서 돌아오면 결제 완료로 적는다.
 //           실제 돈을 받으려면 Edge Function에서 시크릿 키로 승인한 뒤 mark_paid를 부르게 바꾼다
 let payAmount = 0, payWidgets = null;
-function payPage() {
-  return `<button class="text-button" data-req="${esc(reqId)}">${icon('back')}견적 비교</button><section class="intro"><h1>결제하기</h1><p>테스트 결제라 실제 돈은 나가지 않아요.</p></section>
-<div class="pay-sum"><span>결제 금액</span><b>${won(payAmount)}</b></div><div id="pay-methods">${skeleton(2)}</div><div id="pay-agree"></div>
-<p class="field-error" id="pay-err" role="alert" hidden></p><button class="primary full" id="pay-go" disabled>${won(payAmount)} 결제하기</button>`;
-}
+function payPage() {return `<button class="text-button" data-req="${esc(reqId)}">견적 비교로</button><section class="intro"><h1>결제하기 (시연)</h1><p>카드 정보 없이 시연 결제를 진행해요. 실제 돈은 나가지 않아요.</p></section>${Commerce.ownerSummary(payAmount)}<p class="field-error" id="pay-err" role="alert" hidden></p><button class="primary full" id="pay-go">${won(payAmount)} 결제하기 (시연)</button>`;}
 const loadScript = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s) });
-async function mountPay() {
-  const box = $('#pay-methods'), go = $('#pay-go'), err = $('#pay-err');
-  if (!box || box.dataset.on) return;
-  box.dataset.on = 1;
-  try {
-    if (!payAmount) throw Error('결제할 금액이 없어요. 견적 화면에서 다시 눌러주세요.');
-    if (!window.TossPayments) await loadScript('https://js.tosspayments.com/v2/standard');
-    payWidgets = TossPayments(CFG.tossClientKey).widgets({ customerKey: TossPayments.ANONYMOUS });
-    await payWidgets.setAmount({ currency: 'KRW', value: payAmount });
-    box.innerHTML = '';
-    await Promise.all([payWidgets.renderPaymentMethods({ selector: '#pay-methods', variantKey: 'DEFAULT' }), payWidgets.renderAgreement({ selector: '#pay-agree', variantKey: 'AGREEMENT' })]);
-    go.disabled = false;
-    const back = location.origin + location.pathname + '?req=' + reqId + '&pay=';
-    go.onclick = async () => {
-      if (go.disabled) return;
-      go.disabled = true;   // 두 번 눌러 결제가 두 번 되지 않게. 결제창을 닫거나 실패하면 다시 풀어 준다
-      err.hidden = true;
-      // 주문번호는 영문, 숫자, -, _ 6~64자. 다시 시도해도 겹치지 않게 시각을 붙인다
-      try { await payWidgets.requestPayment({ orderId: `g-${reqId}-${Date.now().toString(36)}`, orderName: V['request-' + reqId]?.data?.req?.title || '가게온 인쇄 의뢰', successUrl: back + 'ok', failUrl: back + 'fail' }) }
-      catch (e) { err.textContent = e?.message || '결제를 시작하지 못했어요.'; err.hidden = false; go.disabled = false }
-    };
-  } catch (e) { box.innerHTML = ''; err.textContent = e?.message || '결제창을 불러오지 못했어요. 연결을 확인하고 다시 시도해주세요.'; err.hidden = false }
-}
+async function mountPay(){const button=$('#pay-go');if(!button)return;button.onclick=async()=>{if(button.disabled)return;button.disabled=true;try{await Commerce.payLive();page='request';render()}catch(e){const err=$('#pay-err');if(err){err.textContent=e.message;err.hidden=false}button.disabled=false}}}
 // 결제창에서 돌아왔을 때: 주소의 결과를 읽고 지운 뒤 그 의뢰 화면으로 간다
 async function payReturn() {
   const p = new URLSearchParams(location.search), st = p.get('pay');
@@ -526,7 +500,7 @@ function newreqPage() {
   if (!d.title) d.title = (state.name || shop || '우리 가게') + ' ' + ITEM[d.item];
   const opt = (arr, v) => arr.map(x => `<option${x === v ? ' selected' : ''}>${x}</option>`).join('');
   return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button><section class="intro"><h1>제작 견적 요청</h1><p>인쇄소들이 이 내용을 보고 견적을 보내요. 가게 이름, 연락처는 공개되지 않아요.</p></section>
-<form id="req-form" class="panel" novalidate>
+${!REAL?'<div class="notice">모의 견적 시연이에요. 예시 인쇄소 단가로 결제 대기 주문을 만들며 실제 제작은 접수되지 않아요.</div>':''}<form id="req-form" class="panel" novalidate>
 <fieldset class="field"><legend>제작 품목</legend><div class="choices">${Object.entries(ITEM).map(([v, l]) => `<button type="button" class="choice${d.item === v ? ' selected' : ''}" data-req-item="${v}" aria-pressed="${d.item === v}">${l}</button>`).join('')}</div>${d.item === 'other' ? fld('rq-other', '품목 이름', 'text', `maxlength="30" value="${esc(d.item_other)}"`) : ''}</fieldset>
 <div class="field"><label>디자인 이미지</label><div class="design-pick">${uploadFile ? `<img id="rq-thumb" alt="올린 디자인">` : hasBrand ? `<img src="${svgUri(stickerSVG())}" alt="지금 만든 스티커 디자인">` : `<div class="design-empty">${icon('image')}</div>`}<div><p class="help" style="margin:0 0 8px">${uploadFile ? esc(uploadFile.name) : hasBrand ? '지금 만든 스티커를 1600px PNG로 첨부해요.' : '브랜드를 만들거나 이미지를 올려주세요.'}</p><label class="secondary file-btn">${icon('image')}${hasBrand || uploadFile ? '다른 이미지 올리기' : '이미지 올리기'}<input type="file" id="rq-file" accept="image/png,image/jpeg,image/webp" hidden></label><small class="help">PNG, JPG, WebP · 10MB 이하</small></div></div><p class="field-error" id="rq-file-err" role="alert" hidden></p></div>
 ${fld('rq-title', '요청 제목', 'text', `maxlength="40" value="${esc(d.title)}"`)}
@@ -700,12 +674,13 @@ function jobsPage() {
   const r = useData('jobs', async () => {
     const rows = await q(sb.from('print_requests').select('*').neq('owner_id', uid).order('due_date'));   // 결제, 송장 칸은 DB에 있을 때만 온다
     if (!rows.length) return [];
+    const acceptedQuotes=await q(sb.from('quotations').select('request_id,total_price,shipping_fee').in('request_id',rows.map(x=>x.id)).eq('status','accepted'));
     const [convs, people, signed] = await Promise.all([
       q(sb.from('conversations').select('id,request_id').in('request_id', rows.map(x => x.id))),
       q(sb.from('profiles').select('id,display_name').in('id', [...new Set(rows.map(x => x.owner_id))])),
       sb.storage.from('request-previews').createSignedUrls(rows.map(x => x.preview_path), 300)]);
     const urls = Object.fromEntries((signed.data || []).map(x => [x.path, x.signedUrl]));
-    return rows.map(x => ({ ...x, conv: convs.find(c => c.request_id === x.id)?.id, client: people.find(p => p.id === x.owner_id)?.display_name, url: urls[x.preview_path] }));
+    return rows.map(x => ({ ...x, _commerceAmount:(()=>{const quote=acceptedQuotes.find(q=>q.request_id===x.id);return quote?quote.total_price+quote.shipping_fee:null})(), conv: convs.find(c => c.request_id === x.id)?.id, client: people.find(p => p.id === x.owner_id)?.display_name, url: urls[x.preview_path] }));
   });
   const next = { accepted: ['in_progress', '제작 시작하기', '제작을 시작할까요?'], in_progress: ['delivered', '납품 완료 알리기', '납품 완료로 바꿀까요?'] };
   const steps = ['accepted', 'in_progress', 'delivered', 'completed'];
@@ -714,7 +689,7 @@ function jobsPage() {
 <div class="job-top"><div class="job-info"><p class="meta"><b class="${ST_CLS[x.status]}">${REQ_ST[x.status][0]}</b>납기 ${ymd(x.due_date)}${x.status !== 'completed' ? ` · ${dday(x.due_date).replace('오늘 마감', '오늘')}` : ''}</p><strong>${esc(x.title)}</strong><small>${specLine(x)}</small><small>의뢰인 ${esc(x.client || '소상공인')} · ${esc(x.region_sido)} ${esc(x.region_sigungu)}</small>${x.paid_at || x.tracking_no ? `<small>${x.paid_at ? '<b class="open">결제 완료</b>' : ''}${x.tracking_no ? `송장 ${esc(x.courier || '')} ${esc(x.tracking_no)}` : ''}</small>` : ''}</div>${x.url ? `<img src="${esc(x.url)}" alt="${esc(x.title)} 디자인" loading="lazy">` : ''}</div>
 <ol class="progress">${['업체 선택', '제작 중', '납품', '완료'].map((l, i) => `<li class="${i <= steps.indexOf(x.status) ? 'done' : ''}">${l}</li>`).join('')}</ol>
 ${x.note ? `<p class="quote-note">${esc(x.note)}</p>` : ''}
-<div class="job-links"><button data-original="${esc(x.design_path)}">${icon('download')}원본 파일</button>${x.conv ? `<button data-chat="${x.conv}">${icon('chat')}채팅하기</button>` : ''}</div>
+${Commerce.printerSummary(x._commerceAmount,x.status,!!x.paid_at)}<div class="job-links"><button data-original="${esc(x.design_path)}">${icon('download')}원본 파일</button>${x.conv ? `<button data-chat="${x.conv}">${icon('chat')}채팅하기</button>` : ''}</div>
 ${next[x.status] ? `<button class="primary full" data-advance="${x.id}" data-to="${next[x.status][0]}" data-ask="${next[x.status][2]}">${next[x.status][1]}</button>` : x.status === 'delivered' ? '<p class="job-wait">소상공인이 받았는지 확인하면 완료돼요</p>' : ''}</article>`;
   return stateView(r, 'jobs', d => d.length ? `<h2 class="sec-label">진행 중 ${active(d).length}건</h2>${active(d).map(card).join('') || '<p class="help">진행 중인 의뢰가 없어요.</p>'}${done(d).length ? `<h2 class="sec-label">완료<small>제작이 끝난 의뢰예요</small></h2>${done(d).map(card).join('')}` : ''}`
     : emptyBox('수락된 의뢰가 없어요', '견적이 수락되면 여기에서 원본을 받고 제작 상태를 알려요.', '<button class="secondary" data-page="market">요청 찾기</button>'));
@@ -774,7 +749,7 @@ function bindPrint() {
   $('#app').querySelectorAll('[data-accept]').forEach(b => b.onclick = () => modal({
     title: '이 견적을 수락할까요?', ok: '수락하기',
     body: `<p><b>${esc(b.dataset.shop)}</b> · 총 ${won(b.dataset.total)} · ${ymd(b.dataset.date)} 납품 예상</p><p class="help">수락하면 다른 견적은 자동으로 거절되고, 이 업체와 채팅이 열려요. 되돌릴 수 없어요.</p>`,
-    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); setTimeout(() => { reload('request-' + reqId); doneSheet('견적을 수락했어요', `${esc(b.dataset.shop)}와 채팅이 열렸어요. 결제하면 인쇄소에 알림이 가요.`, CFG.tossClientKey ? `${won(b.dataset.total)} 결제하기` : '채팅 시작하기', () => { if (CFG.tossClientKey) { payAmount = Number(b.dataset.total); page = 'pay' } else page = 'chat'; render(); scrollTo(0, 0) }) }) }
+    onOk: async () => { convId = await q(sb.rpc('accept_quotation', { p_quote: b.dataset.accept })); setTimeout(() => { reload('request-' + reqId); doneSheet('견적을 수락했어요', `${esc(b.dataset.shop)}와 채팅이 열렸어요. 결제하면 인쇄소에 알림이 가요.`, `${won(b.dataset.total)} 결제하기 (시연)`, () => { payAmount = Number(b.dataset.total); page = 'pay'; render(); scrollTo(0, 0) }) }) }
   }));
   $('#app').querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => modal({ title: '요청을 취소할까요?', ok: '요청 취소', danger: true, body: '<p class="help">받은 견적은 모두 거절 처리되고 되돌릴 수 없어요.</p>', onOk: async () => { await q(sb.rpc('cancel_request', { p_request: b.dataset.cancel })); toast('요청을 취소했어요.'); setTimeout(() => reload('request-' + reqId)) } }));
   $('#app').querySelectorAll('[data-complete]').forEach(b => b.onclick = () => modal({ title: '제작 완료를 확인할까요?', ok: '완료 확인', body: '<p class="help">물건을 받았으면 완료로 바꿔주세요.</p>', onOk: async () => { await q(sb.rpc('advance_request', { p_request: b.dataset.complete, p_status: 'completed' })); setTimeout(() => { reload('request-' + reqId); doneSheet('제작이 완료됐어요', '거래가 끝났어요. 받은 견적의 지난 의뢰에서 다시 볼 수 있어요.', '확인') }) } }));

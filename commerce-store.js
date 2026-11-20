@@ -33,10 +33,11 @@
     account(d, user) {
       if (!user) throw Error('로그인 후 이용해주세요.');
       if (!d.accounts[user]) {
-        const a = d.accounts[user] = { userId: user, tokenBalance: 0, plan: 'free', planRenewsAt: null, cancelAtRenewal: false, ledger: [], purchases: [], checkouts: [], recurring: [], suggestions: [], appliedDesigns: {} };
+        const a = d.accounts[user] = { userId: user, tokenBalance: 0, plan: 'free', planTokenLimit: P.plans.free.tokens, planRenewsAt: null, cancelAtRenewal: false, ledger: [], purchases: [], checkouts: [], recurring: [], suggestions: [], appliedDesigns: {} };
         this.ledger(a, P.plans.free.tokens, 'signup');
       }
       const a = d.accounts[user];
+      if(!Number.isInteger(a.planTokenLimit))a.planTokenLimit=P.plans[a.plan].tokens;
       if (a.plan !== 'free' && a.planRenewsAt <= this.now()) {
         if (a.cancelAtRenewal) { a.plan = 'free'; a.planRenewsAt = null; a.cancelAtRenewal = false; this.ledger(a, -a.tokenBalance, 'subscription', { note: '구독 종료 · 이월 없음' }); }
         else {
@@ -48,8 +49,10 @@
       return a;
     }
     transact(user, fn) {
-      const d = this.read(), a = this.account(d, user), result = fn(a, d);
-      this.storage.setItem(KEY, JSON.stringify(d)); return clone(result === undefined ? a : result);
+      const d = this.read(), before = JSON.stringify(d), a = this.account(d, user), result = fn(a, d);
+      const after = JSON.stringify(d);
+      if (after !== before) this.storage.setItem(KEY, after);
+      return clone(result === undefined ? a : result);
     }
     get(user) { return this.transact(user, a => a); }
     spend(user, amount, reason) {
@@ -68,7 +71,7 @@
     }
     subscribe(a, plan) {
       if (!P.plans[plan] || plan === 'free') throw Error('요금제를 확인해주세요.');
-      a.plan = plan; a.planRenewsAt = monthAfter(this.now()); a.cancelAtRenewal = false;
+      a.plan = plan; a.planTokenLimit = P.plans[plan].tokens; a.planRenewsAt = monthAfter(this.now()); a.cancelAtRenewal = false;
       this.ledger(a, P.plans[plan].tokens - a.tokenBalance, 'subscription', { plan });
     }
     checkout(user, item, receipt) {
