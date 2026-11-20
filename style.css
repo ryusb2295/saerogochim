@@ -1025,3 +1025,6 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 .home-hero h1,.home-hero p{position:relative}
 /* 아이폰: 하단 탭바는 홈 인디케이터 쪽으로 내리고, 본문 끝은 탭바에 가리지 않게 */
 @media (max-width:640px){.bottomnav{padding-bottom:max(8px,calc(env(safe-area-inset-bottom) - 14px))}.main{padding-bottom:calc(90px + env(safe-area-inset-bottom))}.immersive .main{padding-bottom:16px}}
+/* 아이폰 사파리: 날짜 칸이 자기 폭을 고집해 칸 밖으로 튀어나오는 것 막기 */
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
