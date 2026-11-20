@@ -72,7 +72,7 @@ node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce
 python -m unittest -q test_server.py
 ~~~
 
-JavaScript 34개 + Python 20개 통과. 인쇄 검사 11개는 50/56mm 배치, 591/662px 경계, PNG/APNG, 배경 모드, ICC 없는 CMYK 차단, PDF 실측·분리·참조·바이트 오프셋, 두 슬롯 이미지 일치, 버전/옵션 승인 키, ZIP CRC·파일 선택을 확인합니다.
+JavaScript 34개 + Python 19개 통과. 인쇄 검사 11개는 50/56mm 배치, 591/662px 경계, PNG/APNG, 배경 모드, ICC 없는 CMYK 차단, PDF 실측·분리·참조·바이트 오프셋, 두 슬롯 이미지 일치, 버전/옵션 승인 키, ZIP CRC·파일 선택을 확인합니다.
 
 Edge에서 30/10/0온 안내, 원본 버전·812.8ppi, 두 슬롯, PDF 3종·전체 ZIP 받기, 배경 변경 후 승인 해제, 투명 full-bleed 차단, 모의 견적의 승인 파일 4개 전달·재다운로드, 140온 유지까지 확인했습니다. 실제 ZIP의 5개 파일·CRC·승인 메타데이터와 선택 ZIP의 4개 파일을 검사했습니다. 생성 PDF는 Windows PDF 렌더러로 2페이지를 이미지로 변환해 한글·이미지·칼선·3mm 배경 여분을 확인했습니다.
 

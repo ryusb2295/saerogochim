@@ -28,7 +28,6 @@ HEX = re.compile(r'^#[0-9a-fA-F]{6}$')
 # 앱 설치(PWA)에 필요한 파일. 목록에 있는 것만 내보낸다.
 STATIC = {'/manifest.json': 'application/manifest+json', '/sw.js': 'text/javascript; charset=utf-8',
           '/icons/icon-192.png': 'image/png', '/icons/icon-512.png': 'image/png',
-          '/data/gyeongsan-stores.json': 'application/json; charset=utf-8',
           '/config.js': 'text/javascript; charset=utf-8', '/print.js': 'text/javascript; charset=utf-8',
           '/chat.js': 'text/javascript; charset=utf-8', '/app.js': 'text/javascript; charset=utf-8',
           '/sticker-editor.js': 'text/javascript; charset=utf-8',
