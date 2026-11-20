@@ -240,7 +240,7 @@ $('#app').innerHTML=`<aside class="sidebar">${logo()}${nav('nav')}<div class="si
 bind();
 }
 function home(){const d=draft(),rs=records().slice(0,3),left=Math.max(0,MOCK_LIMIT-used());return `<section class="intro"><h1>${esc(shop)} 사장님, 안녕하세요</h1><p>오늘은 어떤 브랜드를 만들어볼까요?</p></section>
-<button class="home-new" id="new-brand">${icon('plus')}<span><strong>새 브랜드 만들기</strong><small>질문 몇 개에 답하면 캐릭터와 홍보물이 나와요</small></span></button>
+<button class="home-new" id="new-brand" aria-haspopup="dialog">${icon('plus')}<span><strong>만들기</strong><small>브랜드, 스티커, 홍보물을 만들어요</small></span></button>
 ${d&&d.state&&d.state.name?`<button class="home-resume" id="resume-draft"><img src="${svgUri(stickerSVG({...initial(),...d.state}))}" alt=""><span><strong>${esc(d.state.name)} 이어서 만들기</strong><small>${['가게 정보 입력','AI 브랜드 분석','캐릭터·홍보물','다운로드'][(d.step||1)-1]} 단계에서 멈췄어요</small></span></button>`:''}<div class="section-head"><h2>최근 작업</h2><button class="text-button" data-page="saved">전체 보기</button></div>
 ${rs.length?`<div class="recent">${rs.map(r=>`<button data-open="${esc(r.id)}"><img src="${svgUri(stickerSVG(r))}" alt="">${esc(r.name)}</button>`).join('')}</div>`:'<div class="empty"><p>아직 저장한 브랜드가 없어요. 첫 브랜드를 만들어보세요.</p></div>'}`}
 function mypage(){const n=records().length;return `<section class="intro"><h1>마이페이지</h1><p>체험 버전이라 계정과 정보는 이 브라우저에만 저장돼요.</p></section>
@@ -362,7 +362,7 @@ $('#app').querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{const i=Numbe
 if($('#post-text'))$('#post-text').oninput=e=>{state.postText=e.target.value;refreshSticker()};
 if($('#use-slogan'))$('#use-slogan').onclick=()=>{state.message=state.brand.slogan;render();toast('슬로건을 스티커 문구로 넣었어요.')};
 if($('#reanalyze'))$('#reanalyze').onclick=()=>{if(state.brand){state.brand.key='';state.brand.sloganEdited=false}ensureBrand()};
-if($('#new-brand'))$('#new-brand').onclick=()=>{try{localStorage.removeItem(DRAFT_KEY)}catch{}state={...initial(),name:shop};page='studio';go(1)};
+if($('#new-brand'))$('#new-brand').onclick=createSheet;
 if($('#resume-draft'))$('#resume-draft').onclick=()=>{const d=draft();if(!d)return;state={...initial(),...d.state};page='studio';go(d.step||1)};
 if($('#name-form'))$('#name-form').onsubmit=e=>{e.preventDefault();const v=$('#my-shop').value.trim();if(!v){toast('가게 이름을 적어주세요.');return}try{const u=users();if(u[user]){u[user].shop=v;saveUsers(u)}}catch{toast('저장하지 못했어요.');return}shop=v;render();toast('가게 이름을 바꿨어요.')};
 if($('#logout-my'))$('#logout-my').onclick=()=>$('#logout').click();
@@ -413,6 +413,20 @@ function addCandidate(u){candidates=[...candidates.filter(x=>x!==u),u].slice(-4)
 // AI 그림(1024px PNG, 글자로 약 2MB)을 512px로 줄인다. 아이폰 사파리 저장 공간이 사이트당 약 5MB라 그대로면 1~2개만 저장돼도 꽉 참.
 // 스티커 안 캐릭터는 460px 정도로 그려져서 화질 차이는 거의 없음
 async function shrinkImage(uri,max=512){try{const img=new Image();img.src=uri;await img.decode();if(Math.max(img.width,img.height)<=max)return uri;const k=max/Math.max(img.width,img.height),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/png')}catch{return uri}}
+// 홈 + 만들기: 무엇을 만들지 고르는 바텀시트. 스티커, 홍보물은 저장한 브랜드를 골라 그 단계로 바로 간다
+function startNewBrand(){try{localStorage.removeItem(DRAFT_KEY)}catch{}state={...initial(),name:shop};page='studio';go(1)}
+function openBrand(id,mode){const r=records().find(r=>r.id===id);if(!r)return;state={...initial(),...r};page='studio';go(3);if(mode==='post')setTimeout(()=>$('#live-post')?.scrollIntoView({block:'center'}),120)}
+function createSheet(){const rs=records(),prev=document.activeElement,el=document.createElement('div');el.className='modal-back';
+ const opt=(k,ic,t,d,off)=>`<button type="button" class="make-opt" data-make="${k}" ${off?'disabled':''}><span class="make-ic">${icon(ic)}</span><span class="make-txt"><strong>${t}</strong><small>${off?'먼저 브랜드를 만들어 주세요':d}</small></span><span class="chev" aria-hidden="true">›</span></button>`;
+ el.innerHTML=`<div class="modal make-sheet" role="dialog" aria-modal="true" aria-labelledby="make-title"><div class="help-head"><h2 id="make-title">무엇을 만들까요?</h2><button type="button" class="text-button" data-x>닫기</button></div><div class="make-list">${opt('brand','plus','새 브랜드 만들기','질문에 답하면 캐릭터와 슬로건이 나와요')}${opt('sticker','brush','스티커 만들기','저장한 캐릭터로 리뷰·배달 스티커',!rs.length)}${opt('post','image','홍보물 만들기','SNS 홍보물, 포장 디자인',!rs.length)}</div><div class="make-pick" hidden><div class="make-brands">${rs.map(r=>`<button type="button" data-make-brand="${esc(r.id)}"><img src="${svgUri(stickerSVG(r))}" alt=""><span>${esc(r.name)}</span></button>`).join('')}</div></div></div>`;
+ document.body.append(el);document.body.classList.add('modal-open');let mode='';
+ const close=()=>{el.remove();document.body.classList.remove('modal-open');prev?.focus?.()};
+ el.querySelectorAll('[data-x]').forEach(b=>b.onclick=close);el.onclick=e=>{if(e.target===el)close()};el.onkeydown=e=>{if(e.key==='Escape')close()};
+ el.querySelectorAll('[data-make]').forEach(b=>b.onclick=()=>{mode=b.dataset.make;if(mode==='brand'){close();startNewBrand();return}
+  if(rs.length===1){close();openBrand(rs[0].id,mode);return}
+  el.querySelector('.make-list').hidden=true;el.querySelector('.make-pick').hidden=false;el.querySelector('#make-title').textContent=mode==='sticker'?'어떤 브랜드로 스티커를 만들까요?':'어떤 브랜드로 홍보물을 만들까요?';el.querySelector('[data-make-brand]')?.focus()});
+ el.querySelectorAll('[data-make-brand]').forEach(b=>b.onclick=()=>{close();openBrand(b.dataset.makeBrand,mode)});
+ el.querySelector('.make-opt').focus()}
 function exampleChar(){return !state.customImage||(state.generated&&!aiReady)}
 // AI 캐릭터 만드는 동안 화면 전체를 덮는 로딩 창 (분석 화면과 같은 원형 링 + 단계 체크리스트)
 const GEN_STEPS=[[0,'가게 특징을 읽고 있어요'],[20,'시디과 그림체를 맞추고 있어요'],[45,'캐릭터를 그리고 있어요'],[80,'마무리하고 있어요']];
