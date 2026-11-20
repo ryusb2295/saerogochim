@@ -495,7 +495,9 @@ const TOUR=[
  {t:'AI가 캐릭터를 그려요',d:'시디과 학생들이 그린 그림체를 참고해서 우리 가게만의 캐릭터를 만들어요.',art:`<div class="tour-grid">${['duck','object','pastel','crayon'].map(n=>`<img src="assets/styles/${n}_1.png" alt="" loading="lazy">`).join('')}</div>`},
  {t:'스티커와 포장으로 꾸며요',d:'캐릭터로 리뷰 스티커, 포장 봉투, SNS 홍보물을 바로 만들어요.',art:`<div class="tour-pair"><img src="assets/demo/dalbit-sticker.png" alt="" loading="lazy"><img src="assets/demo/bamcham-bag.png" alt="" loading="lazy"></div>`},
  {t:'인쇄소에 맡겨요',d:'근처 인쇄소 견적을 비교하고 채팅으로 주문까지 할 수 있어요.',art:`<div class="tour-pair"><img src="assets/demo/dalbit-coupon.png" alt="" loading="lazy"><img src="assets/demo/kkum-label.png" alt="" loading="lazy"></div>`}];
-function showIntro(){try{if(localStorage.getItem(INTRO_KEY))return}catch{}
+// ?intro 를 붙이면 본 적 있어도, 로그인돼 있어도 다시 띄운다 (폰 테스트용)
+const FORCE_INTRO=/[?&]intro\b/.test(location.search);
+function showIntro(){try{if(!FORCE_INTRO&&localStorage.getItem(INTRO_KEY))return}catch{}
  document.body.insertAdjacentHTML('beforeend',`<section class="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title"><button type="button" class="intro-skip" id="intro-skip">SKIP</button><div class="intro-art" aria-hidden="true"></div><div class="intro-copy"><h1 id="intro-title">우리 가게만의 캐릭터,<br>쉽게 만들어 볼까요?</h1><p>가게를 소개하면 AI가 캐릭터부터<br>브랜드 디자인까지 만들어드려요.</p></div><div class="intro-actions"><button class="primary" id="intro-start">로그인하러 가기</button><button type="button" class="intro-tour" id="intro-tour">먼저 둘러볼게요</button></div></section>`);
  const done=()=>{try{localStorage.setItem(INTRO_KEY,'1')}catch{}$('.intro-screen').remove();$('#li-id')?.focus()};
  $('#intro-skip').onclick=done;$('#intro-start').onclick=done;
@@ -506,7 +508,7 @@ function showIntro(){try{if(localStorage.getItem(INTRO_KEY))return}catch{}
   tour.onscroll=paint;$('#intro-skip').onclick=done;
   btn.onclick=()=>{const i=at();if(i>=TOUR.length-1)return done();tour.scrollTo({left:(i+1)*tour.clientWidth,behavior:'smooth'})};btn.focus()};
  $('#intro-start').focus()}
-async function init(){const splashAt=showSplash();checkAI();try{if(window.GAGEON_ASSETS){assets=window.GAGEON_ASSETS}else{await Promise.all([...EX_ART,'shop'].map(async n=>{const r=await fetch('assets/'+n+'.svg');if(!r.ok)throw Error(n);assets[n]=await r.text()}))}seedSamples();await seedDemo();if(REAL){await restoreSession()}else{try{const id=localStorage.getItem(SESSION_KEY)||'';if(users()[id])signIn(id)}catch{}page=user?'home':'start'}state.name=shop;render();if(splashAt)hideSplash(splashAt);if(page==='start')showIntro()}catch(e){if(splashAt)hideSplash(splashAt);console.error(e);showCrash()}}
+async function init(){const splashAt=showSplash();checkAI();try{if(window.GAGEON_ASSETS){assets=window.GAGEON_ASSETS}else{await Promise.all([...EX_ART,'shop'].map(async n=>{const r=await fetch('assets/'+n+'.svg');if(!r.ok)throw Error(n);assets[n]=await r.text()}))}seedSamples();await seedDemo();if(REAL){await restoreSession()}else{try{const id=localStorage.getItem(SESSION_KEY)||'';if(users()[id])signIn(id)}catch{}page=user?'home':'start'}state.name=shop;render();if(splashAt)hideSplash(splashAt);if(page==='start'||FORCE_INTRO)showIntro()}catch(e){if(splashAt)hideSplash(splashAt);console.error(e);showCrash()}}
 addEventListener('pagehide',saveDraft);
 // 입력이 멈추고 1초 뒤 임시 저장, AI 생성 중에는 창을 닫기 전에 한 번 묻는다
 let draftTimer;addEventListener('input',()=>{clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,1000)});
