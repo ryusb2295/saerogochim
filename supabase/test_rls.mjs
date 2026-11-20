@@ -36,6 +36,7 @@ create function net.http_post(url text, body jsonb, headers jsonb) returns bigin
 await db.exec(sql('10_push.sql').replace('create extension if not exists pg_net;', ''));
 await db.exec(sql('12_chat_notify.sql'));
 await db.exec(sql('13_ai_access.sql'));
+await db.exec(sql('18_ai_unlimited.sql'));
 
 let failed = 0;
 const ok = (cond, label) => { console.log((cond ? 'PASS ' : 'FAIL ') + label); if (!cond) failed++; };
@@ -162,8 +163,17 @@ await fails(A, `update profiles set ai_enabled = true where id = $1`, [A], '본�
 ok((await as(A, `select my_ai_enabled() v`)).rows[0].v === false, '내 AI 사용 여부: 꺼짐');
 await db.query(`update profiles set ai_enabled = true where id = $1`, [A]);
 ok((await as(A, `select my_ai_enabled() v`)).rows[0].v === true, '내 AI 사용 여부: 켜짐');
-for (let i = 0; i < 3; i++) await as(A, `select consume_ai('image', 3)`);
-await fails(A, `select consume_ai('image', 3)`, [], 'AI 하루 한도 초과 차단', 'ai_limit');
+for (const [kind, oldLimit] of [['image', 5], ['brand', 30]]) {
+  for (let i = 0; i <= oldLimit; i++) {
+    const result = await as(A, `select consume_ai($1, $2) v`, [kind, oldLimit]);
+    ok(result.rows[0].v === -1, `${kind} 일일 제한 없이 생성 ${i + 1}회`);
+  }
+  const used = await as(A, `select used from ai_usage where user_id = $1 and kind = $2 and day = current_date`, [A, kind]);
+  ok(used.rows[0].used === oldLimit + 1, `${kind} 제한 해제 후에도 사용량 기록`);
+  ok((await as(A, `select consume_ai($1, null) v`, [kind])).rows[0].v === -1, `${kind} 무제한 요청 허용`);
+}
+await fails(A, `select consume_ai('invalid', null)`, [], '잘못된 AI 종류 차단', 'forbidden');
+await fails(null, `select consume_ai('image', null)`, [], '비로그인 AI 호출 차단');
 await fails(A, `insert into ai_usage (user_id, kind, used) values ($1, 'image', -100)`, [A], 'AI 사용량 직접 조작 불가');
 
 // 기타

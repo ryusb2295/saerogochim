@@ -94,12 +94,13 @@ class ServerTests(unittest.TestCase):
             generate.assert_not_called()
         self.assertEqual(self.request(BRIEF,path='/api/brand')[0],401)
 
-    def test_daily_limit_from_supabase(self):
+    def test_daily_quota_unlimited(self):
         server.SUPABASE_URL='https://example.supabase.co'
-        err=server.urllib.error.HTTPError('u',400,'bad',{},io.BytesIO(b'{"message":"ai_limit"}'))
-        with patch.object(server.urllib.request,'urlopen',side_effect=err), patch.object(server,'generate') as generate:
-            code,result=self.request(dict(BRIEF,request_id='test-12345'),Authorization='Bearer token')
-            self.assertEqual(code,429);generate.assert_not_called()
+        resp=Mock();resp.read.return_value=b'-1';resp.__enter__=Mock(return_value=resp);resp.__exit__=Mock(return_value=False)
+        with patch.object(server.urllib.request,'urlopen',return_value=resp) as call:
+            for kind in ('image', 'brand'):
+                self.assertEqual(server.consume_quota('Bearer token',kind),-1)
+                self.assertEqual(json.loads(call.call_args.args[0].data),{'p_kind':kind,'p_limit':None})
 
     def test_ai_disabled_account_blocked(self):
         server.SUPABASE_URL='https://example.supabase.co'

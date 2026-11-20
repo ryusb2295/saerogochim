@@ -38,7 +38,6 @@ STATIC.update({f'/assets/styles/{p.name}': 'image/png' for p in (ROOT / 'assets'
 # Supabase 로그인 사용자만 AI를 쓰게 하고 하루 횟수를 센다. 비어 있으면(테스트, 오프라인 목업) 예전처럼 동작
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
 SUPABASE_KEY = os.environ.get('SUPABASE_PUBLISHABLE_KEY', '')
-DAILY_LIMIT = {'image': int(os.environ.get('AI_DAILY_IMAGE', '5')), 'brand': int(os.environ.get('AI_DAILY_BRAND', '30'))}
 
 
 class QuotaError(Exception):
@@ -48,21 +47,19 @@ class QuotaError(Exception):
 
 
 def consume_quota(auth_header, kind):
-    """사용자 토큰으로 Supabase 함수 consume_ai를 불러 하루 횟수를 1 줄인다. 토큰이 틀리면 Supabase가 401을 준다."""
+    """사용자 토큰으로 AI 권한을 확인하고 사용량을 기록한다. 일일 제한은 없다."""
     if not SUPABASE_URL:
         return None
     if not auth_header.startswith('Bearer ') or len(auth_header) > 4096:
         raise QuotaError(401, '로그인 후 이용해주세요.')
     request = urllib.request.Request(SUPABASE_URL + '/rest/v1/rpc/consume_ai',
-        data=json.dumps({'p_kind': kind, 'p_limit': DAILY_LIMIT[kind]}).encode(),
+        data=json.dumps({'p_kind': kind, 'p_limit': None}).encode(),
         headers={'apikey': SUPABASE_KEY, 'Authorization': auth_header, 'Content-Type': 'application/json'}, method='POST')
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
             return json.loads(response.read(1024))
     except urllib.error.HTTPError as error:
         body = error.read(2048).decode('utf-8', 'replace')
-        if 'ai_limit' in body:
-            raise QuotaError(429, f'오늘 AI 사용 횟수({DAILY_LIMIT[kind]}회)를 다 썼어요. 내일 다시 이용해주세요.')
         if 'ai_disabled' in body:   # 13_ai_access.sql: 관리자가 켜 준 계정만
             raise QuotaError(403, 'AI 생성은 관리자가 켜 준 계정만 쓸 수 있어요.')
         if error.code in (401, 403) or 'forbidden' in body or 'JWT' in body:

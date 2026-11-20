@@ -41,6 +41,6 @@ AI 키, 국세청 키는 브라우저에 안 둠. Supabase 서버(함수 Secrets
 | `mark_paid` | 토스 결제 끝나면 결제 완료 표시 |
 | `write_review` | 후기 작성 |
 | `my_conversations`, `mark_read` | 채팅 목록, 읽음 처리 |
-| `consume_ai` | AI 하루 사용 횟수 차감 |
+| `consume_ai` | AI 권한 확인 및 사용량 기록 (일일 제한 없음, 반환값 -1) |
 | `register_push` | 폰 알림 받을 기기 등록 |
 | `admin_set_verified` | 관리자가 인쇄소 승인 |

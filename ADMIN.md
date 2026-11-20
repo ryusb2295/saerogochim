@@ -46,7 +46,9 @@
 2. Edge Functions → Deploy a new function → Via Editor에서 이름을 `ai`로 하고 [`supabase/functions/ai/index.ts`](supabase/functions/ai/index.ts) 내용을 붙여넣어 배포합니다. 함수 Settings에서 **Verify JWT** 를 끕니다. 로그인 확인과 사용 횟수는 함수 안에서 DB 함수 `consume_ai`가 맡습니다.
 3. Edge Functions → Secrets에 `OPENAI_API_KEY` 이름으로 OpenAI API 키를 저장합니다. 이 키는 저장소나 채팅에 올리지 않습니다.
 
-사용: 관리자 화면 계정 목록에서 **AI 켜기 / AI 끄기**를 누릅니다. 켠 계정도 하루 그림 5장, 문구 30번까지만 됩니다.
+사용: 관리자 화면 계정 목록에서 **AI 켜기 / AI 끄기**를 누릅니다. 켠 계정은 그림·문구를 일일 횟수 제한 없이 사용합니다.
+
+기존 프로젝트의 일일 제한 해제: SQL Editor에서 [`supabase/18_ai_unlimited.sql`](supabase/18_ai_unlimited.sql)을 실행합니다. Python 서버는 재시작하고, 휴대폰용 `ai` Edge Function은 최신 코드로 다시 배포합니다.
 
 ## 탈퇴 처리
 

@@ -1,5 +1,5 @@
 // 휴대폰, Vercel 화면에서 AI를 쓰게 하는 서버 함수. OpenAI 키는 Supabase Secrets(OPENAI_API_KEY)에만 둔다.
-// 화면이 { kind: 'image' | 'brand', brief } 를 보내면 로그인한 사람의 하루 횟수(consume_ai)를 줄이고 OpenAI를 부른다.
+// 화면이 { kind: 'image' | 'brand', brief } 를 보내면 AI 권한을 확인하고 사용량을 기록한 뒤 OpenAI를 부른다.
 // 프롬프트와 화풍 목록은 server.py(노트북용)와 같은 내용. 한쪽을 고치면 다른 쪽도 같이 고친다.
 import { createClient } from 'npm:@supabase/supabase-js@2.110.0';
 
@@ -18,7 +18,6 @@ const STYLES: Record<string, [string, string[]]> = {
 const MOOD_STYLE: Record<string, string> = { '귀엽고 친근한': 'duck', '따뜻하고 정겨운': 'crayon', '깔끔하고 모던한': 'flat', '고급스럽고 차분한': 'pastel', '재미있고 개성 있는': 'object', '힙하고 트렌디한': 'airbrush',
   // 질문 화면 분위기 단어 (여러 개면 첫 번째로 정함). server.py와 같게
   '귀여운': 'duck', '친근한': 'duck', '발랄한': 'duck', '따뜻한': 'crayon', '정겨운': 'crayon', '전통적인': 'crayon', '심플한': 'flat', '고급스러운': 'pastel', '개성있는': 'object', '독특한': 'object', '화려한': 'airbrush', '힙한': 'airbrush', '감성적인': 'crayon', '차가운': 'flat' };
-const LIMIT = { image: Number(Deno.env.get('AI_DAILY_IMAGE') ?? 5), brand: Number(Deno.env.get('AI_DAILY_BRAND') ?? 30) };
 const IMAGE_MODEL = Deno.env.get('OPENAI_IMAGE_MODEL') ?? 'gpt-image-2.5-flare';
 const TEXT_MODEL = Deno.env.get('OPENAI_TEXT_MODEL') ?? 'gpt-4.1-mini';
 const PUBLIC_KEY = 'sb_publishable_OSadgrkSIjhtYZx_jfQR3w_H_2EVbFT';   // config.js와 같은 공개 키
@@ -142,13 +141,11 @@ Deno.serve(async req => {
     if (kind !== 'image' && kind !== 'brand') return json({ error: '요청 형식을 확인해주세요.' }, 400);
     const brief = validate(raw);
     if (!brief) return json({ error: '입력 길이 또는 형식을 확인해주세요.' }, 400);
-    // 로그인한 사람의 토큰으로 횟수를 줄인다. 토큰이 없거나 틀리면 DB 함수가 막는다
+    // 로그인한 사람의 토큰으로 AI 권한을 확인한다. 토큰이 없거나 틀리면 DB 함수가 막는다
     const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY') ?? PUBLIC_KEY,
       { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
-    const { error } = await db.rpc('consume_ai', { p_kind: kind, p_limit: LIMIT[kind] });
-    if (error) return error.message.includes('ai_limit')
-      ? json({ error: `오늘 AI 사용 횟수(${LIMIT[kind]}회)를 다 썼어요. 내일 다시 이용해주세요.` }, 429)
-      : error.message.includes('ai_disabled')
+    const { error } = await db.rpc('consume_ai', { p_kind: kind, p_limit: null });
+    if (error) return error.message.includes('ai_disabled')
         ? json({ error: 'AI 생성은 관리자가 켜 준 계정만 쓸 수 있어요.' }, 403)   // 13_ai_access.sql
         : json({ error: '로그인 후 이용해주세요.' }, 401);
     return json(kind === 'image' ? await image(brief, key) : await brand(brief, key));

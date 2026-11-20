@@ -191,14 +191,11 @@ create trigger on_message_insert after insert on public.messages for each row ex
 -- AI 생성 횟수 차감. Python 서버가 사용자 토큰으로 호출하므로 auth.uid()가 그 사용자다
 create or replace function public.consume_ai(p_kind text, p_limit int) returns int
 language plpgsql security definer set search_path = public as $$
-declare n int;
 begin
   if auth.uid() is null or p_kind not in ('image', 'brand') then raise exception 'forbidden'; end if;
   insert into ai_usage (user_id, day, kind, used) values (auth.uid(), current_date, p_kind, 1)
-  on conflict (user_id, day, kind) do update set used = ai_usage.used + 1 where ai_usage.used < p_limit
-  returning used into n;
-  if n is null then raise exception 'ai_limit'; end if;
-  return p_limit - n;               -- 남은 횟수
+  on conflict (user_id, day, kind) do update set used = ai_usage.used + 1;
+  return -1;                       -- 일일 제한 없음
 end $$;
 
 -- 함수 실행 권한: 기본은 막고 필요한 것만 연다
