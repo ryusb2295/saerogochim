@@ -236,6 +236,7 @@ const Commerce = (() => {
     box.querySelectorAll('[data-set]').forEach(b => b.onclick = guard(() => gate('set', () => download('sticker', setSticker(Number(b.dataset.set)), b, '_스티커_' + STICKER_SET[Number(b.dataset.set)].replace(/[!\s]/g, '')))));
     if ($('#save')) $('#save').onclick = guard(() => gate('save', save));
     if ($('#to-result')) $('#to-result').onclick = () => { if (!state.name.trim()) return toast('상호명을 입력해주세요.'); go(4); };
+    if ($('#change-sticker-image')) $('#change-sticker-image').onclick = () => imageSourceSheet(focusMode || 'sticker', true);
     box.querySelectorAll('[data-seed-order]').forEach(b => b.onclick = guard(async () => { await lock(seedOrder); render(); }));
     box.querySelectorAll('[data-reorder]').forEach(b => b.onclick = () => { const source = db().orders(who()).find(x => x.id === b.dataset.reorder); if (source) reorderSheet(source); });
     box.querySelectorAll('[data-demo-pay]').forEach(b => b.onclick = guard(async () => { if (b.disabled) return; b.disabled = true; try { await mockCheckout({ kind: 'print' }, receipt => db().payOrder(who(), b.dataset.demoPay, receipt)); render(); } finally { b.disabled = false; } }));
