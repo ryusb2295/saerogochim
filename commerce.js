@@ -169,9 +169,23 @@ const Commerce = (() => {
     const id = brandId(s) + ':' + season.id + ':' + season.year;
     return { id, userId: who(), brandId: brandId(s), brand: JSON.parse(JSON.stringify(s)), season: season.id, title: `${season.name} 스티커 시안`, previewImage: '', status: 'new', createdAt: db().now(), message: season.message };
   }
+  // 시즌 시안: 계절마다 바탕색, 가장자리 장식, 위쪽 리본(시즌 이름)을 더해 한눈에 계절이 보이게 한다. 캐릭터와 가게 이름이 있는 가운데는 비워 둔다
+  const flake = (x, y, r, c) => `<g transform="translate(${x} ${y})" stroke="${c}" stroke-width="${r / 6}" stroke-linecap="round" fill="none">${[0, 60, 120, 180, 240, 300].map(a => `<path transform="rotate(${a})" d="M0 0V${-r}M0 ${-r * .55}l${-r * .28} ${-r * .22}M0 ${-r * .55}l${r * .28} ${-r * .22}"/>`).join('')}</g>`;
+  const heart = (x, y, r, c) => `<path transform="translate(${x} ${y}) scale(${r / 10})" d="M0 9C-6 4-10 1-10-3a5 5 0 0 1 10-2a5 5 0 0 1 10 2c0 4-4 7-10 12z" fill="${c}"/>`;
+  const star = (x, y, r, c) => `<path transform="translate(${x} ${y}) scale(${r / 10})" d="M0-10l2.9 6 6.6.9-4.8 4.6 1.2 6.5L0 4.9-5.9 8l1.2-6.5-4.8-4.6 6.6-.9z" fill="${c}"/>`;
+  const SEASON_LOOK = {
+    winter: { bg: '#d9ecfb', ribbon: '#3d7cc9', deco: flake(150, 250, 34, '#fff') + flake(655, 230, 40, '#7fb6e6') + flake(120, 470, 24, '#7fb6e6') + flake(690, 470, 28, '#fff') + flake(225, 145, 18, '#7fb6e6') + flake(590, 140, 20, '#fff') },
+    christmas: { bg: '#e6f2e3', ribbon: '#d64545', deco: [[140, 240], [660, 240]].map(([x, y]) => `<g transform="translate(${x} ${y})"><ellipse cx="-22" cy="0" rx="30" ry="14" transform="rotate(-25)" fill="#2e8b57"/><ellipse cx="22" cy="0" rx="30" ry="14" transform="rotate(25)" fill="#2e8b57"/><circle cx="-6" cy="-10" r="10" fill="#d64545"/><circle cx="8" cy="-14" r="10" fill="#d64545"/><circle cx="2" cy="2" r="10" fill="#d64545"/></g>`).join('') + star(120, 470, 18, '#f2b632') + star(690, 470, 20, '#f2b632') + star(230, 150, 12, '#f2b632') + star(580, 145, 12, '#f2b632') },
+    white: { bg: '#fde3ee', ribbon: '#e0578a', deco: heart(150, 240, 30, '#f27aa6') + heart(655, 230, 34, '#fff') + heart(120, 470, 20, '#fff') + heart(690, 470, 24, '#f27aa6') + heart(230, 145, 14, '#f27aa6') + heart(585, 140, 16, '#f27aa6') },
+    parents: { bg: '#fdece3', ribbon: '#d9534f', deco: [[150, 240, 1], [655, 235, 1.15], [120, 470, .7], [690, 470, .8]].map(([x, y, k]) => `<g transform="translate(${x} ${y}) scale(${k})"><path d="M0 18v40" stroke="#4f9a54" stroke-width="5"/><circle cx="-12" cy="0" r="16" fill="#e8505b"/><circle cx="12" cy="0" r="16" fill="#e8505b"/><circle cx="0" cy="-12" r="16" fill="#f06b75"/><circle cx="0" cy="8" r="14" fill="#d9404c"/></g>`).join('') },
+    summer: { bg: '#dbf3f5', ribbon: '#1aa3b8', deco: `<g transform="translate(650 230)"><circle r="40" fill="#ffc83d"/>${[0, 45, 90, 135, 180, 225, 270, 315].map(a => `<path transform="rotate(${a})" d="M0-52v-18" stroke="#ffc83d" stroke-width="8" stroke-linecap="round"/>`).join('')}</g>` + [470, 500].map((y, i) => `<path d="M${90 + i * 20} ${y}q20-14 40 0t40 0" stroke="#57c2d6" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M${630 - i * 20} ${y}q20-14 40 0t40 0" stroke="#57c2d6" stroke-width="7" fill="none" stroke-linecap="round"/>`).join('') + star(160, 240, 16, '#fff') },
+    halloween: { bg: '#fbe2c6', ribbon: '#e07b1a', deco: [[150, 245, 1], [660, 240, 1.15], [125, 470, .7]].map(([x, y, k]) => `<g transform="translate(${x} ${y}) scale(${k})"><ellipse rx="34" ry="28" fill="#f28c28"/><ellipse rx="14" ry="28" fill="#e07b1a"/><path d="M0-28v-12" stroke="#4f7d2e" stroke-width="7" stroke-linecap="round"/></g>`).join('') + `<path transform="translate(690 470)" d="M0 0q-14-16-34-6q10 2 8 12q-12-6-24 4q20 4 26 14q4-8 12-8q8 0 12 8q6-10 26-14q-12-10-24-4q-2-10 8-12q-20-10-34 6z" fill="#3a2a4a"/>` }
+  };
   function seasonSVG(suggestion) {
-    const s = { ...suggestion.brand, message: suggestion.message, font: suggestion.brand.font ?? '', layout: 'basic', customColor: suggestion.brand.customColor || '#e7eedc' };
-    return stickerSVG(s).replace('</svg>', '<g fill="white" opacity=".8"><circle cx="100" cy="180" r="10"/><circle cx="690" cy="270" r="8"/><circle cx="600" cy="110" r="12"/></g></svg>');
+    const look = SEASON_LOOK[suggestion.season] || SEASON_LOOK.winter, name = (P.seasons.find(x => x.id === suggestion.season) || {}).name || '';
+    const s = { ...suggestion.brand, message: suggestion.message, font: suggestion.brand.font ?? '', layout: 'basic', customColor: look.bg, recommendedColor: null };
+    const ribbon = name ? `<g><rect x="${400 - (name.length * 17 + 40)}" y="62" width="${name.length * 34 + 80}" height="56" rx="28" fill="${look.ribbon}"/><text x="400" y="100" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="30" font-weight="800" fill="#fff">${esc(name)}</text></g>` : '';
+    return stickerSVG(s).replace('</svg>', `<g>${look.deco}</g>${ribbon}</svg>`);
   }
   function homeCard() {
     if (!user) return ''; const a = account(), saved = records()[0], season = seasonCandidate();
