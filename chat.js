@@ -8,12 +8,15 @@ function chatsPage() {
 }
 const chatTime = t => { const d = new Date(t), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) };
 
+// 빠른 답장: 누르면 입력칸에 넣어 주고, 고쳐서 보낼 수 있다
+const QUICK_REPLIES = { owner: ['견적 확인했어요', '시안 보내드릴게요', '언제 받을 수 있나요?', '감사합니다!'], printer: ['견적 보내드렸어요', '시안 확인 부탁드려요', '오늘 발송했어요', '감사합니다!'] };
 function chatPage() {
   const i = chatConv === convId ? chatInfo : null;
-  return `<div class="chat-wrap"><header class="chat-head"><button class="text-button" data-page="chats" aria-label="채팅 목록">${icon('back')}</button><div><strong>${esc(i?.other_name || '채팅')}</strong><small>${esc(i?.title || '')} ${i ? chip(REQ_ST[i.request_status]) : ''}</small></div></header>
+  return `<div class="chat-wrap"><header class="chat-head"><button class="ask-back" data-page="chats" aria-label="채팅 목록">${icon('back')}</button><div class="chat-title"><strong>${esc(i?.other_name || '채팅')}</strong><small>${esc(i?.title || '')} ${i ? chip(REQ_ST[i.request_status]) : ''}</small></div></header>
 <div id="chat-banner" class="chat-banner" role="status" hidden>연결이 끊겼어요. 다시 연결하는 중…</div>
 <div id="chat-log" class="chat-log" aria-live="polite" aria-label="메시지"></div>
-<form id="chat-form" class="chat-input"><label class="secondary chat-attach" aria-label="사진 보내기">${icon('image')}<input type="file" id="chat-file" accept="image/png,image/jpeg,image/webp" hidden></label><label for="chat-text" class="sr-only">메시지</label><textarea id="chat-text" rows="1" maxlength="1000" placeholder="메시지를 입력하세요"></textarea><button class="primary" type="submit" aria-label="보내기">보내기</button></form></div>`;
+<div class="quick-replies" aria-label="빠른 답장">${QUICK_REPLIES[myRole === 'printer' ? 'printer' : 'owner'].map(t => `<button type="button" data-quick-reply="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+<form id="chat-form" class="chat-input"><label for="chat-text" class="sr-only">메시지</label><textarea id="chat-text" rows="1" maxlength="1000" placeholder="메시지 보내기..."></textarea><label class="chat-attach" aria-label="사진 보내기">${icon('image')}<input type="file" id="chat-file" accept="image/png,image/jpeg,image/webp" hidden></label><button class="chat-send" type="submit" aria-label="보내기">${icon('arrow')}</button></form></div>`;
 }
 
 // 화면을 다시 그릴 때마다 호출된다. 방이 바뀌었을 때만 새로 불러오고 구독한다
@@ -71,7 +74,8 @@ function paintChat(forceBottom = false) {
   chatMsgs.forEach((m, i) => {
     const d = new Date(m.created_at), k = d.toDateString(), next = chatMsgs[i + 1];
     if (k !== day) { day = k; html += `<p class="day-sep">${d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}</p>` }
-    const mine = m.sender_id === uid;
+    const mine = m.sender_id === uid, prev = chatMsgs[i - 1];
+    if (!mine && (!prev || prev.sender_id !== m.sender_id || new Date(prev.created_at).toDateString() !== k)) { const nm = chatInfo?.other_name || '상대'; html += `<div class="bubble-who"><span class="avatar" aria-hidden="true">${esc([...nm][0] || '?')}</span>${esc(nm)}</div>` }
     // 같은 사람이 같은 분에 보낸 연속 메시지는 마지막에만 시간 표시
     const showTime = !next || next.sender_id !== m.sender_id || new Date(next.created_at).getMinutes() !== d.getMinutes();
     const src = m.image_path && (m.localUrl || chatImgs[m.image_path]);
@@ -149,6 +153,7 @@ function bindChatForm() {
   const pick = $('#chat-file');
   if (pick) pick.onchange = () => { if (pick.files[0]) sendPhoto(pick.files[0]); pick.value = '' };
   // 한글 조합 중 Enter는 글자 확정이라 보내지 않는다
+  document.querySelectorAll('[data-quick-reply]').forEach(b => b.onclick = () => { t.value = b.dataset.quickReply; t.focus() });
   t.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); f.requestSubmit() } };
 }
 Object.assign(PAGES, REAL ? { chats: chatsPage, chat: chatPage } : {});

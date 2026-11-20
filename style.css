@@ -794,3 +794,29 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .loader,.gen-modal .loader{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,480px);z-index:150;min-height:0;margin:0;border-radius:0;justify-content:center;padding:0 24px 90px}
 .loader .ld-art{margin-bottom:26px}
 .gen-modal{padding:0}
+
+/* ===== 채팅방 (Figma 채팅 시안) ===== */
+.immersive .main:has(.chat-wrap){background:#f5f6f8;padding:8px 16px 0}
+.chat-wrap{background:#f5f6f8}
+.chat-head{position:relative;justify-content:center;min-height:52px;padding:4px 0 10px;border-bottom:0}
+.chat-head .ask-back{position:absolute;left:-8px;top:6px}
+.chat-title{text-align:center}
+.chat-title strong{display:block;font-size:17px;font-weight:700;color:#353535}
+.chat-title small{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#9d9d9d}
+.chat-log{padding:8px 0}
+.day-sep{width:max-content;max-width:90%;margin:14px auto;padding:4px 14px;border-radius:999px;background:#eceef1;color:#8a8f96;font-size:12px}
+.bubble-who{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-size:12px;font-weight:600;color:#555}
+.avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#e9f9f1;color:#00a35f;font-size:13px;font-weight:700}
+.bubble-row:not(.mine){padding-left:40px}
+.bubble{border-radius:4px 16px 16px 16px;background:#fff;color:#353535;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.bubble-row.mine .bubble{border-radius:16px 4px 16px 16px;background:#00b46e;color:#fff;box-shadow:none}
+.quick-replies{display:flex;gap:8px;overflow-x:auto;padding:8px 0 6px;scrollbar-width:none}
+.quick-replies::-webkit-scrollbar{display:none}
+.quick-replies button{flex:none;min-height:36px;padding:0 14px;border:1px solid #b9e7cf;border-radius:10px;background:#fff;color:#353535;font-size:13px;white-space:nowrap;cursor:pointer}
+.quick-replies button:active{background:#e9f9f1}
+.chat-input{align-items:center;gap:6px;margin:4px 0 calc(10px + env(safe-area-inset-bottom));padding:6px 6px 6px 16px;border:0;border-radius:999px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.chat-input textarea{min-height:40px;padding:10px 0;border:0;background:none;font-size:15px}
+.chat-input textarea:focus{border:0;background:none}
+.chat-attach{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;color:#555;cursor:pointer}
+.chat-attach .icon,.chat-send .icon{width:22px;height:22px}
+.chat-send{display:grid;place-items:center;flex:none;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:#00c673;color:#fff;cursor:pointer}

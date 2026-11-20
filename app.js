@@ -221,7 +221,7 @@ function startPage(){return `<main class="start"><section class="panel"><div cla
 function showCrash(){const app=document.getElementById('app');if(!app)return;document.querySelector('.gen-modal')?.remove();document.body.classList.remove('modal-open');app.innerHTML=`<main class="main crash" role="alert"><div class="crash-art">${mascotImg()||icon('info')}</div><h1>문제가 생겼어요</h1><p>잠시 후 다시 시도해 주세요. 계속 안 되면 앱을 껐다 켜 주세요.</p><button class="primary" id="crash-retry">다시 시도</button></main>`;document.getElementById('crash-retry').onclick=()=>location.reload()}
 // 스크립트가 시작부터 멈춰 아무것도 안 그려졌을 때도 같은 안내
 addEventListener('error',()=>{const app=document.getElementById('app');if(app&&!app.innerHTML.trim())showCrash()});
-function render(){try{renderPage();enhanceInputs();document.body.classList.toggle('immersive',page==='studio'&&step===1);if(typeof fitChat==='function')fitChat()}catch(e){console.error(e);showCrash()}}
+function render(){try{renderPage();enhanceInputs();document.body.classList.toggle('immersive',(page==='studio'&&step===1)||page==='chat');if(typeof fitChat==='function')fitChat()}catch(e){console.error(e);showCrash()}}
 // 비밀번호 칸에는 보기(눈) 버튼, 질문 단계 글 칸에는 지우기(X) 버튼을 붙인다
 function enhanceInputs(){
  document.querySelectorAll('input[type=password]:not([data-wrapped]),.ask-q input[type=text]:not([data-wrapped])').forEach(inp=>{
