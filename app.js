@@ -522,10 +522,10 @@ function imageSourceSheet(mode='sticker',replaceImage=false){
 function exampleChar(){return !state.customImage||(state.generated&&!aiReady)}
 // AI 캐릭터 만드는 동안 화면 전체를 덮는 로딩 창 (분석 화면과 같은 원형 링 + 단계 체크리스트)
 const GEN_STEPS=[[0,'가게 특징을 읽고 있어요'],[20,'시디과 그림체를 맞추고 있어요'],[45,'캐릭터를 그리고 있어요'],[80,'마무리하고 있어요']];
-function openGenModal(){closeGenModal();document.body.classList.add('modal-open');document.body.insertAdjacentHTML('beforeend',`<div class="gen-modal" role="dialog" aria-modal="true" aria-labelledby="gen-title"><section class="an2 loader">${loaderArt()}${loaderBar('캐릭터 만들기 진행률')}<b class="an-pct sr-only" id="gen-pct">0%</b><h2 id="gen-title">캐릭터 만드는 중…</h2><p class="ld-sub">엔티가 일을 하고 있어요!</p><small class="an-note">보통 10~20초 걸려요. 완료 전 앱을 닫지 마세요.</small>${loaderDeco}</section></div>`);paintGen()}
+function openGenModal(){closeGenModal();document.body.classList.add('modal-open');document.body.insertAdjacentHTML('beforeend',`<div class="gen-modal" role="dialog" aria-modal="true" aria-labelledby="gen-title"><section class="an2 loader">${loaderArt()}${loaderBar('캐릭터 만들기 진행률')}<b class="an-pct sr-only" id="gen-pct">0%</b><h2 id="gen-title">캐릭터 만드는 중…</h2><p class="ld-sub">엔티가 일을 하고 있어요!</p><small class="an-note">보통 30~50초 걸려요. 다 될 때까지 화면을 켜 두세요.</small>${loaderDeco}</section></div>`);paintGen()}
 function closeGenModal(){$('.gen-modal')?.remove();document.body.classList.remove('modal-open')}
 // 실제 진행률은 알 수 없어서 보통 걸리는 시간(약 15초)에 맞춰 95%까지 천천히 오르고, 끝나면 100%
-function paintGen(){if(genPct<100)genPct=Math.min(95,Math.round(95*(1-Math.exp(-(Date.now()-genStart)/6000))));const m=$('.gen-modal');if(!m)return;const ring=m.querySelector('.an-ring');ring.setAttribute('aria-valuenow',genPct);ring.querySelector('.an-fill').style.width=genPct+'%';$('#gen-pct').textContent=genPct+'%';
+function paintGen(){if(genPct<100)genPct=Math.min(95,Math.round(95*(1-Math.exp(-(Date.now()-genStart)/15000))));const m=$('.gen-modal');if(!m)return;const ring=m.querySelector('.an-ring');ring.setAttribute('aria-valuenow',genPct);ring.querySelector('.an-fill').style.width=genPct+'%';$('#gen-pct').textContent=genPct+'%';
  m.querySelectorAll('.an-list li').forEach(li=>{const i=+li.dataset.i,next=GEN_STEPS[i+1]?.[0]??100,done=genPct>=next;li.classList.toggle('done',done);li.classList.toggle('active',!done&&genPct>=GEN_STEPS[i][0])})}
 async function generateAI(){if(hasFoodPhoto())return false;if(generating)return false;try{return await Commerce.generate(generateAIInternal)}catch(e){toast(e.message);return false}}
 async function generateAIInternal(){
