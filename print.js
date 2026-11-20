@@ -731,7 +731,7 @@ function navItems() {
 // 화면 제목을 상단 바에 크게 쓰는 화면 (본문 첫 제목은 숨김)
 const APP_TITLE_PAGES = ['admin', 'saved', 'requests', 'chats', 'mypage', 'notis', 'dash', 'market', 'myquotes', 'jobs', 'newreq', 'guide'];
 function appBar() {
-  const title = { saved: '내 브랜드', mypage: '마이페이지', studio: '브랜드 만들기', guide: '이용 가이드', ...PAGE_LABEL }[page];
+  const title = { saved: '내 브랜드', mypage: '마이페이지', studio: typeof focusMode !== 'undefined' && focusMode && step >= 3 ? '만들기' : '브랜드 만들기', guide: '이용 가이드', ...PAGE_LABEL }[page];
   const left = title ? `<h1 class="app-title">${esc(title)}</h1>` : `<h1 class="app-title brand"><img class="wordmark" src="assets/brand/logo-green.svg" alt="가게온"></h1>`;
   // #logout은 마이페이지 '로그아웃' 버튼이 누르는 숨은 버튼
   return `<header class="app-bar">${left}<div class="app-actions">${myRole === 'admin' ? '<button class="secondary" id="admin-logout">로그아웃</button>' : `${bellButton()}<button class="icon-btn" data-page="mypage" aria-label="마이페이지">${icon('user')}</button>`}<button id="logout" hidden></button></div></header>`;

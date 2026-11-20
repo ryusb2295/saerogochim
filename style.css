@@ -752,3 +752,8 @@ html.chat-open,html.chat-open body{overflow:hidden;overscroll-behavior:none}
 
 /* 키보드 초점 표시도 초록 테마 색 */
 button:focus-visible,a:focus-visible{outline-color:#00c673}
+
+/* 저장한 브랜드로 바로 들어온 화면: 뒤로 가기 + 제목 (4단계 표시 없음) */
+.focus-intro{display:flex;align-items:flex-start;gap:8px}
+.focus-intro .ask-back{margin-top:2px}
+.focus-intro h1{margin:0 0 4px}
