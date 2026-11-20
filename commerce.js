@@ -194,7 +194,7 @@ const Commerce = (() => {
       const candidate = suggestionFor(saved, season); let suggestion = a.suggestions.find(x => x.id === candidate.id);
       if (a.plan === 'pro' && !suggestion) { candidate.previewImage = svgUri(seasonSVG(candidate));if(remoteAvailable===true){if(!autoSuggestionBusy){autoSuggestionBusy=true;guard(async()=>{try{await lock(()=>db().saveSuggestion(who(),candidate));}finally{autoSuggestionBusy=false;}render();})();}}else suggestion=db().saveSuggestion(who(),candidate); }
       const item = suggestion || candidate;
-      card = `<section class="panel season-card"><span class="ai-badge">AI 시즌 제안 · ${new Date().getMonth() + 1}월</span><h2>${esc(item.title)}${suggestion ? '이 준비됐어요' : '을 만들어볼까요?'}</h2><p class="help">저장한 ${esc(saved.name)} 캐릭터에 계절 문구를 더했어요. 시연에서는 기존 캐릭터로 시안을 조합해요.</p>${suggestion ? `<img class="commerce-order-thumb" src="${esc(suggestion.previewImage)}" alt="${esc(item.title)}"><div class="actions"><button class="secondary" data-view-suggestion="${item.id}">시안 보기</button><button class="primary" data-print-suggestion="${item.id}">이 시안으로 인쇄 견적 받기</button></div>` : `<button class="primary full" data-make-suggestion>${a.plan === 'pro' ? '시안 만들기 · 무료' : `시안 받기 · ${P.costs.suggestion}온`}</button>`}</section>`;
+      card = `<section class="panel season-card"><span class="ai-badge">AI 시즌 제안 · ${new Date().getMonth() + 1}월</span><h2>${esc(item.title)}${suggestion ? '이 준비됐어요' : '을 만들어볼까요?'}</h2><p class="help">저장한 ${esc(saved.name)} 캐릭터에 계절 문구를 더했어요. 시연에서는 기존 캐릭터로 시안을 조합해요.</p>${suggestion ? `<img class="commerce-order-thumb" src="${esc(svgUri(seasonSVG(suggestion)))}" alt="${esc(item.title)}"><div class="actions"><button class="secondary" data-view-suggestion="${item.id}">시안 보기</button><button class="primary" data-print-suggestion="${item.id}">이 시안으로 인쇄 견적 받기</button></div>` : `<button class="primary full" data-make-suggestion>${a.plan === 'pro' ? '시안 만들기 · 무료' : `시안 받기 · ${P.costs.suggestion}온`}</button>`}</section>`;
     }
     return card;
   }
@@ -207,13 +207,13 @@ const Commerce = (() => {
   }
   async function showSuggestion(id, printing) {
     const s = account().suggestions.find(x => x.id === id); if (!s) return;
-    state = { ...initial(), ...s.brand, message: s.message, layout: 'basic' }; state.commerceBrandId = s.brandId;
+    state = { ...initial(), ...s.brand, message: s.message, layout: 'basic', customColor: (SEASON_LOOK[s.season] || {}).bg || s.brand.customColor, recommendedColor: null }; state.commerceBrandId = s.brandId;
     state.commerceSessionId = GageonCommerceStore.id();
     await lock(()=>db().updateSuggestion(who(), id, printing ? 'ordered' : 'viewed'));
     await markUsed();
     if (!printing) { focusMode='sticker'; page = 'studio'; step = 3; render(); scrollTo(0, 0); return; }
     // SVG stays editable in the studio. The quote form receives a real PNG file.
-    guard(async () => { const image = await loadImg(s.previewImage), blob = await toBlob(image, P.print.pixels, false, 'image/png'); uploadFile = new File([blob], s.title + '.png', { type: 'image/png' }); reqDraft = { ...reqDraft, title: s.title }; goPage('newreq'); })();
+    guard(async () => { const image = await loadImg(svgUri(seasonSVG(s))), blob = await toBlob(image, P.print.pixels, false, 'image/png'); uploadFile = new File([blob], s.title + '.png', { type: 'image/png' }); reqDraft = { ...reqDraft, title: s.title }; goPage('newreq'); })();
   }
   function paintBalance() {
     if (!user) return; const a = account(); document.querySelectorAll('[data-token-balance]').forEach(n => n.textContent = `${a.tokenBalance} / ${P.plans[a.plan].tokens}`);
