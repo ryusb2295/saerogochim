@@ -137,7 +137,8 @@ MOOD_STYLE = {'귀엽고 친근한': 'duck', '따뜻하고 정겨운': 'crayon',
               '재미있고 개성 있는': 'object', '힙하고 트렌디한': 'airbrush',
               # 질문 화면 분위기 단어 (여러 개 고르면 첫 번째로 정함). app.js MOOD_WORDS와 같게
               '귀여운': 'duck', '친근한': 'duck', '발랄한': 'duck', '따뜻한': 'crayon', '정겨운': 'crayon', '전통적인': 'crayon',
-              '심플한': 'flat', '고급스러운': 'pastel', '개성있는': 'object', '독특한': 'object', '화려한': 'airbrush'}
+              '심플한': 'flat', '고급스러운': 'pastel', '개성있는': 'object', '독특한': 'object', '화려한': 'airbrush',
+              '힙한': 'airbrush', '감성적인': 'crayon', '차가운': 'flat'}
 
 
 def style_of(brief):
