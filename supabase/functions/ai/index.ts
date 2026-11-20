@@ -17,7 +17,7 @@ const STYLES: Record<string, [string, string[]]> = {
 };
 const MOOD_STYLE: Record<string, string> = { '귀엽고 친근한': 'duck', '따뜻하고 정겨운': 'crayon', '깔끔하고 모던한': 'flat', '고급스럽고 차분한': 'pastel', '재미있고 개성 있는': 'object', '힙하고 트렌디한': 'airbrush',
   // 질문 화면 분위기 단어 (여러 개면 첫 번째로 정함). server.py와 같게
-  '귀여운': 'duck', '친근한': 'duck', '발랄한': 'duck', '따뜻한': 'crayon', '정겨운': 'crayon', '전통적인': 'crayon', '심플한': 'flat', '고급스러운': 'pastel', '개성있는': 'object', '독특한': 'object', '화려한': 'airbrush' };
+  '귀여운': 'duck', '친근한': 'duck', '발랄한': 'duck', '따뜻한': 'crayon', '정겨운': 'crayon', '전통적인': 'crayon', '심플한': 'flat', '고급스러운': 'pastel', '개성있는': 'object', '독특한': 'object', '화려한': 'airbrush', '힙한': 'airbrush', '감성적인': 'crayon', '차가운': 'flat' };
 const LIMIT = { image: Number(Deno.env.get('AI_DAILY_IMAGE') ?? 5), brand: Number(Deno.env.get('AI_DAILY_BRAND') ?? 30) };
 const IMAGE_MODEL = Deno.env.get('OPENAI_IMAGE_MODEL') ?? 'gpt-image-2.5-flare';
 const TEXT_MODEL = Deno.env.get('OPENAI_TEXT_MODEL') ?? 'gpt-4.1-mini';

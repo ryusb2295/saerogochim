@@ -75,6 +75,16 @@ const Commerce = (() => {
       toast('결제 완료(시연) · 실제 돈은 나가지 않았어요.'); return result;
     } finally { checkoutBusy = false; }
   }
+  function entryCost(kind) {
+    if(kind==='brand')return P.costs.generate;
+    if(kind==='suggestion')return account().plan==='pro'?0:P.costs.suggestion;
+    if(['resume','current'].includes(kind)&&account().appliedDesigns[usageKey(state)]==='used')return 0;
+    return P.costs.edit;
+  }
+  function entryInfo(kind, next) {
+    const cost=entryCost(kind),label=kind==='brand'?'새 브랜드 만들기':kind==='post'?'홍보물 만들기':kind==='suggestion'?'시즌 이미지 만들기':'스티커 만들기';
+    return sheet('온 사용 안내', '<p><strong>'+label+' · '+cost+'온</strong></p><p>현재 남은 온: '+account().tokenBalance+'온</p><p class="help">'+(kind==='brand'?'질문 입력과 화면 진입은 무료예요. 마지막 브랜드 만들기 버튼으로 생성에 성공하면 '+cost+'온을 사용해요.':kind==='suggestion'?'시안 만들기를 실행할 때 사용해요. 실패하면 반환해요.':cost?'편집과 미리보기는 무료예요. 저장·파일 받기·인쇄 견적 제출에 성공할 때 이번 작업에 한 번만 사용해요.':'이번 작업의 온 사용이 이미 완료되어 추가 차감하지 않아요.')+'</p><button type="button" class="primary full" data-entry-next>확인하고 계속하기</button>',({el,done})=>{el.querySelector('[data-entry-next]').onclick=()=>{done();guard(next)();};});
+  }
   function topup(required = 0) {
     return new Promise(resolve => {
       const a = account(); let completed = false;
@@ -131,7 +141,7 @@ const Commerce = (() => {
   const orderStatus = { awaiting_payment: '결제 대기', accepted: '업체 선택', in_progress: '제작 중', delivered: '납품 완료', completed: '수령 확인' };
   function orderCard(o, printer = false) {
     const completed = ['delivered', 'completed'].includes(o.status);
-    return `<article class="panel" style="margin-bottom:14px"><p class="meta">시연 주문 · ${orderStatus[o.status]}${o.recurringDeliveryId ? ' · 정기배송' : ''}</p><strong>${esc(o.title)}</strong><p>${Number(o.quantity).toLocaleString()}개 · ${esc(o.width)}×${esc(o.height)}${esc(o.unit)} · ${esc(o.material)}</p><p class="help">${esc(o.printerName)} · 희망 납기 ${esc(o.due)}<br>${esc(o.region || '')}</p>${o.previewImage ? `<img class="commerce-order-thumb" src="${esc(o.previewImage)}" alt="주문한 디자인">` : ''}${printer ? printerSummary(o.amount, o.status, !!o.paidAt) : ownerSummary(o.amount)}${!printer && o.status === 'awaiting_payment' ? `<button class="primary full" data-demo-pay="${o.id}">${money(o.amount)} 결제하기 (시연)</button>` : ''}${!printer && completed ? `<button class="secondary full" data-reorder="${o.id}">같은 디자인으로 다시 주문</button>${recurringCard(o)}` : ''}${!printer && o.status === 'delivered' ? `<button class="primary full" data-demo-complete="${o.id}">수령 확인 (시연)</button>` : ''}${printer && ['accepted', 'in_progress'].includes(o.status) ? `<button class="primary full" data-demo-advance="${o.id}" data-printer="${esc(o.printerId)}">${o.status === 'accepted' ? '제작 시작 (시연)' : '납품 완료 (시연)'}</button>` : ''}</article>`;
+    return `<article class="panel" style="margin-bottom:14px"><p class="meta">시연 주문 · ${orderStatus[o.status]}${o.recurringDeliveryId ? ' · 정기배송' : ''}</p><strong>${esc(o.title)}</strong><p>${Number(o.quantity).toLocaleString()}개 · ${esc(o.width)}×${esc(o.height)}${esc(o.unit)} · ${esc(o.material)}</p><p class="help">${esc(o.printerName)} · 희망 납기 ${esc(o.due)}<br>${esc(o.region || '')}</p>${o.previewImage ? `<img class="commerce-order-thumb" src="${esc(o.previewImage)}" alt="주문한 디자인">` : ''}${!printer&&o.printJobId?`<button class="secondary full" data-print-job="${esc(o.printJobId)}">승인한 인쇄 파일 ZIP 받기</button>`:''}${printer ? printerSummary(o.amount, o.status, !!o.paidAt) : ownerSummary(o.amount)}${!printer && o.status === 'awaiting_payment' ? `<button class="primary full" data-demo-pay="${o.id}">${money(o.amount)} 결제하기 (시연)</button>` : ''}${!printer && completed ? `<button class="secondary full" data-reorder="${o.id}">같은 디자인으로 다시 주문</button>${recurringCard(o)}` : ''}${!printer && o.status === 'delivered' ? `<button class="primary full" data-demo-complete="${o.id}">수령 확인 (시연)</button>` : ''}${printer && ['accepted', 'in_progress'].includes(o.status) ? `<button class="primary full" data-demo-advance="${o.id}" data-printer="${esc(o.printerId)}">${o.status === 'accepted' ? '제작 시작 (시연)' : '납품 완료 (시연)'}</button>` : ''}</article>`;
   }
   function recurringCard(o) {
     const a = account(), recurring = a.recurring.find(r => r.sourceOrderId === o.id && r.active);
@@ -217,16 +227,17 @@ const Commerce = (() => {
     if (page === 'requests') $('.main')?.insertAdjacentHTML('beforeend', `<div class="my-list"><button data-page="demo-orders">시연 재주문·정기배송<small>›</small></button></div>${db().orders(who()).filter(x => ['delivered', 'completed'].includes(x.status)).slice(0, 2).map(o => orderCard(o)).join('')}`);
     if (page === 'request') $('.main')?.insertAdjacentHTML('beforeend', realRequestExtra(V['request-' + reqId]?.data));
     if (page === 'jobs' || page === 'dash') $('.main')?.insertAdjacentHTML('beforeend', '<div class="my-list"><button data-page="demo-printer">시연 주문·정산 보기<small>›</small></button></div>');
-    bind();
+    bind(); StickerPrint.decorate();
   }
   function bind() {
     const box = $('#app');
     box.querySelectorAll('[data-export-field]').forEach(input=>input.oninput=()=>{state[input.dataset.exportField]=input.value;saveDraft();});
-    if($('#to-request'))$('#to-request').onclick=()=>goPage('newreq');
+    if($('#to-request'))$('#to-request').onclick=()=>state.shape==='circle'?StickerPrint.open():goPage('newreq');
+    if($('#print-sticker'))$('#print-sticker').onclick=StickerPrint.open;
     if(REAL&&$('#req-form')){$('#req-form').onsubmit=guard(async e=>{e.preventDefault();if(checkReq())await gate('request',()=>submitRequest(e.target.querySelector('[type=submit]')));});}
-    if(!REAL&&$('#req-form'))$('#req-form').onsubmit=guard(async e=>{e.preventDefault();if(!checkReq())return;await gate('request',async()=>{const button=e.target.querySelector('[type=submit]');button.disabled=true;try{const d=reqDraft;let image=svgUri(stickerSVG());if(uploadFile)image=await new Promise((ok,bad)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result);reader.onerror=bad;reader.readAsDataURL(uploadFile)});await lock(()=>db().importOrder(who(),{id:GageonCommerceStore.id(),title:d.title,item:d.item,quantity:Number(d.quantity),width:Number(d.width),height:Number(d.height),unit:d.unit,material:d.material,finishing:[...d.finishing],region:[d.region_sido,d.region_sigungu].join(' '),printerId:P.demoOrder.printerId,printerName:P.demoOrder.printerName,amount:Math.round(P.demoOrder.amount*Number(d.quantity)/P.demoOrder.quantity),shipping:P.demoOrder.shipping,status:'awaiting_payment',paidAt:null,due:d.due,createdAt:db().now(),previewImage:image}));uploadFile=null;goPage('demo-orders');return true;}finally{button.disabled=false}});});
+    if(!REAL&&$('#req-form'))$('#req-form').onsubmit=guard(async e=>{e.preventDefault();if(!checkReq())return;await gate('request',async()=>{const button=e.target.querySelector('[type=submit]');button.disabled=true;try{const delivery=await StickerPrint.delivery();const d=reqDraft;let image=svgUri(stickerSVG());if(uploadFile)image=await new Promise((ok,bad)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result);reader.onerror=bad;reader.readAsDataURL(uploadFile)});await lock(()=>db().importOrder(who(),{id:GageonCommerceStore.id(),title:d.title,item:d.item,quantity:Number(d.quantity),width:Number(d.width),height:Number(d.height),unit:d.unit,material:d.material,finishing:[...d.finishing],region:[d.region_sido,d.region_sigungu].join(' '),printerId:P.demoOrder.printerId,printerName:P.demoOrder.printerName,amount:Math.round(P.demoOrder.amount*Number(d.quantity)/P.demoOrder.quantity),shipping:P.demoOrder.shipping,status:'awaiting_payment',paidAt:null,due:d.due,createdAt:db().now(),previewImage:image,...(delivery?{printJobId:delivery.jobId,printFiles:delivery.files,printAsset:delivery.metadata.asset}:{})}));StickerPrint.clear();uploadFile=null;goPage('demo-orders');return true;}finally{button.disabled=false}});});
 
-    box.querySelectorAll('[data-page]').forEach(b => b.onclick = () => { syncForm(); goPage(b.dataset.page); });
+    box.querySelectorAll('[data-page]').forEach(b => b.onclick = () => { syncForm(); if(b.dataset.page==='studio')return entryInfo('brand',startNewBrand); goPage(b.dataset.page); });
     box.querySelectorAll('[data-commerce-topup]').forEach(b => b.onclick = guard(async () => { if (await topup()) render(); }));
     box.querySelectorAll('[data-subscribe]').forEach(b => b.onclick = () => sheet(`${P.plans[b.dataset.subscribe].name} 구독`, `<p>월 ${money(P.plans[b.dataset.subscribe].price)} · ${P.plans[b.dataset.subscribe].tokens}온</p><p class="help">시연 결제예요. 갱신 시 한도까지 채우며 이월되지 않아요.</p><button class="primary full" data-confirm>결제하기 (시연)</button>`, ({ el, busy, done }) => { el.querySelector('[data-confirm]').onclick = () => busy(async () => { const item = { kind: 'plan', id: b.dataset.subscribe }; await mockCheckout(item, receipt => db().checkout(who(), item, receipt)); done(); render(); }); }));
     box.querySelectorAll('[data-cancel-plan]').forEach(b => b.onclick = guard(async () => { await lock(() => db().cancel(who())); render(); toast('다음 갱신일부터 무료로 바뀌어요.'); }));
@@ -236,7 +247,8 @@ const Commerce = (() => {
     box.querySelectorAll('[data-set]').forEach(b => b.onclick = guard(() => gate('set', () => download('sticker', setSticker(Number(b.dataset.set)), b, '_스티커_' + STICKER_SET[Number(b.dataset.set)].replace(/[!\s]/g, '')))));
     if ($('#save')) $('#save').onclick = guard(() => gate('save', save));
     if ($('#to-result')) $('#to-result').onclick = () => { if (!state.name.trim()) return toast('상호명을 입력해주세요.'); go(4); };
-    if ($('#change-sticker-image')) $('#change-sticker-image').onclick = () => imageSourceSheet(focusMode || 'sticker', true);
+    if ($('#change-sticker-image')) $('#change-sticker-image').onclick = () => entryInfo('current',()=>imageSourceSheet(focusMode || 'sticker', true));
+    box.querySelectorAll('[data-print-job]').forEach(b=>b.onclick=guard(()=>StickerPrint.downloadStored(b.dataset.printJob)));
     box.querySelectorAll('[data-seed-order]').forEach(b => b.onclick = guard(async () => { await lock(seedOrder); render(); }));
     box.querySelectorAll('[data-reorder]').forEach(b => b.onclick = () => { const source = db().orders(who()).find(x => x.id === b.dataset.reorder); if (source) reorderSheet(source); });
     box.querySelectorAll('[data-demo-pay]').forEach(b => b.onclick = guard(async () => { if (b.disabled) return; b.disabled = true; try { await mockCheckout({ kind: 'print' }, receipt => db().payOrder(who(), b.dataset.demoPay, receipt)); render(); } finally { b.disabled = false; } }));
@@ -245,7 +257,7 @@ const Commerce = (() => {
     box.querySelectorAll('[data-start-recurring]').forEach(b => b.onclick = guard(async () => { await lock(() => db().recurring(who(), b.dataset.startRecurring)); render(); }));
     box.querySelectorAll('[data-stop-recurring]').forEach(b => b.onclick = guard(async () => { await lock(() => db().stopRecurring(who(), b.dataset.stopRecurring)); render(); }));
     box.querySelectorAll('[data-run-recurring]').forEach(b => b.onclick = guard(async () => { b.disabled = true; await lock(() => db().runRecurring(who(), b.dataset.runRecurring, true)); render(); }));
-    box.querySelectorAll('[data-make-suggestion]').forEach(b => b.onclick = guard(makeSuggestion));
+    box.querySelectorAll('[data-make-suggestion]').forEach(b => b.onclick = ()=>entryInfo('suggestion',makeSuggestion));
     box.querySelectorAll('[data-view-suggestion]').forEach(b => b.onclick = guard(() => showSuggestion(b.dataset.viewSuggestion, false)));
     box.querySelectorAll('[data-print-suggestion]').forEach(b => b.onclick = guard(() => showSuggestion(b.dataset.printSuggestion, true)));
     box.querySelectorAll('[data-live-reorder],[data-live-recurring]').forEach(b => b.onclick = guard(async () => { const o = await lock(() => importLive(V['request-' + reqId].data)); if (b.hasAttribute('data-live-reorder')) reorderSheet(o); else { if (account().plan !== 'pro') return goPage('plans'); await lock(() => db().recurring(who(), o.id)); goPage('demo-orders'); } }));
@@ -261,5 +273,5 @@ const Commerce = (() => {
     addEventListener('storage', e => { if (e.key === GageonCommerceStore.KEY && user && !tokenBusy && !checkoutBusy && !document.querySelector('.modal-back') && !document.querySelector('#inline-text-form')) render(); });
     addEventListener('visibilitychange',()=>{if(!document.hidden&&user)guard(async()=>{await lock(()=>db().dueRecurring(who()));render()})()});
   }
-  return { P, account, accountCard, homeCard, brandId, noteDesign, useDesign, generate, withTokens, gate, editText, sheet, afterRender, prepare, install, payLive, ownerSummary, printerSummary, seasonCandidate, seasonSVG, db };
+  return { P, account, accountCard, homeCard, brandId, noteDesign, useDesign, generate, withTokens, gate, editText, sheet, entryInfo, entryCost, afterRender, prepare, install, payLive, ownerSummary, printerSummary, seasonCandidate, seasonSVG, db };
 })();

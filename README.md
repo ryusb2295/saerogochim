@@ -102,3 +102,7 @@ node --test tests/sticker-editor.test.cjs tests/commerce.test.cjs tests/commerce
 - [ADMIN.md](ADMIN.md): 관리자 계정, 인쇄소 승인, 국세청 확인, 푸시 알림, AI 켜기 설정
 - [docs/API.md](docs/API.md): 쓴 외부 서비스, 서버 요청, DB 함수
 - [docs/IMAGE_GENERATION.md](docs/IMAGE_GENERATION.md): 이미지 생성 방식을 정한 과정 (LoRA 실험)
+
+## 50mm 원형 스티커 인쇄
+
+결과 화면에서 원형 스티커 인쇄하기 → 배경·업체 규격 → 미리보기 생성 → 승인 → PDF/ZIP 받기 또는 견적 요청 순서로 사용합니다. artwork.pdf와 cutline.pdf를 분리하며, 300ppi 미만은 생성 전에 차단합니다. 이미지 만들기 화면 진입 때 30/10/0온과 실제 차감 시점을 안내합니다. [규격·파일·인쇄소 전달 설정](docs/STICKER_PRINT.md)을 확인하세요.

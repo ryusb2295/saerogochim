@@ -760,12 +760,12 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .focus-intro h1{margin:0 0 4px}
 
 /* ===== 로딩 화면 (Figma '로딩': 엔티가 일하는 중) ===== */
-.loader{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:62vh;padding:64px 24px 150px;border-radius:24px;background:linear-gradient(180deg,#cffae5 0%,#ecfff6 38%,#fff 62%)}
+.loader{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:62vh;padding:64px 24px 150px;border-radius:24px}
 .gen-modal .loader{min-height:100%;border-radius:0;justify-content:center;padding-top:40px}
 .ld-art{display:flex;flex-direction:column;align-items:center;margin-bottom:30px}
 .ld-bubble{position:relative;margin-bottom:12px;padding:6px 16px;border-radius:999px;background:#fff;color:#00a35f;font-size:13px;font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,.06)}
 .ld-bubble:after{content:'';position:absolute;left:50%;bottom:-5px;width:10px;height:10px;background:#fff;transform:translateX(-50%) rotate(45deg)}
-.ld-ant{width:150px;height:auto}
+.ld-ant{width:176px;height:auto}
 .ld-art .shiba-art{width:150px}
 .ld-art:not(.has-ant) .ld-ant,.ld-art.has-ant .shiba-art{display:none}
 .an-ring.ld-bar{width:min(240px,70%);height:8px;margin:0 0 24px;border-radius:99px;background:#ececec;overflow:hidden}
@@ -773,10 +773,10 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .loader h2{margin:0 0 6px;font-size:20px;font-weight:700;color:#353535}
 .ld-sub{margin:0;font-size:14px;color:#9d9d9d}
 .loader .an-note{margin-top:16px;font-size:12px;color:#9d9d9d}
-/* 아래 모서리 치즈 장식 (Figma 그림을 받기 전 임시로 CSS로 그림) */
-.ld-deco:before,.ld-deco:after{content:'';position:absolute;bottom:-34px;width:118px;height:108px;border-radius:20px;background:radial-gradient(circle at 32% 34%,#fff3b0 0 10px,transparent 11px),radial-gradient(circle at 70% 66%,#fff3b0 0 8px,transparent 9px),radial-gradient(circle at 74% 26%,#fff3b0 0 5px,transparent 6px),#ffd84d}
-.ld-deco:before{left:-34px;transform:rotate(-28deg)}
-.ld-deco:after{right:-34px;transform:rotate(28deg)}
+/* .analyzing.an2의 background:none보다 우선해야 시안 그라데이션이 보인다 */
+.an2.loader{background:linear-gradient(180deg,#cdffec 0%,#fff 52%)}
+.ld-deco{position:absolute;left:0;right:0;bottom:0;line-height:0;pointer-events:none}
+.ld-deco svg{display:block;width:100%;height:auto}
 .ld-art .shiba-art img:first-child{border-radius:18px}
 
 /* 질문 화면: 상단 바, 하단 탭 없이 한 화면 (시디과 피드백 26.11.20) */
@@ -820,6 +820,25 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .chat-attach .icon,.chat-send .icon{width:22px;height:22px}
 .chat-send{display:grid;place-items:center;flex:none;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:#00c673;color:#fff;cursor:pointer}
 .chat-input .chat-send{padding:0}
+/* 분위기, 색상 칩: 고르면 진한 회색 (시디과 온보딩 시안) */
+.pick.on{border-color:#353535;background:#353535;color:#fff;font-weight:500}
+
+/* 취향 단계 (온보딩 시안): 색 동그라미, 참고 이미지 가로 줄 */
+.swatches{display:flex;flex-wrap:wrap;gap:10px 7px}
+.swatch{display:grid;place-items:center;width:42px;height:42px;padding:0;border:2px solid transparent;border-radius:50%;background:none;cursor:pointer}
+.swatch i{width:30px;height:30px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.swatch.on{border-color:#8a8a8a}
+.swatch-none .icon{width:30px;height:30px;padding:6px;border:1.5px solid #8a8a8a;border-radius:50%;color:#8a8a8a}
+.ref-row{display:flex;gap:12px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+.ref-row::-webkit-scrollbar{display:none}
+.ref-row .ref-upload,.ref-row img{flex:0 0 112px;width:112px;height:112px;border-radius:12px}
+.ref-row .ref-upload{flex-direction:column;gap:6px;min-height:0;border:1.5px solid #e2e2e2;font-size:15px}
+.ref-row .ref-upload .icon{width:24px;height:24px}
+.ref-row img{object-fit:cover}
+
 
 /* Image source choice and in-preview character sizing. */
 .source-tabs{margin:12px 0}.source-tabs .choice{flex:1;padding:10px 6px;font-size:13px}.image-source-panel[hidden]{display:none}.image-source-panel .make-brands img{max-height:140px}.image-source-panel{margin-top:16px}.sticker-preview{padding-top:58px!important}.sticker-quick-size{position:absolute;inset:8px 8px auto;z-index:2;display:flex;align-items:center;gap:6px;padding:6px 8px;background:#fff;border:1px solid var(--line);border-radius:10px;font-size:12px;box-shadow:0 2px 8px #00000008}.sticker-quick-size[hidden]{display:none}.sticker-quick-size span{white-space:nowrap}.sticker-quick-size button{border:1px solid var(--line);border-radius:7px;background:white;min-width:28px;min-height:30px;padding:0}.sticker-quick-size input{min-width:30px;width:100%;accent-color:var(--ai)}.sticker-quick-size output{min-width:36px;text-align:right}#change-sticker-image{margin-bottom:10px}
+
+/* Approved 50mm print proof. Two equal view boxes preserve physical scale. */
+.sticker-print-sheet{max-width:900px!important}.print-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.print-preview-grid figure{min-width:0;margin:0}.print-preview-grid figcaption{font-size:12px;text-align:center;margin-bottom:8px}.print-preview-grid svg{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:8px}.print-file-list{display:grid;gap:8px;margin:16px 0}.print-file-list label,.print-approval{display:flex;align-items:flex-start;gap:8px;font-size:13px}.print-approval{margin:16px 0}.print-approval input,.print-file-list input{width:auto;flex:none;min-height:0;margin-top:4px}.sticker-print-sheet input[type=color]{width:100%;height:44px}.sticker-print-sheet .market-fold input{margin-bottom:12px}
