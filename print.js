@@ -25,7 +25,7 @@ const Q_ST = { submitted: ['검토 중', 'st-open'], withdrawn: ['철회', 'st-d
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const MATERIALS = ['아트지', '유포지', '투명 PET', '크라프트지', '기타'];
 const FINISH = ['무광 코팅', '유광 코팅', '도무송 재단', '박'];
-const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '받은 견적', newreq: '제작 견적 요청', request: '견적 비교', pay: '결제', chats: '채팅', chat: '채팅', notis: '알림' };
+const PAGE_LABEL = { admin: '계정 관리', dash: '대시보드', market: '요청 찾기', quote: '견적 작성', myquotes: '보낸 견적', jobs: '수락된 의뢰', requests: '인쇄', newreq: '제작 견적 요청', request: '견적 비교', pay: '결제', chats: '채팅', chat: '채팅', notis: '알림' };
 const ERR = { account_unavailable: '해당 계정을 찾지 못했어요.', files_remaining: '계정 파일이 남아 있어요. 다시 시도해주세요.', confirm_username: '삭제할 계정의 아이디를 정확히 입력해주세요.', not_verified_printer: '승인된 인쇄소만 할 수 있어요.', request_closed: '견적이 마감된 요청이에요.', quote_locked: '이미 결정된 견적이라 수정할 수 없어요.', already_closed: '이미 다른 견적을 수락했거나 마감된 요청이에요.', quote_unavailable: '지금은 처리할 수 없는 견적이에요.', forbidden: '권한이 없어요.', invalid_transition: '지금 단계에서는 바꿀 수 없어요.', ai_limit: '오늘 AI 생성 횟수를 다 썼어요.', invalid_delivery_date: '납품 예상일을 확인해주세요.', biz_no_missing: '사업자등록번호가 없는 인쇄소예요.', nts_key_missing: '국세청 API 키가 아직 설정되지 않았어요.', nts_failed: '국세청 조회에 실패했어요. 잠시 뒤 다시 시도해주세요.' };
 
 // 후기: 11_reviews.sql을 아직 실행하지 않은 DB에서는 빈 목록으로 돌아간다
@@ -408,9 +408,15 @@ function reqCard(x) {
   const tail = st === 'choose' ? '견적 마감, 받은 견적 중에서 업체를 골라주세요' : st === 'open' ? (qs.length ? '견적을 비교하고 업체를 골라보세요' : '인쇄소 견적을 기다리고 있어요') : ['accepted', 'in_progress', 'delivered'].includes(x.status) ? (x.paid_at ? '결제 완료 · 업체와 제작을 진행하고 있어요' : '<b class="need-pay">결제 대기</b> 눌러서 결제해 주세요') : '진행이 끝난 요청이에요';
   return `<button class="req-card2" data-req="${x.id}"><div class="top">${x.url ? `<img class="req-thumb" src="${esc(x.url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div><p class="meta" style="margin:0"><b class="${ST_CLS[st]}">${REQ_ST[st][0]}</b>${ymd(x.created_at)} 요청</p><strong>${esc(x.title)}</strong></div><span class="cnt">견적 ${qs.length}개 ›</span></div><div class="bottom">${names.length ? `<span class="av-stack">${names.slice(0, 3).map(n => `<i>${esc(n.slice(0, 1))}</i>`).join('')}</span>` : ''}<span>${tail}</span></div></button>`;
 }
+const ORDER_STEPS = ['전달', '제작중', '도착'], ORDER_AT = { accepted: 0, in_progress: 1, delivered: 2 };
+function orderCard(x) {
+  const qt = (x.quotations || []).find(q => q.status === 'accepted'), at = ORDER_AT[x.status], done = at === undefined;
+  const steps = done ? '' : `<ol class="order-steps" aria-label="진행 단계 ${ORDER_STEPS[at]}"><b style="width:calc((100% - 12px) * ${at / 2})"></b>${ORDER_STEPS.map((l, i) => `<li class="${i < at ? 'past' : i === at ? 'now' : ''}"><i></i>${i === at ? `<span>${l}</span>` : ''}</li>`).join('')}</ol>${x.paid_at ? '' : '<p class="order-pay"><b class="need-pay">결제 대기</b> 주문상세에서 결제해 주세요</p>'}`;
+  return `<article class="order-card"><div class="order-top">${x.url ? `<img class="order-thumb" src="${esc(x.url)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'order-thumb'}))">` : '<span class="order-thumb"></span>'}<div class="order-body"><p class="order-meta"><span>${ymd(x.created_at)} 요청</span><button type="button" class="order-link" data-req="${x.id}">주문상세 ›</button></p><strong>${esc(x.title)}</strong><p class="order-line"><span>${esc(qt?.print_shops?.name || '')} ${Number(qt?.quantity || x.quantity || 0).toLocaleString()}매</span>${qt ? `<b>${Number(qt.total_price).toLocaleString()}원</b>` : ''}</p></div></div>${steps}${done && x.status === 'completed' ? `<button type="button" class="primary full order-again" data-reorder-req="${x.id}">다시 주문하기</button>` : ''}</article>`;
+}
 function requestsPage() {
   const r = useData('requests', async () => {
-    const rows = await q(sb.from('print_requests').select('id,title,item,status,created_at,quote_deadline,preview_path,paid_at,quotations!quotations_request_id_fkey(status,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
+    const rows = await q(sb.from('print_requests').select('id,title,item,status,quantity,created_at,quote_deadline,preview_path,paid_at,quotations!quotations_request_id_fkey(status,total_price,quantity,print_shops(name))').eq('owner_id', uid).order('created_at', { ascending: false }).range(0, reqLimit));
     if (!rows.length) return rows;
     const { data } = await sb.storage.from('request-previews').createSignedUrls(rows.map(x => x.preview_path), 300);
     const urls = Object.fromEntries((data || []).filter(x => x.signedUrl).map(x => [x.path, x.signedUrl]));
@@ -420,10 +426,10 @@ function requestsPage() {
   return stateView(r, 'requests', d => {
     const live = x => ['open', 'choose'].includes(reqSt(x, (x.quotations || []).filter(q => q.status !== 'withdrawn').length));
     const all = d.slice(0, reqLimit), open = all.filter(live), making = all.filter(x => ['accepted', 'in_progress', 'delivered'].includes(x.status)), past = all.filter(x => !live(x) && !making.includes(x));
-    const tabs = `<div class="seg req-tabs" role="tablist">${[['live', `진행 중 ${open.length + making.length}`], ['past', `지난 의뢰 ${past.length}`]].map(([v, l]) => `<button role="tab" aria-selected="${reqTab === v}" class="${reqTab === v ? 'on' : ''}" data-reqtab="${v}">${l}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg req-tabs" role="tablist">${[['live', '진행중'], ['past', '거래내역']].map(([v, l]) => `<button role="tab" aria-selected="${reqTab === v}" class="${reqTab === v ? 'on' : ''}" data-reqtab="${v}">${l}</button>`).join('')}</div>`;
     const more = d.length > reqLimit ? '<button class="secondary full" data-more="requests">더 보기</button>' : '';
-    if (reqTab === 'past') return tabs + (past.length ? past.map(reqCard).join('') : emptyBox('지난 의뢰가 없어요', '완료하거나 취소한 의뢰가 여기에 모여요.')) + more;
-    return `${tabs}${goNew}${making.length ? `<h2 class="sec-label">제작 진행 중</h2>${making.map(reqCard).join('')}` : ''}
+    if (reqTab === 'past') return tabs + (past.length ? past.map(x => x.status === 'completed' ? orderCard(x) : reqCard(x)).join('') : emptyBox('거래내역이 없어요', '완료하거나 취소한 주문이 여기에 모여요.')) + more;
+    return `${tabs}${goNew}${making.length ? `<h2 class="sec-label">제작 진행 중</h2>${making.map(orderCard).join('')}` : ''}
 ${open.length ? `<h2 class="sec-label">견적 받는 중</h2>${open.map(reqCard).join('')}` : ''}${more}`;
   });
 }
@@ -732,6 +738,7 @@ function bindPrint() {
   };
   $('#app').querySelectorAll('[data-go-new]').forEach(b => b.onclick = () => { page = 'newreq'; render(); scrollTo(0, 0) });
   $('#app').querySelectorAll('[data-req]').forEach(b => b.onclick = () => { reqId = b.dataset.req; page = 'request'; render(); scrollTo(0, 0) });
+  $('#app').querySelectorAll('[data-reorder-req]').forEach(b => b.onclick = () => { reqId = b.dataset.reorderReq; page = 'request'; render(); scrollTo(0, 0); let n = 0; const t = setInterval(() => { const go = $('[data-live-reorder]'); if (go || ++n > 40 || page !== 'request') { clearInterval(t); go?.click() } }, 150) });
   $('#app').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { quoteSort = b.dataset.sort; render() });
   const rf = $('#review-form');
   if (rf) {

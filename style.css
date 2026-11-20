@@ -863,3 +863,34 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .print-approval small{display:none;margin-top:2px;font-size:12px;font-weight:400;color:#949494}
 .print-approval:has(input:disabled){opacity:.6;cursor:default}.print-approval:has(input:disabled) small{display:block}
 .print-preview-grid figcaption small{display:block;font-size:11px;color:#949494}
+
+/* 인쇄 주문 카드 (시안): 진행중 3단계, 거래내역 다시 주문하기 */
+.req-tabs{background:none;border-radius:0;padding:0;border-bottom:1px solid #ececec}
+.req-tabs button{padding:12px 0;border-radius:0;font-size:16px;color:#a0a0a0;border-bottom:2px solid transparent;margin-bottom:-1px}
+.req-tabs button.on{background:none;box-shadow:none;color:#222;font-weight:700;border-bottom-color:#222}
+.order-card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px}
+.order-top{display:flex;gap:14px;align-items:flex-start}
+.order-thumb{flex:none;width:84px;height:84px;border-radius:14px;object-fit:cover;background:#fff4c9}
+.order-body{flex:1;min-width:0}
+.order-meta{display:flex;justify-content:space-between;align-items:center;margin:0;font-size:13px;color:#a0a0a0}
+.order-link{border:0;background:none;padding:4px 0;min-height:0;font-size:12px;color:#353535;cursor:pointer}
+.order-body strong{display:block;margin:2px 0 8px;font-size:17px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-line{display:flex;justify-content:space-between;align-items:baseline;margin:0;font-size:14px;color:#353535}
+.order-line b{font-size:18px;font-weight:700}
+.order-steps{display:flex;justify-content:space-between;list-style:none;margin:20px 8px 24px;padding:0;position:relative}
+.order-steps:before{content:'';position:absolute;left:6px;right:6px;top:6px;height:2px;background:#e6e6e6}
+.order-steps li{position:relative;width:14px;height:14px;display:grid;justify-items:center}
+.order-steps b{position:absolute;left:6px;top:6px;height:2px;background:#00c673}
+.order-steps i{position:relative;z-index:1;width:8px;height:8px;margin-top:3px;border-radius:50%;background:#d6d6d6}
+.order-steps li.past i,.order-steps li.now i{background:#00c673}
+.order-steps li.now i{box-shadow:0 0 0 4px rgba(0,198,115,.22)}
+.order-steps span{position:absolute;top:20px;white-space:nowrap;font-size:12px;color:#7a7a7a}
+.order-pay{margin:0;padding-top:10px;font-size:13px;color:#7a7a7a}
+.order-again{margin-top:16px;background:#353535;min-height:48px}
+/* 인쇄 탭은 시안처럼 회색 바탕에 흰 카드를 한 장씩 띄운다 */
+body:has(.order-card),body:has(.order-card) main,body:has(.order-card) #app{background:#f4f5f7}
+.order-card{margin-bottom:10px}
+/* 주문상세 타임라인처럼 지금 단계 점이 퍼지듯 깜빡인다 (마지막 단계는 멈춤) */
+.order-steps li.now:not(:last-child) i{animation:order-pulse 1.8s ease-out infinite}
+@keyframes order-pulse{0%{box-shadow:0 0 0 0 rgba(0,198,115,.5)}70%,100%{box-shadow:0 0 0 9px rgba(0,198,115,0)}}
+@media (prefers-reduced-motion:reduce){.order-steps li.now i{animation:none}}
