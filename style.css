@@ -976,3 +976,20 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 .do-awaiting_payment{background:#fff1e0;color:#d97706}
 .do-tag{padding:5px 10px;border-radius:999px;font-size:12px;color:#7a7a7a;background:#f5f5f5}
 .demo-order .do-title{display:block;font-size:19px;color:#222;margin-bottom:6px}
+
+/* Character material choices in the preference step. */
+.texture-intro{margin:8px 0 16px}
+.texture-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.texture-card{min-width:0;padding:8px;border:1px solid #e4e6e5;border-radius:14px;background:#fff;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.texture-preview{display:block;position:relative;overflow:hidden;width:100%;border-radius:9px;background:#fff}
+.texture-preview img{position:absolute;max-width:none;height:auto;display:block}
+.texture-name{display:flex;align-items:center;justify-content:space-between;gap:4px;margin:10px 4px 4px;font-size:16px;font-weight:700}
+.texture-description{display:block;margin:0 4px 6px;font-size:14px;line-height:1.5;color:#6b716f;word-break:keep-all}
+.texture-check{display:flex;flex-shrink:0;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid #dce2de;border-radius:50%;color:transparent}
+.texture-check .icon{width:13px;height:13px}
+.texture-card.selected,.texture-auto.selected{border-color:#00b875;box-shadow:0 0 0 1px #00b875;background:#f4fcf8}
+.selected>.texture-name>.texture-check,.texture-auto.selected>.texture-check{color:#fff;background:#00b875;border-color:#00b875}
+.texture-auto{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-top:12px;border:1px solid #e4e6e5;border-radius:14px;background:#fff;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.texture-auto>span:first-of-type{flex:1}.texture-auto strong{display:block;font-size:16px}.texture-auto small{display:block;margin-top:4px;color:#6b716f;font-size:14px;line-height:1.5}
+.texture-card:focus-visible,.texture-auto:focus-visible{outline:3px solid #176f52;outline-offset:3px}
+@media(max-width:380px){.texture-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
