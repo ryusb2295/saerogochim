@@ -993,3 +993,13 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 .texture-auto>span:first-of-type{flex:1}.texture-auto strong{display:block;font-size:16px}.texture-auto small{display:block;margin-top:4px;color:#6b716f;font-size:14px;line-height:1.5}
 .texture-card:focus-visible,.texture-auto:focus-visible{outline:3px solid #176f52;outline-offset:3px}
 @media(max-width:380px){.texture-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* 첫 대화 전 채팅방 (시안): 아래쪽에 자주 묻는 질문 칩 */
+.chat-log.is-empty{display:flex;flex-direction:column;justify-content:flex-end}
+.chat-start{padding:0 4px 12px}
+.chat-start h2{margin:0 0 14px;font-size:20px;line-height:29px;color:#222}
+.chat-start p{margin:0 0 10px;font-size:13px;color:#949494}
+.chat-faq{display:flex;flex-wrap:wrap;gap:8px}
+.chat-faq button{min-height:36px;padding:0 14px;border:1px solid #d9d9d9;border-radius:999px;background:#fff;color:#353535;font-size:13px;cursor:pointer}
+.chat-faq button:active{background:#f3f3f3}
+.quick-replies[hidden]{display:none}

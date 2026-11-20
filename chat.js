@@ -10,6 +10,7 @@ const chatTime = t => { const d = new Date(t), now = new Date(); return d.toDate
 
 // 빠른 답장: 누르면 입력칸에 넣어 주고, 고쳐서 보낼 수 있다
 const QUICK_REPLIES = { owner: ['견적 확인했어요', '시안 보내드릴게요', '언제 받을 수 있나요?', '감사합니다!'], printer: ['견적 보내드렸어요', '시안 확인 부탁드려요', '오늘 발송했어요', '감사합니다!'] };
+const CHAT_FAQ = [['견적·수량', '견적 받은 수량 그대로 진행해도 될까요?'], ['소량 제작', '100장 정도 소량 제작도 가능할까요?'], ['재질 추천', '이 디자인에 어울리는 재질을 추천해 주실 수 있나요?'], ['배송 일정', '주문하면 언제쯤 받을 수 있을까요?'], ['수량별 가격', '500장, 1,000장일 때 가격이 어떻게 달라지나요?']];
 function chatPage() {
   const i = chatConv === convId ? chatInfo : null;
   return `<div class="chat-wrap"><header class="chat-head"><button class="ask-back" data-page="chats" aria-label="채팅 목록">${icon('back')}</button><div class="chat-title"><strong>${esc(i?.other_name || '채팅')}</strong><small>${esc(i?.title || '')} ${i ? chip(REQ_ST[i.request_status]) : ''}</small></div></header>
@@ -81,7 +82,13 @@ function paintChat(forceBottom = false) {
     const src = m.image_path && (m.localUrl || chatImgs[m.image_path]);
     html += `<div class="bubble-row${mine ? ' mine' : ''}">${m.image_path ? (src ? `<a class="bubble-img" href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="보낸 사진" loading="lazy"></a>` : '<p class="bubble">사진을 불러오는 중…</p>') : `<p class="bubble${m.failed ? ' failed' : ''}">${esc(m.body)}</p>`}${m.failed ? `<button class="text-button danger-text" data-resend="${m.client_id}">다시 보내기</button>` : m.pending ? '<small>보내는 중</small>' : showTime ? `<small>${d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}</small>` : ''}</div>`;
   });
+  // 첫 대화 전 (사장님): 자주 묻는 질문 칩으로 시작을 돕고, 아래 빠른 답장 줄은 숨긴다
+  const empty = !chatMsgs.length, faq = empty && myRole !== 'printer';
+  if (faq) html = `<div class="chat-start"><h2>자주 묻는 질문으로<br>채팅을 시작해보세요</h2><p>이런 질문 어때요?</p><div class="chat-faq">${CHAT_FAQ.map(([l, q]) => `<button type="button" data-faq="${esc(q)}">${esc(l)}</button>`).join('')}</div></div>`;
+  const qr = document.querySelector('.quick-replies'); if (qr) qr.hidden = faq;
+  log.classList.toggle('is-empty', faq);
   log.innerHTML = html || '<p class="day-sep">첫 메시지를 보내보세요.</p>';
+  log.querySelectorAll('[data-faq]').forEach(b => b.onclick = () => { const t = $('#chat-text'); if (!t) return; t.value = b.dataset.faq; t.dispatchEvent(new Event('input')); t.focus() });
   loadChatImgs();
   if (forceBottom || nearBottom) log.scrollTop = log.scrollHeight;
   log.querySelectorAll('[data-resend]').forEach(b => b.onclick = () => { const m = chatMsgs.find(x => x.client_id === b.dataset.resend); if (m) sendMsg(m) });
