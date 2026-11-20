@@ -822,3 +822,16 @@ button:focus-visible,a:focus-visible{outline-color:#00c673}
 .chat-input .chat-send{padding:0}
 /* 분위기, 색상 칩: 고르면 진한 회색 (시디과 온보딩 시안) */
 .pick.on{border-color:#353535;background:#353535;color:#fff;font-weight:500}
+
+/* 취향 단계 (온보딩 시안): 색 동그라미, 참고 이미지 가로 줄 */
+.swatches{display:flex;flex-wrap:wrap;gap:10px 7px}
+.swatch{display:grid;place-items:center;width:42px;height:42px;padding:0;border:2px solid transparent;border-radius:50%;background:none;cursor:pointer}
+.swatch i{width:30px;height:30px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.swatch.on{border-color:#8a8a8a}
+.swatch-none .icon{width:30px;height:30px;padding:6px;border:1.5px solid #8a8a8a;border-radius:50%;color:#8a8a8a}
+.ref-row{display:flex;gap:12px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+.ref-row::-webkit-scrollbar{display:none}
+.ref-row .ref-upload,.ref-row img{flex:0 0 112px;width:112px;height:112px;border-radius:12px}
+.ref-row .ref-upload{flex-direction:column;gap:6px;min-height:0;border:1.5px solid #e2e2e2;font-size:15px}
+.ref-row .ref-upload .icon{width:24px;height:24px}
+.ref-row img{object-fit:cover}
