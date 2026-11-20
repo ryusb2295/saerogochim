@@ -489,9 +489,23 @@ const INTRO_KEY='gageon-intro-v1';
 function showSplash(){let seen=false;try{seen=sessionStorage.getItem('gageon-splash')}catch{}if(seen)return null;try{sessionStorage.setItem('gageon-splash','1')}catch{}
  document.body.insertAdjacentHTML('beforeend','<div class="splash" role="img" aria-label="가게온, 누구나 쉽게 시작하는 가게 브랜딩"><p>누구나 쉽게 시작하는 가게 브랜딩</p><img src="assets/brand/logo.svg" alt=""><small>© 가게온</small></div>');return Date.now()}
 function hideSplash(at){const el=$('.splash');if(!el)return;setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),450)},Math.max(0,1200-(Date.now()-at)))}
+// 처음 온 사람용 소개 화면. 건너뛰기/로그인하러 가기는 로그인 화면으로, 먼저 둘러보기는 만드는 과정 슬라이드로
+const TOUR=[
+ {t:'가게를 소개해요',d:'가게 이름, 업종, 원하는 분위기만 고르면 돼요. 1분이면 끝나요.',art:`<div class="tour-mock"><b>어떤 분위기를 원하시나요?</b><div class="picks">${['귀여운','심플한','고급스러운','힙한','따뜻한','감성적인'].map((w,i)=>`<span class="pick${i===0||i===4?' on':''}">${w}</span>`).join('')}</div></div>`},
+ {t:'AI가 캐릭터를 그려요',d:'시디과 학생들이 그린 그림체를 참고해서 우리 가게만의 캐릭터를 만들어요.',art:`<div class="tour-grid">${['duck','object','pastel','crayon'].map(n=>`<img src="assets/styles/${n}_1.png" alt="" loading="lazy">`).join('')}</div>`},
+ {t:'스티커와 포장으로 꾸며요',d:'캐릭터로 리뷰 스티커, 포장 봉투, SNS 홍보물을 바로 만들어요.',art:`<div class="tour-pair"><img src="assets/demo/dalbit-sticker.png" alt="" loading="lazy"><img src="assets/demo/bamcham-bag.png" alt="" loading="lazy"></div>`},
+ {t:'인쇄소에 맡겨요',d:'근처 인쇄소 견적을 비교하고 채팅으로 주문까지 할 수 있어요.',art:`<div class="tour-pair"><img src="assets/demo/dalbit-coupon.png" alt="" loading="lazy"><img src="assets/demo/kkum-label.png" alt="" loading="lazy"></div>`}];
 function showIntro(){try{if(localStorage.getItem(INTRO_KEY))return}catch{}
- document.body.insertAdjacentHTML('beforeend','<section class="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title"><div class="intro-art" aria-hidden="true"></div><div class="intro-copy"><h1 id="intro-title">우리 가게만의 캐릭터,<br>쉽게 만들어 볼까요?</h1><p>가게를 소개하면 AI가 캐릭터부터<br>브랜드 디자인까지 만들어드려요.</p></div><button class="primary" id="intro-start">시작하기</button></section>');
- $('#intro-start').onclick=()=>{try{localStorage.setItem(INTRO_KEY,'1')}catch{}$('.intro-screen').remove()};$('#intro-start').focus()}
+ document.body.insertAdjacentHTML('beforeend',`<section class="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title"><button type="button" class="intro-skip" id="intro-skip">SKIP</button><div class="intro-art" aria-hidden="true"></div><div class="intro-copy"><h1 id="intro-title">우리 가게만의 캐릭터,<br>쉽게 만들어 볼까요?</h1><p>가게를 소개하면 AI가 캐릭터부터<br>브랜드 디자인까지 만들어드려요.</p></div><div class="intro-actions"><button class="primary" id="intro-start">로그인하러 가기</button><button type="button" class="intro-tour" id="intro-tour">먼저 둘러볼게요</button></div></section>`);
+ const done=()=>{try{localStorage.setItem(INTRO_KEY,'1')}catch{}$('.intro-screen').remove();$('#li-id')?.focus()};
+ $('#intro-skip').onclick=done;$('#intro-start').onclick=done;
+ $('#intro-tour').onclick=()=>{const el=$('.intro-screen');el.classList.add('touring');el.setAttribute('aria-labelledby','tour-0');
+  el.innerHTML=`<button type="button" class="intro-skip" id="intro-skip">SKIP</button><div class="tour" id="tour">${TOUR.map((x,i)=>`<article class="tour-slide" aria-roledescription="슬라이드" aria-label="${i+1} / ${TOUR.length}"><div class="tour-art">${x.art}</div><span class="tour-step">STEP ${i+1}</span><h2 id="tour-${i}">${x.t}</h2><p>${x.d}</p></article>`).join('')}</div><div class="tour-dots" aria-hidden="true">${TOUR.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div><div class="intro-actions"><button class="primary" id="tour-next">다음</button></div>`;
+  const tour=$('#tour'),dots=[...el.querySelectorAll('.tour-dots i')],btn=$('#tour-next'),at=()=>Math.round(tour.scrollLeft/tour.clientWidth);
+  const paint=()=>{const i=at();dots.forEach((d,k)=>d.classList.toggle('on',k===i));btn.textContent=i===TOUR.length-1?'로그인하러 가기':'다음'};
+  tour.onscroll=paint;$('#intro-skip').onclick=done;
+  btn.onclick=()=>{const i=at();if(i>=TOUR.length-1)return done();tour.scrollTo({left:(i+1)*tour.clientWidth,behavior:'smooth'})};btn.focus()};
+ $('#intro-start').focus()}
 async function init(){const splashAt=showSplash();checkAI();try{if(window.GAGEON_ASSETS){assets=window.GAGEON_ASSETS}else{await Promise.all([...EX_ART,'shop'].map(async n=>{const r=await fetch('assets/'+n+'.svg');if(!r.ok)throw Error(n);assets[n]=await r.text()}))}seedSamples();await seedDemo();if(REAL){await restoreSession()}else{try{const id=localStorage.getItem(SESSION_KEY)||'';if(users()[id])signIn(id)}catch{}page=user?'home':'start'}state.name=shop;render();if(splashAt)hideSplash(splashAt);if(page==='start')showIntro()}catch(e){if(splashAt)hideSplash(splashAt);console.error(e);showCrash()}}
 addEventListener('pagehide',saveDraft);
 // 입력이 멈추고 1초 뒤 임시 저장, AI 생성 중에는 창을 닫기 전에 한 번 묻는다
