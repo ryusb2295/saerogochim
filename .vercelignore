@@ -5,3 +5,4 @@ scripts/
 server.py
 test_*.py
 *.md
+docs/hackathon/
