@@ -6,7 +6,7 @@
   packages: {
     starter: { name: '스타터', price: 9900, rank: 1, items: ['캐릭터 PNG', '기본 스티커 PNG'] },
     opening: { name: '개업', price: 29000, rank: 2, recommended: true, items: ['캐릭터·스티커 3종 PNG', '포장·SNS 홍보물', '칼선 SVG·PDF'] },
-    brand: { name: '브랜드', price: 49000, rank: 3, items: ['개업 패키지 전체', '메뉴판·쿠폰 PNG', '라이트 1개월'] }
+    brand: { name: '디자인', price: 49000, rank: 3, items: ['개업 패키지 전체', '메뉴판·쿠폰 PNG', '라이트 1개월'] }
   },
   plans: {
     free: { name: '무료', price: 0, tokens: 150, benefits: ['가입 시 온 1회 지급'] },

@@ -83,7 +83,7 @@
           this.ledger(a, pack.tokens, 'purchase', { receipt });
         } else if (item.kind === 'plan') this.subscribe(a, item.id);
         else if (item.kind === 'package') {
-          const pkg = P.packages[item.id]; if (!pkg || !item.brandId) throw Error('브랜드 패키지를 확인해주세요.');
+          const pkg = P.packages[item.id]; if (!pkg || !item.brandId) throw Error('디자인 패키지를 확인해주세요.');
           const old = a.purchases.filter(p => p.brandId === item.brandId).sort((a, b) => P.packages[b.packageId].rank - P.packages[a.packageId].rank)[0];
           if (!old || P.packages[old.packageId].rank < pkg.rank) {
             a.purchases.push({ id: id(), userId: user, brandId: item.brandId, packageId: item.id, price: Math.max(0, pkg.price - (old ? P.packages[old.packageId].price : 0)), createdAt: this.now(), receipt });

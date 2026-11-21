@@ -149,12 +149,12 @@ const cloudBrand = {
   async load() {
     let list = [];
     try { list = (await q(sb.from('brands').select('id,data,updated_at').eq('owner_id', uid).order('updated_at', { ascending: false }).limit(12))).map(b => ({ ...b.data, id: b.id, savedAt: Date.parse(b.updated_at) })) } catch {}
-    if (!list.length && user === PUBLIC_DEMO.id) list = samples();   // 공개 체험 계정만 예시 브랜드를 보여준다
+    if (!list.length && user === PUBLIC_DEMO.id) list = samples();   // 공개 체험 계정만 예시 캐릭터를 보여준다
     try { localStorage.setItem(KEY, JSON.stringify(list)) } catch {}
   },
   save(r) {
     const { id, savedAt, ...data } = r;
-    return q(sb.from('brands').upsert({ id, owner_id: uid, name: r.name || '이름 없는 브랜드', industry: r.industry || null, data, updated_at: new Date().toISOString() })).then(() => true).catch(() => { toast('계정에 저장하지 못했어요. 이 기기에만 저장됐어요.'); return false; });
+    return q(sb.from('brands').upsert({ id, owner_id: uid, name: r.name || '이름 없는 가게', industry: r.industry || null, data, updated_at: new Date().toISOString() })).then(() => true).catch(() => { toast('계정에 저장하지 못했어요. 이 기기에만 저장됐어요.'); return false; });
   },
   remove(id) { q(sb.from('brands').delete().eq('id', id)).catch(() => toast('계정에서 지우지 못했어요. 다시 시도해주세요.')) }
 };
@@ -166,7 +166,7 @@ async function restoreSession() {
 function realAuthForm() {
   if (auth === 'signup') {
     const owner = signupRole === 'owner';
-    return `<h1 class="start-title">회원가입</h1><div class="choices role-pick" role="radiogroup" aria-label="회원 유형">${[['owner', '소상공인', 'AI로 브랜드를 만들고 인쇄 견적을 받아요'], ['printer', '인쇄소', '제작 요청을 보고 견적을 보내요']].map(([v, l, d]) => `<button type="button" class="choice${signupRole === v ? ' selected' : ''}" role="radio" aria-checked="${signupRole === v}" data-signup-role="${v}" title="${d}"><strong>${l}</strong></button>`).join('')}</div>
+    return `<h1 class="start-title">회원가입</h1><div class="choices role-pick" role="radiogroup" aria-label="회원 유형">${[['owner', '소상공인', 'AI로 캐릭터를 만들고 인쇄 견적을 받아요'], ['printer', '인쇄소', '제작 요청을 보고 견적을 보내요']].map(([v, l, d]) => `<button type="button" class="choice${signupRole === v ? ' selected' : ''}" role="radio" aria-checked="${signupRole === v}" data-signup-role="${v}" title="${d}"><strong>${l}</strong></button>`).join('')}</div>
 <form id="real-signup" class="signup-compact" novalidate>${fld('su-id', '아이디', 'text', 'data-rule="id" maxlength="20" autocomplete="username" autocapitalize="off" placeholder="영문 소문자, 숫자 4~20자"')}${fld('su-pw', '비밀번호', 'password', 'data-rule="pw" maxlength="64" autocomplete="new-password" placeholder="영문+숫자 8자 이상"')}${fld('su-pw2', '비밀번호 확인', 'password', 'data-rule="pw" data-same="su-pw" maxlength="64" autocomplete="new-password" placeholder="한 번 더 입력하세요"')}${fld('su-shop', owner ? '가게 이름' : '업체명', 'text', `data-rule="shop" maxlength="24" placeholder="${owner ? '예: 몽글빵집' : '예: 대구인쇄'}"`)}${owner ? '' : fld('su-biz', '사업자등록번호', 'text', 'data-rule="biz" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="숫자 10자리"') + '<p class="help" style="margin:-4px 0 8px">국세청에서 영업 중인지 확인한 뒤 승인해요.</p>'}<label class="check"><input type="checkbox" id="su-agree" aria-describedby="su-agree-err">시연용 서비스라 입력한 정보가 해커톤 기간 동안 저장되는 것에 동의해요. (필수)</label><p class="field-error" id="su-agree-err" role="alert" hidden></p><p class="field-error" id="su-form-err" role="alert" hidden></p><button class="primary full" type="submit">가입하기</button></form><div class="auth-links start-bottom"><span>이미 계정이 있나요?</span><button type="button" class="text-button" data-auth="login">로그인</button></div>`;
   }
   return `<h1 class="sr-only">가게온 로그인</h1><p class="start-tag">누구나 쉽게 시작하는 가게 브랜딩</p><form id="real-login" class="login-compact" novalidate>${fld('li-id', '아이디', 'text', 'maxlength="20" autocomplete="username" autocapitalize="off" placeholder="아이디를 입력하세요"')}${fld('li-pw', '비밀번호', 'password', 'maxlength="64" autocomplete="current-password" placeholder="비밀번호를 입력하세요"')}<p class="field-error" id="li-form-err" role="alert" hidden></p><button class="primary full" type="submit">로그인</button></form><div class="auth-links"><button type="button" class="text-button" data-auth="signup">회원가입</button><span class="link-bar" aria-hidden="true"></span><button type="button" class="text-button" id="pw-help">비밀번호 찾기</button></div>${QUICK_LOGIN ? `<div class="quick-login start-bottom"><p>체험용 계정으로 바로 둘러보기</p><div class="quick-row"><button type="button" class="quick-btn" data-quick="owner" aria-label="소상공인으로 둘러보기"><span class="q-ico">${icon('shop')}</span><strong>소상공인</strong></button><button type="button" class="quick-btn" data-quick="printer" aria-label="인쇄소로 둘러보기"><span class="q-ico dark">${icon('box')}</span><strong>인쇄소</strong></button></div><p class="help">체험 계정은 모두가 함께 써서 다른 사람이 바꾼 내용이 보일 수 있어요.</p></div>` : ''}`;
@@ -211,7 +211,7 @@ function bindReal() {
       const { error } = await sb.auth.signUp({ email: id + ID_DOMAIN, password: $('#su-pw').value, options: { data: { username: id, role: signupRole, display_name: name, shop_name: name, ...(signupRole === 'printer' ? { biz_no: $('#su-biz').value.replace(/\D/g, '') } : {}) } } });
       if (error) return err(/registered|exists/i.test(error.message) ? '이미 쓰고 있는 아이디예요.' : errMsg(error));
       if (!await loadMe()) throw Error('profile');
-      toast(signupRole === 'printer' ? '가입했어요. 운영자 승인 후 견적을 보낼 수 있어요.' : '가입했어요. 첫 브랜드를 만들어보세요.');
+      toast(signupRole === 'printer' ? '가입했어요. 운영자 승인 후 견적을 보낼 수 있어요.' : '가입했어요. 첫 캐릭터를 만들어보세요.');
       goHomeAfterLogin();
     } catch (e2) { err(errMsg(e2)) } finally { if (b.isConnected) { b.disabled = false; b.textContent = '가입하기' } }
   };
@@ -544,7 +544,7 @@ function newreqPage() {
   return `<button class="text-button" data-page="requests">${icon('back')}받은 견적</button><section class="intro"><h1>제작 견적 요청</h1><p>인쇄소들이 이 내용을 보고 견적을 보내요. 가게 이름, 연락처는 공개되지 않아요.</p></section>
 ${!REAL?'<div class="notice">모의 견적 시연이에요. 예시 인쇄소 단가로 결제 대기 주문을 만들며 실제 제작은 접수되지 않아요.</div>':''}<form id="req-form" class="panel" novalidate>
 <fieldset class="field"><legend>제작 품목</legend><div class="choices">${Object.entries(ITEM).map(([v, l]) => `<button type="button" class="choice${d.item === v ? ' selected' : ''}" data-req-item="${v}" aria-pressed="${d.item === v}">${l}</button>`).join('')}</div>${d.item === 'other' ? fld('rq-other', '품목 이름', 'text', `maxlength="30" value="${esc(d.item_other)}"`) : ''}</fieldset>
-<div class="field"><label>디자인 이미지</label><div class="design-pick">${uploadFile ? `<img id="rq-thumb" alt="올린 디자인">` : hasBrand ? `<img src="${svgUri(stickerSVG())}" alt="지금 만든 스티커 디자인">` : `<div class="design-empty">${icon('image')}</div>`}<div><p class="help" style="margin:0 0 8px">${uploadFile ? esc(uploadFile.name) : hasBrand ? '지금 만든 스티커를 1600px PNG로 첨부해요.' : '브랜드를 만들거나 이미지를 올려주세요.'}</p><label class="secondary file-btn">${icon('image')}${hasBrand || uploadFile ? '다른 이미지 올리기' : '이미지 올리기'}<input type="file" id="rq-file" accept="image/png,image/jpeg,image/webp" hidden></label><small class="help">PNG, JPG, WebP · 10MB 이하</small></div></div><p class="field-error" id="rq-file-err" role="alert" hidden></p></div>
+<div class="field"><label>디자인 이미지</label><div class="design-pick">${uploadFile ? `<img id="rq-thumb" alt="올린 디자인">` : hasBrand ? `<img src="${svgUri(stickerSVG())}" alt="지금 만든 스티커 디자인">` : `<div class="design-empty">${icon('image')}</div>`}<div><p class="help" style="margin:0 0 8px">${uploadFile ? esc(uploadFile.name) : hasBrand ? '지금 만든 스티커를 1600px PNG로 첨부해요.' : '캐릭터를 만들거나 이미지를 올려주세요.'}</p><label class="secondary file-btn">${icon('image')}${hasBrand || uploadFile ? '다른 이미지 올리기' : '이미지 올리기'}<input type="file" id="rq-file" accept="image/png,image/jpeg,image/webp" hidden></label><small class="help">PNG, JPG, WebP · 10MB 이하</small></div></div><p class="field-error" id="rq-file-err" role="alert" hidden></p></div>
 ${fld('rq-title', '요청 제목', 'text', `maxlength="40" value="${esc(d.title)}"`)}
 <div class="grid2">${fld('rq-qty', '제작 수량 (개)', 'number', `min="1" max="100000" inputmode="numeric" value="${d.quantity}"`)}<div class="field"><label for="rq-unit">단위</label><select id="rq-unit">${['mm', 'cm'].map(u => `<option${u === d.unit ? ' selected' : ''}>${u}</option>`).join('')}</select></div></div>
 <div class="grid2">${fld('rq-w', '가로', 'number', `min="1" max="2000" step="0.1" inputmode="decimal" value="${d.width}"`)}${fld('rq-h', '세로', 'number', `min="1" max="2000" step="0.1" inputmode="decimal" value="${d.height}"`)}</div>
@@ -744,13 +744,13 @@ const PAGES = REAL ? { admin: adminPage, dash: dashPage, market: marketPage, quo
 function navItems() {
   if (REAL && myRole === 'admin') return [['admin', 'user', '계정 관리']];
   if (REAL && myRole === 'printer') return [['dash', 'home', '대시보드'], ['market', 'search', '요청 찾기'], ['myquotes', 'folder', '보낸 견적'], ['chats', 'chat', '채팅'], ['mypage', 'user', '마이']];
-  if (REAL) return [['home', 'home', '홈'], ['saved', 'folder', '내 브랜드'], ['requests', 'box', '받은 견적'], ['chats', 'chat', '채팅'], ['mypage', 'user', '마이']];
-  return [['home', 'home', '홈'], ['saved', 'folder', '내 브랜드'], ['mypage', 'user', '마이페이지']];
+  if (REAL) return [['home', 'home', '홈'], ['saved', 'folder', '보관함'], ['requests', 'box', '받은 견적'], ['chats', 'chat', '채팅'], ['mypage', 'user', '마이']];
+  return [['home', 'home', '홈'], ['saved', 'folder', '보관함'], ['mypage', 'user', '마이페이지']];
 }
 // 화면 제목을 상단 바에 크게 쓰는 화면 (본문 첫 제목은 숨김)
 const APP_TITLE_PAGES = ['admin', 'saved', 'requests', 'chats', 'mypage', 'notis', 'dash', 'market', 'myquotes', 'jobs', 'newreq', 'guide'];
 function appBar() {
-  const title = { saved: '내 브랜드', mypage: '마이페이지', studio: typeof focusMode !== 'undefined' && focusMode && step >= 3 ? '만들기' : '브랜드 만들기', guide: '이용 가이드', ...PAGE_LABEL }[page];
+  const title = { saved: '보관함', mypage: '마이페이지', studio: typeof focusMode !== 'undefined' && focusMode && step >= 3 ? '만들기' : '캐릭터 만들기', guide: '이용 가이드', ...PAGE_LABEL }[page];
   const left = title ? `<h1 class="app-title">${esc(title)}</h1>` : `<h1 class="app-title brand"><img class="wordmark" src="assets/brand/logo-green.svg" alt="가게온"></h1>`;
   // #logout은 마이페이지 '로그아웃' 버튼이 누르는 숨은 버튼
   return `<header class="app-bar">${left}<div class="app-actions">${myRole === 'admin' ? '<button class="secondary" id="admin-logout">로그아웃</button>' : `${bellButton()}<button class="icon-btn" data-page="mypage" aria-label="마이페이지">${icon('user')}</button>`}<button id="logout" hidden></button></div></header>`;

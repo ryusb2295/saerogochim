@@ -26,11 +26,11 @@ const Commerce = (() => {
     return 'use-v2:' + s.commerceSessionId;
   }
   function noteDesign(s = state) { usageKey(s); }
-  async function markUsed(s = state, owner = who()) { await lock(() => { if(who()!==owner||state!==s)throw Error('브랜드나 계정이 바뀌었어요. 다시 눌러주세요.'); return db().applyDesign(owner, usageKey(s), 'used'); }); saveDraft(); }
+  async function markUsed(s = state, owner = who()) { await lock(() => { if(who()!==owner||state!==s)throw Error('캐릭터나 계정이 바뀌었어요. 다시 눌러주세요.'); return db().applyDesign(owner, usageKey(s), 'used'); }); saveDraft(); }
   async function useDesign(action, s = state) {
     const owner = who(), key = usageKey(s);
     const run = async () => {
-      if (who() !== owner || state !== s) throw Error('브랜드나 계정이 바뀌었어요. 다시 눌러주세요.');
+      if (who() !== owner || state !== s) throw Error('캐릭터나 계정이 바뀌었어요. 다시 눌러주세요.');
       const result = await action();
       if (result === false) return false;
       await markUsed(s, owner); return true;
@@ -82,7 +82,7 @@ const Commerce = (() => {
     return P.costs.edit;
   }
   function entryInfo(kind, next) {
-    const cost=entryCost(kind),label=kind==='brand'?'새 브랜드 만들기':kind==='post'?'홍보물 만들기':kind==='suggestion'?'시즌 이미지 만들기':'스티커 만들기';
+    const cost=entryCost(kind),label=kind==='brand'?'내 캐릭터 만들기':kind==='post'?'홍보물 만들기':kind==='suggestion'?'시즌 이미지 만들기':'스티커 만들기';
     return sheet('온 사용 안내', '<p><strong>'+label+' · '+cost+'온</strong></p><p>현재 남은 온: '+account().tokenBalance+'온</p><p class="help">'+(kind==='brand'?'질문 입력과 음식·상품 사진 적용은 무료예요. AI 캐릭터 생성 또는 사진 배경 제거에 성공하면 '+cost+'온을 사용해요.':kind==='suggestion'?'시안 만들기를 실행할 때 사용해요. 실패하면 반환해요.':cost?'편집과 미리보기는 무료예요. 저장·파일 받기·인쇄 견적 제출에 성공할 때 이번 작업에 한 번만 사용해요.':'이번 작업의 온 사용이 이미 완료되어 추가 차감하지 않아요.')+'</p><button type="button" class="primary full" data-entry-next>확인하고 계속하기</button>',({el,done})=>{el.querySelector('[data-entry-next]').onclick=()=>{done();guard(next)();};});
   }
   function topup(required = 0) {
@@ -113,7 +113,7 @@ const Commerce = (() => {
     noteDesign(); const editing=state; const field = layer === 'name' ? 'name' : 'message', original = String(state[field] || '');
     sheet(layer === 'name' ? '상호명 수정' : '스티커 문구 수정', `<form id="inline-text-form"><label class="mini-label" for="inline-sticker-text">${layer === 'name' ? '상호명' : '문구'}</label><input type="text" id="inline-sticker-text" maxlength="${layer === 'name' ? 24 : 40}" value="${esc(original)}"><p class="help">문구 수정과 미리보기는 무료예요. 저장·파일 받기·견적 요청을 완료할 때 ${P.costs.edit}온을 한 번 사용해요.</p><button class="primary full" type="submit">수정 반영</button></form>`, ({ el, done, busy, error }) => {
       const input = el.querySelector('input'); input.focus(); input.select();
-      el.querySelector('form').onsubmit = e => { e.preventDefault();if(state!==editing)return error(Error('브랜드가 바뀌었어요. 편집창을 다시 열어주세요.')); const value = input.value;
+      el.querySelector('form').onsubmit = e => { e.preventDefault();if(state!==editing)return error(Error('캐릭터가 바뀌었어요. 편집창을 다시 열어주세요.')); const value = input.value;
         if (field === 'name' && !value.trim()) return error(Error('상호명을 입력해주세요.'));
         if (field === 'message' && shortLayout(state) && msgLen(value) > MSG_MAX) return error(Error(`이 배치는 ${MSG_MAX}자까지 들어가요.`));
         if (value === original) return done();
@@ -126,7 +126,7 @@ const Commerce = (() => {
   }
   function accountCard() {
     if (!user) return ''; const a = account(), plan = P.plans[a.plan];
-    return `<section class="panel token-panel"><div class="panel-title">남은 온 <span data-token-balance>${a.tokenBalance} / ${plan.tokens}</span></div><progress max="${plan.tokens}" value="${Math.min(a.tokenBalance, plan.tokens)}" aria-label="남은 온"></progress><p class="help">브랜드 생성 ${P.costs.generate}온 · 스티커·홍보물 사용 ${P.costs.edit}온<br>편집·미리보기는 무료예요. 추가 충전분은 기본 한도를 넘을 수 있어요.</p><div class="my-list"><button data-page="plans">요금제<small>${plan.name}${a.cancelAtRenewal ? ' · 해지 예약' : ''} ›</small></button><button data-commerce-topup>온 충전<small>›</small></button><button data-page="token-history">사용·구매 내역<small>›</small></button><button data-page="demo-orders">시연 주문·정기배송<small>›</small></button>${(!REAL || user === PUBLIC_DEMO.id) ? '<button data-page="demo-printer">인쇄소 정산 시연<small>같은 주문 확인 ›</small></button>' : ''}</div><small class="help">${remoteAvailable===true?'수익화 시연 정보를 계정으로 동기화해요.':'수익화 시연 정보는 이 브라우저에서 계정별로 보관돼요.'}</small></section>`;
+    return `<section class="panel token-panel"><div class="panel-title">남은 온 <span data-token-balance>${a.tokenBalance} / ${plan.tokens}</span></div><progress max="${plan.tokens}" value="${Math.min(a.tokenBalance, plan.tokens)}" aria-label="남은 온"></progress><p class="help">캐릭터 생성 ${P.costs.generate}온 · 스티커·홍보물 사용 ${P.costs.edit}온<br>편집·미리보기는 무료예요. 추가 충전분은 기본 한도를 넘을 수 있어요.</p><div class="my-list"><button data-page="plans">요금제<small>${plan.name}${a.cancelAtRenewal ? ' · 해지 예약' : ''} ›</small></button><button data-commerce-topup>온 충전<small>›</small></button><button data-page="token-history">사용·구매 내역<small>›</small></button><button data-page="demo-orders">시연 주문·정기배송<small>›</small></button>${(!REAL || user === PUBLIC_DEMO.id) ? '<button data-page="demo-printer">인쇄소 정산 시연<small>같은 주문 확인 ›</small></button>' : ''}</div><small class="help">${remoteAvailable===true?'수익화 시연 정보를 계정으로 동기화해요.':'수익화 시연 정보는 이 브라우저에서 계정별로 보관돼요.'}</small></section>`;
   }
   function plansPage() {
     const a = account();
@@ -258,7 +258,7 @@ const Commerce = (() => {
     box.querySelectorAll('[data-commerce-topup]').forEach(b => b.onclick = guard(async () => { if (await topup()) render(); }));
     box.querySelectorAll('[data-subscribe]').forEach(b => b.onclick = () => sheet(`${P.plans[b.dataset.subscribe].name} 구독`, `<p>월 ${money(P.plans[b.dataset.subscribe].price)} · ${P.plans[b.dataset.subscribe].tokens}온</p><p class="help">시연 결제예요. 갱신 시 한도까지 채우며 이월되지 않아요.</p><button class="primary full" data-confirm>결제하기 (시연)</button>`, ({ el, busy, done }) => { el.querySelector('[data-confirm]').onclick = () => busy(async () => { const item = { kind: 'plan', id: b.dataset.subscribe }; await mockCheckout(item, receipt => db().checkout(who(), item, receipt)); done(); render(); }); }));
     box.querySelectorAll('[data-cancel-plan]').forEach(b => b.onclick = guard(async () => { await lock(() => db().cancel(who())); render(); toast('다음 갱신일부터 무료로 바뀌어요.'); }));
-    box.querySelectorAll('[data-reset-commerce]').forEach(b => b.onclick = () => sheet('시연 상태를 초기화할까요?', '<p>현재 계정의 시연 온·구독·패키지·시연 주문만 초기화해요. 브랜드와 실제 견적·채팅은 그대로예요.</p><button class="primary full" data-reset-confirm>현재 계정 초기화</button>', ({ el, busy, done }) => { el.querySelector('[data-reset-confirm]').onclick = () => busy(async () => { await lock(() => db().reset(who())); done(); render(); }); }));
+    box.querySelectorAll('[data-reset-commerce]').forEach(b => b.onclick = () => sheet('시연 상태를 초기화할까요?', '<p>현재 계정의 시연 온·구독·패키지·시연 주문만 초기화해요. 캐릭터와 실제 견적·채팅은 그대로예요.</p><button class="primary full" data-reset-confirm>현재 계정 초기화</button>', ({ el, busy, done }) => { el.querySelector('[data-reset-confirm]').onclick = () => busy(async () => { await lock(() => db().reset(who())); done(); render(); }); }));
     const actions = { sticker: () => download('sticker'), sns: () => download('sns'), pack: () => download('pack'), character: () => CommerceExports.download('character'), svg: () => CommerceExports.download('svg'), pdf: () => CommerceExports.download('pdf'), menu: () => CommerceExports.download('menu'), coupon: () => CommerceExports.download('coupon') };
     box.querySelectorAll('[data-commerce-download]').forEach(b => b.onclick = guard(() => gate(b.dataset.commerceDownload, actions[b.dataset.commerceDownload])));
     box.querySelectorAll('[data-set]').forEach(b => b.onclick = guard(() => gate('set', () => download('sticker', setSticker(Number(b.dataset.set)), b, '_스티커_' + STICKER_SET[Number(b.dataset.set)].replace(/[!\s]/g, '')))));
