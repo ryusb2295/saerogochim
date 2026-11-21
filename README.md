@@ -145,7 +145,7 @@
 
 <img src="docs/screens/16-season.jpg" width="220">
 
-저장한 캐릭터에 다가오는 시즌(화이트데이, 어버이날, 여름, 핼러윈, 겨울맞이, 크리스마스)의 바탕색과 장식, 리본을 더해 시안을 제안함. 그대로 인쇄 견적을 받을 수 있음.
+시즌 디자인은 화이트데이와 어버이날, 여름, 핼러윈, 겨울맞이, 크리스마스 6종이고 시즌마다 바탕색과 장식, 리본이 다름. 홈에는 30일 안에 다가오는 시즌 하나를 골라 저장한 캐릭터로 시안을 제안함. 위 화면은 11월이라 겨울맞이가 나온 것. 그대로 인쇄 견적을 받을 수 있음.
 
 ## 사용 흐름
 
@@ -186,15 +186,36 @@
 
 ### 구조
 
-![가게온 서비스 구조도](architecture.png)
+```mermaid
+flowchart LR
+  U["사용자<br/>소상공인 / 인쇄소 / 관리자"] --> W["가게온 웹앱<br/>순수 JS PWA"]
+  V["Vercel<br/>정적 사이트 배포"] -->|"HTML, JS 제공"| W
 
-```text
-폰/PC 브라우저 (순수 JS, PWA) ── Vercel (화면 배포)
-      │ 로그인 토큰(JWT)
-      ▼
-Supabase ─ Auth(로그인) / PostgreSQL(RLS, DB 함수) / Storage(비공개) / Realtime(채팅, 알림)
-      └─ Edge Functions: ai, verify-biz, send-push   (비밀 키는 여기 Secrets에만)
-            └─ OpenAI, 국세청 사업자 상태조회, 웹 푸시
+  subgraph SB["Supabase"]
+    AUTH["Auth<br/>가입, 로그인, JWT"]
+    API["API / RPC<br/>견적 수락, 진행 상태"]
+    DB[("PostgreSQL<br/>RLS 권한 규칙")]
+    ST["Storage<br/>비공개 버킷, 서명 URL"]
+    RT["Realtime<br/>채팅, 알림, 견적"]
+    subgraph EF["Edge Functions (비밀 키는 Secrets에만)"]
+      AI["ai"]
+      VB["verify-biz"]
+      SP["send-push"]
+    end
+  end
+
+  W -->|"로그인"| AUTH
+  W -->|"조회, RPC 호출"| API -->|"RLS"| DB
+  W -->|"파일 업로드, 서명 URL"| ST
+  RT -->|"변경 전달"| W
+  W -->|"캐릭터, 브랜드 분석"| AI
+  AI -->|"consume_ai 권한 확인"| DB
+  AI --> OAI["OpenAI<br/>이미지, 글 API"]
+  W -->|"관리자 사업자 확인"| VB --> NTS["국세청<br/>사업자 상태조회"]
+  DB -->|"알림 생기면 호출"| SP --> PUSH["Apple, Google<br/>푸시 서버"]
+  W --> TOSS["토스페이먼츠<br/>테스트 결제"]
+  W --> KAKAO["카카오 우편번호"]
+  W -.->|"노트북에서만"| PY["로컬 Python 서버<br/>server.py"] -.-> OAI
 ```
 
 서버를 직접 띄우지 않고 BaaS(Supabase)와 서버리스 함수로 백엔드를 구성함. 테이블 설계와 권한 규칙, DB 함수, 서버 함수 3개는 직접 작성함. 노트북에서 돌리는 `server.py`는 Python 표준 라이브러리만 쓰는 보조 AI 서버. 쓴 외부 서비스와 API는 [docs/API.md](docs/API.md).
