@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" font-family="Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif">
+  <title>가게온 서비스 구조도</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748B"/></marker>
+    <marker id="p" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+    <style>
+      .t{font-size:19px;font-weight:700;fill:#0F172A;text-anchor:middle}
+      .s{font-size:14px;fill:#475569;text-anchor:middle}
+      .ts{font-size:17px;font-weight:700;fill:#0F172A;text-anchor:middle}
+      .ss{font-size:13px;fill:#475569;text-anchor:middle}
+      .l{font-size:14px;fill:#334155;text-anchor:middle;paint-order:stroke;stroke:#F0FDF4;stroke-width:5px;stroke-linejoin:round}
+      .lw{font-size:14px;fill:#334155;text-anchor:middle;paint-order:stroke;stroke:#FFFFFF;stroke-width:5px;stroke-linejoin:round}
+      .w{fill:none;stroke:#64748B;stroke-width:2}
+      .d{fill:none;stroke:#8B5CF6;stroke-width:2;stroke-dasharray:7 5}
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="998" height="998" rx="24" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
+  <text x="40" y="54" font-size="28" font-weight="800" fill="#0F172A">가게온 서비스 구조도</text>
+  <text x="960" y="54" font-size="14" fill="#64748B" text-anchor="end">2026.11 해커톤 프로토타입</text>
+
+  <!-- 1단: 배포, 웹앱, 노트북 서버 -->
+  <rect x="40" y="90" width="240" height="80" rx="14" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+  <text class="t" x="160" y="123">Vercel</text><text class="s" x="160" y="149">정적 사이트 배포</text>
+
+  <rect x="360" y="90" width="280" height="80" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="2.5"/>
+  <text class="t" x="500" y="123">가게온 웹앱</text><text class="s" x="500" y="149">순수 JS PWA</text>
+
+  <rect x="720" y="90" width="240" height="80" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text class="t" x="840" y="123">로컬 Python 서버</text><text class="s" x="840" y="149">server.py, 노트북 시연용</text>
+
+  <path class="w" d="M280,130 H354" marker-end="url(#a)"/>
+  <text class="lw" x="318" y="121">배포</text>
+  <path class="d" d="M640,130 H714" marker-end="url(#p)"/>
+
+  <!-- 웹앱이 바로 쓰는 외부 서비스 -->
+  <rect x="40" y="195" width="240" height="60" rx="12" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+  <text class="ts" x="160" y="221">토스페이먼츠</text><text class="ss" x="160" y="243">테스트 결제</text>
+  <rect x="40" y="270" width="240" height="60" rx="12" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+  <text class="ts" x="160" y="296">카카오 우편번호</text><text class="ss" x="160" y="318">주소 검색</text>
+  <path class="w" d="M360,160 H320 V225 H286" marker-end="url(#a)"/>
+  <path class="w" d="M320,225 V300 H286" marker-end="url(#a)"/>
+
+  <!-- Supabase -->
+  <text x="40" y="371" font-size="17" font-weight="800" fill="#059669">Supabase</text>
+  <rect x="20" y="380" width="960" height="410" rx="20" fill="#F0FDF4" stroke="#3ECF8E" stroke-width="2" stroke-dasharray="9 6"/>
+
+  <path class="w" d="M500,170 V410"/>
+  <path class="w" d="M155,410 H910"/>
+  <path class="w" d="M155,410 V466" marker-end="url(#a)"/>
+  <path class="w" d="M365,410 V466" marker-end="url(#a)"/>
+  <path class="w" d="M575,410 V466" marker-end="url(#a)"/>
+  <path class="w" d="M785,410 V466" marker-end="url(#a)"/>
+  <path class="w" d="M910,410 V616" marker-end="url(#a)"/>
+  <text class="l" x="155" y="401">조회, RPC</text>
+  <text class="l" x="365" y="401">로그인</text>
+  <text class="l" x="575" y="401">업로드, 서명 URL</text>
+  <text class="l" x="785" y="401">변경 구독</text>
+  <text class="l" x="910" y="401">AI 요청</text>
+
+  <rect x="60" y="470" width="190" height="80" rx="14" fill="#FFFFFF" stroke="#34D399" stroke-width="1.5"/>
+  <text class="t" x="155" y="503">API / RPC</text><text class="s" x="155" y="529">견적 수락, 진행 상태</text>
+  <rect x="270" y="470" width="190" height="80" rx="14" fill="#FFFFFF" stroke="#34D399" stroke-width="1.5"/>
+  <text class="t" x="365" y="503">Auth</text><text class="s" x="365" y="529">가입, 로그인, JWT</text>
+  <rect x="480" y="470" width="190" height="80" rx="14" fill="#FFFFFF" stroke="#34D399" stroke-width="1.5"/>
+  <text class="t" x="575" y="503">Storage</text><text class="s" x="575" y="529">비공개 버킷, 서명 URL</text>
+  <rect x="690" y="470" width="190" height="80" rx="14" fill="#FFFFFF" stroke="#34D399" stroke-width="1.5"/>
+  <text class="t" x="785" y="503">Realtime</text><text class="s" x="785" y="529">채팅, 알림, 견적</text>
+
+  <!-- PostgreSQL -->
+  <path d="M60,615 A85,14 0 0 0 230,615 V690 A85,14 0 0 1 60,690 Z" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+  <ellipse cx="145" cy="615" rx="85" ry="14" fill="#EDE9FE" stroke="#8B5CF6" stroke-width="1.5"/>
+  <text class="t" x="145" y="657">PostgreSQL</text><text class="s" x="145" y="681">RLS 권한 규칙</text>
+  <path class="w" d="M155,550 V597" marker-end="url(#a)"/>
+  <text class="l" x="182" y="579">RLS</text>
+  <path class="w" d="M760,620 V590 H205 V597" marker-end="url(#a)"/>
+  <text class="l" x="480" y="582">consume_ai 권한 확인</text>
+
+  <!-- Edge Functions -->
+  <rect x="280" y="600" width="680" height="170" rx="16" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" stroke-dasharray="8 5"/>
+  <rect x="300" y="620" width="180" height="80" rx="12" fill="#FFFFFF" stroke="#F59E0B" stroke-width="1.5"/>
+  <text class="t" x="390" y="653">send-push</text><text class="s" x="390" y="679">DB 트리거로 폰 알림</text>
+  <rect x="500" y="620" width="200" height="80" rx="12" fill="#FFFFFF" stroke="#F59E0B" stroke-width="1.5"/>
+  <text class="t" x="600" y="653">verify-biz</text><text class="s" x="600" y="679">관리자 사업자 확인</text>
+  <rect x="720" y="620" width="220" height="80" rx="12" fill="#FFFFFF" stroke="#F59E0B" stroke-width="2.5"/>
+  <text class="t" x="830" y="653">ai</text><text class="s" x="830" y="679">캐릭터, 브랜드 분석</text>
+  <text x="300" y="754" font-size="15" font-weight="800" fill="#B45309">Edge Functions</text>
+  <text x="940" y="754" font-size="14" fill="#92400E" text-anchor="end">비밀 키는 Secrets에만</text>
+
+  <!-- 외부 API -->
+  <path class="w" d="M390,700 V836" marker-end="url(#a)"/>
+  <path class="w" d="M600,700 V836" marker-end="url(#a)"/>
+  <path class="w" d="M830,700 V836" marker-end="url(#a)"/>
+  <rect x="300" y="840" width="180" height="80" rx="14" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+  <text class="t" x="390" y="873">Apple, Google</text><text class="s" x="390" y="899">푸시 서버</text>
+  <rect x="500" y="840" width="200" height="80" rx="14" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+  <text class="t" x="600" y="873">국세청</text><text class="s" x="600" y="899">사업자 상태조회</text>
+  <rect x="720" y="840" width="220" height="80" rx="14" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+  <text class="t" x="830" y="873">OpenAI</text><text class="s" x="830" y="899">이미지, 글 API</text>
+  <path class="d" d="M960,130 H986 V880 H946" marker-end="url(#p)"/>
+
+  <!-- 범례 -->
+  <path class="w" d="M40,962 H84" marker-end="url(#a)"/>
+  <text x="96" y="967" font-size="14" fill="#475569">실제 서비스 경로</text>
+  <path class="d" d="M250,962 H294" marker-end="url(#p)"/>
+  <text x="306" y="967" font-size="14" fill="#475569">노트북 시연용 보조 경로</text>
+</svg>

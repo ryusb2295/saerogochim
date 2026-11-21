@@ -186,37 +186,7 @@
 
 ### 구조
 
-```mermaid
-flowchart LR
-  U["사용자<br/>소상공인 / 인쇄소 / 관리자"] --> W["가게온 웹앱<br/>순수 JS PWA"]
-  V["Vercel<br/>정적 사이트 배포"] -->|"HTML, JS 제공"| W
-
-  subgraph SB["Supabase"]
-    AUTH["Auth<br/>가입, 로그인, JWT"]
-    API["API / RPC<br/>견적 수락, 진행 상태"]
-    DB[("PostgreSQL<br/>RLS 권한 규칙")]
-    ST["Storage<br/>비공개 버킷, 서명 URL"]
-    RT["Realtime<br/>채팅, 알림, 견적"]
-    subgraph EF["Edge Functions (비밀 키는 Secrets에만)"]
-      AI["ai"]
-      VB["verify-biz"]
-      SP["send-push"]
-    end
-  end
-
-  W -->|"로그인"| AUTH
-  W -->|"조회, RPC 호출"| API -->|"RLS"| DB
-  W -->|"파일 업로드, 서명 URL"| ST
-  RT -->|"변경 전달"| W
-  W -->|"캐릭터, 브랜드 분석"| AI
-  AI -->|"consume_ai 권한 확인"| DB
-  AI --> OAI["OpenAI<br/>이미지, 글 API"]
-  W -->|"관리자 사업자 확인"| VB --> NTS["국세청<br/>사업자 상태조회"]
-  DB -->|"알림 생기면 호출"| SP --> PUSH["Apple, Google<br/>푸시 서버"]
-  W --> TOSS["토스페이먼츠<br/>테스트 결제"]
-  W --> KAKAO["카카오 우편번호"]
-  W -.->|"노트북에서만"| PY["로컬 Python 서버<br/>server.py"] -.-> OAI
-```
+<img src="docs/architecture.svg" alt="가게온 서비스 구조도" width="760">
 
 서버를 직접 띄우지 않고 BaaS(Supabase)와 서버리스 함수로 백엔드를 구성함. 테이블 설계와 권한 규칙, DB 함수, 서버 함수 3개는 직접 작성함. 노트북에서 돌리는 `server.py`는 Python 표준 라이브러리만 쓰는 보조 AI 서버. 쓴 외부 서비스와 API는 [docs/API.md](docs/API.md).
 
