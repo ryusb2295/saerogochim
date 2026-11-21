@@ -405,8 +405,7 @@ form .help:last-of-type{margin-bottom:0}
 @keyframes an-spin{to{transform:rotate(360deg)}}
 /* AI 캐릭터 만드는 동안 전체 화면 로딩 창 */
 .gen-modal{position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:auto;padding:24px 16px;background:var(--cream,#ffffff);animation:gen-in .2s ease-out}
-.gen-modal .an2{display:flex;flex-direction:column;align-items:center;text-align:center;max-width:360px}
-.gen-modal .an2 h2{margin:0 0 28px;font-size:23px;line-height:1.35;word-break:keep-all}
+.gen-modal .an2{display:flex;flex-direction:column;align-items:center;text-align:center}
 .gen-modal .an-note{display:block;margin-top:26px;font-size:13px;color:var(--color-text-gray)}
 body.modal-open{overflow:hidden}
 @keyframes gen-in{from{opacity:0}to{opacity:1}}
@@ -1032,3 +1031,7 @@ body:has(.od-head),body:has(.od-head) main,body:has(.od-head) #app{background:#f
 /* 아이폰 사파리: 날짜 칸이 자기 폭을 고집해 칸 밖으로 튀어나오는 것 막기 */
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;height:44px;min-height:44px;padding-top:0;padding-bottom:0;line-height:44px}
 input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+
+/* 홈: 상단 바 뒤까지 히어로 그라데이션을 올린다 (main 위 여백 18 + 바 60 + 바 아래 12) */
+.app-bar:has(+.home-hero){position:relative;z-index:2}
+.app-bar+.home-hero{margin-top:-90px;padding-top:96px;aspect-ratio:375/432}
